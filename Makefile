@@ -1,0 +1,2 @@
+help:
+	@echo "ContextForge scaffold"
