@@ -24,14 +24,14 @@
 body {
   margin: 0;
   font-family: 'Space Grotesk', sans-serif;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background: var(--panel);
   color: var(--text);
   min-height: 100vh;
 }
 
 .app-shell {
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background: var(--panel);
   color: var(--text);
 }
 
