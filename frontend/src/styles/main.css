@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
 
 :root {
   color-scheme: dark;
-  --bg: #171a1f;
-  --bg-2: #1f242a;
-  --panel: #1c2026;
+  --bg: #0b1020;
+  --bg-2: #111827;
+  --panel: #1a1e24;
   --panel-2: #20252c;
   --glass: rgba(255, 255, 255, 0.04);
   --stroke: rgba(255, 255, 255, 0.08);
@@ -13,8 +13,8 @@
   --accent: #7aa2f7;
   --accent-2: #9aa8ff;
   --warning: #e07b7b;
-  --radius: 16px;
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  --radius: 10px;
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -40,18 +40,18 @@ body {
   width: 100%;
   margin: 0;
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 360px;
-  gap: 24px;
-  padding: 24px;
+  grid-template-columns: 360px minmax(0, 1fr) 380px;
+  gap: 16px;
+  padding: 16px;
 }
 
 .sidebar-shell {
   position: sticky;
-  top: 24px;
-  height: calc(100vh - 48px);
+  top: 16px;
+  height: calc(100vh - 32px);
   overflow-y: auto;
-  border-radius: 24px;
-  background: var(--panel-2);
+  border-radius: 14px;
+  background: var(--panel);
   border: 1px solid var(--stroke);
   box-shadow: var(--shadow);
   padding: 20px;
@@ -62,7 +62,7 @@ body {
 
 .add-knowledge-btn {
   border: none;
-  border-radius: 16px;
+  border-radius: 10px;
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -113,7 +113,7 @@ body {
 }
 
 .source-card {
-  border-radius: 18px;
+  border-radius: 12px;
   border: 1px solid var(--stroke);
   background: var(--glass);
   padding: 14px;
@@ -135,7 +135,7 @@ body {
 .source-icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   font-family: 'Space Mono', monospace;
@@ -233,7 +233,7 @@ body {
 }
 
 .link-item {
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--stroke);
   background: var(--glass);
   padding: 10px 12px;
@@ -256,18 +256,19 @@ body {
 
 .main-shell {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-card {
-  border-radius: 24px;
+  border-radius: 14px;
   border: 1px solid var(--stroke);
   background: var(--panel);
   box-shadow: var(--shadow);
   padding: 24px;
-}
-
-.main-card .main-header {
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .main-card .main-header h1 {
@@ -283,7 +284,8 @@ body {
 }
 
 .evidence-shell {
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-backdrop {
@@ -299,7 +301,7 @@ body {
 
 .modal-card {
   width: min(720px, 92vw);
-  border-radius: 24px;
+  border-radius: 14px;
   border: 1px solid var(--stroke);
   background: var(--panel);
   padding: 24px;
@@ -332,7 +334,7 @@ body {
 }
 
 .option-card {
-  border-radius: 18px;
+  border-radius: 12px;
   border: 1px solid var(--stroke);
   background: var(--glass);
   padding: 16px;
@@ -350,7 +352,7 @@ body {
 .option-icon {
   width: 42px;
   height: 42px;
-  border-radius: 14px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   font-family: 'Space Mono', monospace;
@@ -376,7 +378,7 @@ body {
 }
 
 .drop-zone {
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1px dashed var(--stroke);
   background: rgba(33, 36, 46, 0.7);
   padding: 20px;
@@ -439,7 +441,7 @@ body {
 }
 
 .empty-card {
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1px dashed var(--stroke);
   padding: 16px;
   color: var(--muted);
@@ -491,16 +493,6 @@ body {
   min-height: 100vh;
 }
 
-.sidebar,
-.evidence,
-.main {
-  background: var(--panel);
-  border: 1px solid var(--stroke);
-  border-radius: 24px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
-}
-
 .sidebar {
   padding: 24px;
   display: flex;
@@ -518,7 +510,7 @@ body {
 .brand-mark {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   display: grid;
   place-items: center;
@@ -597,7 +589,7 @@ body {
 }
 
 .panel {
-  background: var(--panel-2);
+  background: var(--panel);
   border-radius: var(--radius);
   border: 1px solid var(--stroke);
   padding: 16px;
@@ -766,211 +758,19 @@ body {
   gap: 10px;
 }
 
-.chat {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.chat-stream {
-  display: grid;
-  gap: 16px;
-}
-
-.prompt {
-  background: var(--glass);
-  border: 1px solid var(--stroke);
-  border-radius: 18px;
-  padding: 16px;
-}
-
-.prompt-label {
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-}
-
-.prompt-input,
-.composer-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--text);
-  font-size: 1rem;
-}
-
-.bubble {
-  background: linear-gradient(160deg, rgba(96, 165, 250, 0.16), rgba(59, 130, 246, 0.08));
-  border: 1px solid rgba(96, 165, 250, 0.28);
-  border-radius: 24px;
-  padding: 20px;
-}
-
-.bubble.user {
-  background: var(--glass);
-  border: 1px solid var(--stroke);
-  margin-left: auto;
-  max-width: 75%;
-}
-
-.bubble-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.orb {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, var(--accent), var(--accent-2));
-  box-shadow: 0 0 20px rgba(96, 165, 250, 0.6);
-}
-
-.bubble-title {
-  font-weight: 600;
-}
-
-.bubble-subtitle {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.bubble-text {
-  white-space: pre-line;
-  line-height: 1.6;
-  margin: 0 0 16px;
-}
-
-.bubble.user .bubble-text {
-  margin-bottom: 0;
-}
-
-.bubble-sources {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.source-tags {
-  display: flex;
-  gap: 6px;
-}
-
-.tag {
-  font-family: 'Space Mono', monospace;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(96, 165, 250, 0.4);
-  color: #d3e3ff;
-}
-
-.chat-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.error-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: rgba(239, 83, 80, 0.12);
-  border: 1px solid rgba(239, 83, 80, 0.35);
-  color: #f5b5b4;
-}
-
-.upload-hint {
-  border-radius: 16px;
-  border: 1px solid rgba(96, 165, 250, 0.35);
-  background: rgba(96, 165, 250, 0.08);
-  padding: 14px 16px;
-  display: grid;
-  gap: 10px;
-}
-
-.upload-hint-title {
-  font-weight: 600;
-}
-
-.upload-hint-body {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.upload-hint-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.upload-hint-tag {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.72rem;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(96, 165, 250, 0.16);
-  color: #d6e8ff;
-  border: 1px solid rgba(96, 165, 250, 0.35);
-}
-
-.chip {
-  background: var(--glass);
-  border: 1px solid var(--stroke);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-.composer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--stroke);
-  background: var(--glass);
-}
-
-.send {
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #0b1020;
-  font-weight: 600;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.send-icon {
-  font-size: 1.1rem;
-}
-
-.disclaimer {
-  font-size: 0.75rem;
-  color: var(--muted);
-  text-align: center;
-}
+/* --- Chat styles now use Tailwind in ChatBox.jsx & MessageBubble.jsx --- */
 
 .evidence {
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  flex: 1;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
 }
 
 .empty {
@@ -1020,7 +820,7 @@ body {
   grid-template-columns: auto 1fr auto;
   gap: 12px;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1px solid var(--stroke);
   background: var(--glass);
 }
@@ -1200,7 +1000,7 @@ body {
   .sidebar-shell,
   .main-card,
   .evidence {
-    border-radius: 18px;
+    border-radius: 12px;
   }
 
   .evidence-shell {

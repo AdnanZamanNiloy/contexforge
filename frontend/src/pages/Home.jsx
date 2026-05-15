@@ -316,16 +316,6 @@ export default function Home() {
 
         <section className="main-shell">
           <div className="main-card">
-            <div className="main-header">
-              <div>
-                <div className="eyebrow">Active Thread</div>
-                <h1>What is the Transformer architecture?</h1>
-              </div>
-              <div className="header-actions">
-                <button className="ghost">Share</button>
-                <button className="primary">New Chat</button>
-              </div>
-            </div>
             <ChatBox
               messages={messages}
               input={input}
@@ -333,7 +323,6 @@ export default function Home() {
               onSend={sendMessage}
               isStreaming={isStreaming}
               error={error}
-              suggestions={suggestions}
               onSuggestion={sendMessage}
               onRetry={retryLast}
               uploadHint={showUploadHint}
