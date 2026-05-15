@@ -23,16 +23,16 @@ export default function MessageBubble({ role, title, text, sources = [], status 
     >
       <div className="flex items-center gap-3 mb-2.5">
         <div
-          className="w-8 h-8 rounded-full shrink-0
-            bg-gradient-to-br from-[#7aa2f7] to-[#9aa8ff]
-            shadow-[0_0_14px_rgba(122,162,247,0.35)]
-            flex items-center justify-center
-            text-[11px] font-bold text-[#0b1020]"
+          className="w-8 h-8 rounded-full shrink-0 overflow-hidden
+            bg-[#0b0f1a]
+            shadow-[0_0_14px_rgba(122,162,247,0.35)]"
         >
-          C
+          <img src="/logos/project_logo.png" alt="ContextForge" className="w-full h-full object-contain" />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-white">{title}</div>
+          <div className="text-sm font-semibold text-white brand-title">
+            Context<span className="brand-title-accent">Forge</span>
+          </div>
           <div className="text-[10px] text-[#a6abb3]">
             {status === 'streaming' ? 'Streaming reply' : 'RAG response'}
           </div>

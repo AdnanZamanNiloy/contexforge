@@ -35,7 +35,12 @@ class WebLoader(BaseLoader):
         self._enable_js_fallback = enable_js_fallback
 
     @observe(name="load_web")
-    async def load(self, source: str | bytes, source_id: str) -> List[Document]:
+    async def load(
+        self,
+        source: str | bytes,
+        source_id: str,
+        filename: str | None = None,
+    ) -> List[Document]:
     
         if not isinstance(source, str):
             raise ValueError(

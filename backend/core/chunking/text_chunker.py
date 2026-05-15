@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import logging
 from functools import lru_cache
 from typing import List
@@ -103,7 +102,7 @@ class TextChunker:
         """Return all chunks for a single document."""
         chunks: List[Chunk] = []
         for index, text in enumerate(self._split_text(doc.text)):
-            metadata = copy.deepcopy(doc.metadata)
+            metadata = dict(doc.metadata)
             metadata["chunk_index"] = index
             chunks.append(
                 Chunk(

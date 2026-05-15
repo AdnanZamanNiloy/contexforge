@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import logging
 import re
 from collections import Counter
@@ -66,7 +65,7 @@ class MetadataExtractor:
             keywords = self._extract_keywords(doc.text)
             named_entities = self._extract_entities(doc.text)
 
-            metadata: Dict[str, object] = copy.deepcopy(doc.metadata)
+            metadata: Dict[str, object] = dict(doc.metadata)
             metadata.update(
                 {
                     "title": title,

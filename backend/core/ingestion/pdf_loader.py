@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import List
+import re
+from typing import List, Optional
 
 from .base_loader import BaseLoader
 from core.types import Document
@@ -14,9 +15,18 @@ logger = logging.getLogger(__name__)
 class PDFLoader(BaseLoader):
 
     @observe(name="load_pdf")
-    async def load(self, source: str | bytes, source_id: str) -> List[Document]:
-        text, metadata = await asyncio.to_thread(self._extract_text, source) 
-        metadata.update({"source_id": source_id, "source_type": "pdf"})       
+    async def load(
+        self,
+        source: str | bytes,
+        source_id: str,
+        filename: Optional[str] = None,
+    ) -> List[Document]:
+        text, metadata = await asyncio.to_thread(self._extract_text, source)
+        metadata.update({
+            "source_id": source_id,
+            "source_type": "pdf",
+            "filename": filename or "unknown.pdf",
+        })
         return [
             Document(
                 document_id=source_id,
@@ -53,6 +63,7 @@ class PDFLoader(BaseLoader):
             )
 
         text = "\n\n".join(pages)
+        text = self._clean_garbled(text)
 
         metadata = {
             "page_count": page_count,                      
@@ -61,3 +72,10 @@ class PDFLoader(BaseLoader):
         }
 
         return text, metadata
+
+    @staticmethod
+    def _clean_garbled(text: str) -> str:
+        import unicodedata
+        text = unicodedata.normalize("NFKC", text)
+        text = re.sub(r"[^\x20-\x7E\n\r\t]", "", text)
+        return text

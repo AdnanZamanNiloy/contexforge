@@ -87,11 +87,11 @@ export default function ChatBox({
 
   const chipBase =
     'px-5 py-2.5 rounded-full text-sm font-medium ' +
-    'bg-[rgba(255,255,255,0.04)] ' +
-    'border border-[rgba(255,255,255,0.08)] ' +
-    'text-[#e6e7ea] hover:text-white ' +
-    'hover:bg-[rgba(255,255,255,0.08)] ' +
-    'hover:border-[rgba(255,255,255,0.16)] ' +
+    'bg-[rgba(122,162,247,0.08)] ' +
+    'border border-[rgba(122,162,247,0.2)] ' +
+    'text-[#d3e3ff] hover:text-white ' +
+    'hover:bg-[rgba(122,162,247,0.16)] ' +
+    'hover:border-[rgba(122,162,247,0.4)] ' +
     'transition-all duration-200 ' +
     'cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed';
 
@@ -216,9 +216,10 @@ export default function ChatBox({
         <div className="flex gap-2 shrink-0">
           <button
             className="px-3 py-1.5 rounded-lg text-xs font-medium
-              bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]
-              text-[#a6abb3] hover:text-white hover:bg-[rgba(255,255,255,0.08)]
-              transition-all duration-200 cursor-pointer"
+              bg-gradient-to-br from-[#7aa2f7] to-[#9aa8ff]
+              text-[#0b1020] cursor-pointer
+              hover:shadow-[0_0_20px_rgba(122,162,247,0.3)]
+              transition-all duration-200"
           >
             Share
           </button>

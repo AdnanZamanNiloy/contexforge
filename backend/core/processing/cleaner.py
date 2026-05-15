@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import logging
 import re
 import unicodedata
@@ -71,7 +70,7 @@ class TextCleaner:
                 Document(
                     document_id=doc.document_id,
                     text=cleaned_text,
-                    metadata=copy.deepcopy(doc.metadata),
+                    metadata=dict(doc.metadata),
                     source_type=doc.source_type,
                 )
             )

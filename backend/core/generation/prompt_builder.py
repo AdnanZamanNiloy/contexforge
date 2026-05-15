@@ -13,15 +13,13 @@ from observability.tracer import observe
 logger = logging.getLogger(__name__)
 
 
-PROMPT_VERSION = "v1.0.0"
+PROMPT_VERSION = "v2.0.0"
 MAX_CHUNKS = 20
 
 _ANSWER_TEMPLATE = PromptTemplate(
     template=(
-        "You are a helpful assistant. Answer the question using ONLY the "
-        "context provided below. If the answer cannot be found in the context, "
-        "say so explicitly rather than guessing.\n\n"
-        "Context:\n{context}\n\n"
+        "Below is the retrieved context relevant to the user's question.\n\n"
+        "{context}\n\n"
         "Question: {question}\n"
     ),
     input_variables=["context", "question"],
@@ -117,4 +115,4 @@ class PromptBuilder:
 
         if not chunks:
             return "(no context available)"
-        return "\n\n".join(f"[{chunk.chunk_id}] {chunk.text}" for chunk in chunks)
+        return "\n\n---\n\n".join(chunk.text for chunk in chunks)

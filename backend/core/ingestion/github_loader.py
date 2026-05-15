@@ -18,7 +18,12 @@ logger = logging.getLogger(__name__)
 
 class GitHubLoader(BaseLoader):
     @observe(name="load_github")
-    async def load(self, source: str | bytes, source_id: str) -> List[Document]:
+    async def load(
+        self,
+        source: str | bytes,
+        source_id: str,
+        filename: str | None = None,
+    ) -> List[Document]:
         if not isinstance(source, str):
             raise ValueError("GitHubLoader expects a repo URL string")
         owner, repo = self._parse_repo(source)
