@@ -8,6 +8,13 @@ const SUGGESTIONS = [
   'Show code example in PyTorch',
 ];
 
+const DEFAULT_CONFIDENCE = {
+  answer_confidence: 0,
+  source_coverage: 'Weak',
+  sources_used: 0,
+  retrieved_chunks: 0,
+};
+
 export function useChat() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -15,6 +22,8 @@ export function useChat() {
   const [error, setError] = useState('');
   const [sources, setSources] = useState([]);
   const [latency, setLatency] = useState({});
+  // FIX: store server-side confidence metrics
+  const [confidence, setConfidence] = useState(null);
   const [showUploadHint, setShowUploadHint] = useState(false);
   const abortRef = useRef(null);
   const lastQuestionRef = useRef('');
@@ -49,6 +58,8 @@ export function useChat() {
       setError('');
       setSources([]);
       setLatency({});
+      // FIX: reset confidence on new query
+      setConfidence(null);
       setShowUploadHint(false);
       setInput('');
 
@@ -99,6 +110,10 @@ export function useChat() {
             onLatency: (timings) => {
               setLatency(timings || {});
             },
+            // FIX: store confidence from the SSE [CONFIDENCE] event
+            onConfidence: (data) => {
+              setConfidence(data || DEFAULT_CONFIDENCE);
+            },
             onDone: () => {
               updateAssistant(assistantId, { status: 'done' });
             },
@@ -123,6 +138,8 @@ export function useChat() {
           setSources(fallback.sources || []);
           setShowUploadHint((fallback.sources || []).length === 0);
           setLatency(fallback.latency_ms || {});
+          // FIX: parse confidence from fallback response
+          setConfidence(fallback.confidence || DEFAULT_CONFIDENCE);
         } catch (fallbackError) {
           updateAssistant(assistantId, { status: 'error' });
           setError(fallbackError.message || 'Request failed');
@@ -150,6 +167,8 @@ export function useChat() {
     setError,
     sources,
     latency,
+    // FIX: expose confidence so SourceViewer can consume it
+    confidence,
     suggestions,
     retryLast,
     stopStream,

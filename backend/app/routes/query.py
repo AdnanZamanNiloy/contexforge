@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.dependencies import get_query_service
-from app.schemas.query import QueryRequest, QueryResponse
+from app.schemas.query import ConfidenceMetrics, QueryRequest, QueryResponse
 from app.services.query_service import QueryService
 
 __all__ = ["router"]
@@ -30,10 +30,12 @@ async def query(
     request: QueryRequest,
     service: QueryService = Depends(get_query_service),
 ) -> QueryResponse:
-    """Return a complete answer with sources and latency breakdown.
+    """Return a complete answer with sources, latency breakdown, and confidence metrics.
 
     FIX #4 — response now includes ``sources`` and ``latency_ms`` so
     SourceViewer can render citations.
+
+    FIX: response now includes ``confidence`` with server-side ConfidenceMetrics.
 
     Raises:
         422: If the request body is invalid.
@@ -49,15 +51,26 @@ async def query(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
     logger.info(
-        "query complete: sources=%d latency=%s",
+        "query complete: sources=%d latency=%s confidence=%s",
         len(result.sources),
         result.latency_ms,
+        result.confidence,
     )
-    # FIX #4 — pass full GenerationResult fields through to the client
+    # FIX: include confidence in the response
     return QueryResponse(
         answer=result.answer,
         sources=[_chunk_summary(c) for c in result.sources],
         latency_ms=result.latency_ms,
+        confidence=(
+            ConfidenceMetrics(
+                answer_confidence=result.confidence.answer_confidence,
+                source_coverage=result.confidence.source_coverage,
+                sources_used=result.confidence.sources_used,
+                retrieved_chunks=result.confidence.retrieved_chunks,
+            )
+            if result.confidence
+            else None
+        ),
     )
 
 
@@ -85,6 +98,8 @@ async def stream_query(
     Event sequence:
         data: <token>\\n\\n          (one per token)
         data: [SOURCES] <json>\\n\\n (source list after last token)
+        data: [LATENCY] <json>\\n\\n (per-stage latency breakdown)
+        data: [CONFIDENCE] <json>\\n\\n (server-side confidence metrics)
         data: [DONE]\\n\\n           (terminator)
     """
     logger.info("stream_query: question=%r", request.question)
@@ -109,6 +124,8 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
     FIX #1 — wraps every token in ``data: ...\\n\\n``.
     FIX #2 — catches service errors and emits an SSE error event.
     FIX #7 — always terminates with [DONE] or [ERROR].
+
+    FIX: emits ``data: [CONFIDENCE] <json>\\n\\n`` before [DONE].
     """
     try:
         async for payload in service.stream_answer(request):
@@ -117,8 +134,12 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
             elif payload.get("type") == "done":
                 sources = payload.get("sources", [])
                 latency_ms = payload.get("latency_ms", {})
+                # FIX: emit confidence event before [DONE]
+                confidence = payload.get("confidence")
                 yield f"data: [SOURCES] {json.dumps(sources)}\n\n"
                 yield f"data: [LATENCY] {json.dumps(latency_ms)}\n\n"
+                if confidence is not None:
+                    yield f"data: [CONFIDENCE] {json.dumps(confidence)}\n\n"
                 yield "data: [DONE]\n\n"
                 logger.info("stream_query complete: question=%r", request.question)
                 return

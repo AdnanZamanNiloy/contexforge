@@ -5,18 +5,88 @@ function formatSourceTitle(source) {
 
 function formatSourceType(source) {
   const meta = source.metadata || {};
-  return meta.source_type || meta.type || 'DOC';
+  return meta.source_type || meta.type || 'doc';
 }
 
-function formatSourceMeta(source) {
+function chunkIcon(type) {
+  switch (type) {
+    case 'pdf':
+    case 'docx':
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="2" width="20" height="20" rx="4" fill="#EF4444" />
+          <rect x="2" y="2" width="13" height="7" rx="4" fill="#DC2626" />
+          <text x="12" y="16" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold" fontFamily="Arial,sans-serif">PDF</text>
+        </svg>
+      );
+    case 'web':
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      );
+    case 'github':
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+        </svg>
+      );
+    default:
+      return (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+      );
+  }
+}
+
+function iconClass(type) {
+  switch (type) {
+    case 'pdf': return 'chunk-icon is-pdf';
+    case 'web': return 'chunk-icon is-web';
+    case 'github': return 'chunk-icon is-github';
+    default: return 'chunk-icon';
+  }
+}
+
+function extractDomain(url) {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+function formatChunkMeta(source) {
   const meta = source.metadata || {};
+  const type = formatSourceType(source);
+
+  if (type === 'web' && meta.url) {
+    const domain = extractDomain(meta.url);
+    return domain || meta.url;
+  }
+  if (type === 'github') {
+    return meta.repo || meta.title || 'GitHub Repository';
+  }
   if (meta.page) {
     return `Page ${meta.page}`;
   }
-  if (meta.url) {
-    return meta.url;
-  }
   return `Chunk ${source.rank}`;
+}
+
+function formatTypeLabel(type) {
+  switch (type) {
+    case 'pdf': return 'PDF';
+    case 'web': return 'Web';
+    case 'github': return 'GitHub';
+    default: return type.toUpperCase();
+  }
 }
 
 function Skeleton({ width, height }) {
@@ -28,30 +98,24 @@ function Skeleton({ width, height }) {
   );
 }
 
-export default function SourceViewer({ sources = [], latency = {}, isStreaming }) {
+// FIX: accept confidence prop from the backend; default to null for loading state
+export default function SourceViewer({ sources = [], latency = {}, isStreaming, confidence = null }) {
   const hasSources = sources.length > 0;
   const isLoading = isStreaming && !hasSources;
 
-  const scores = sources.map(s => s.score).filter(s => s != null);
-  const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-  const confidence = Math.round(avgScore * 100);
-
-  let coverage = 'Pending';
-  if (hasSources) {
-    if (avgScore > 0.75) coverage = 'High';
-    else if (avgScore > 0.5) coverage = 'Medium';
-    else coverage = 'Low';
-  }
-
-  const uniqueSourceIds = new Set(sources.map(s => s.source_id || s.metadata?.source_id));
-  const sourcesUsed = uniqueSourceIds.size;
-  const retrievedChunks = sources.length;
+  // FIX: use server-side confidence — no sigmoid math in the frontend
+  const displayConfidence = confidence
+    ? Math.round(confidence.answer_confidence * 100)
+    : 0;
+  const coverage = confidence?.source_coverage ?? 'Pending';
+  const sourcesUsed = confidence?.sources_used ?? 0;
+  const retrievedChunks = confidence?.retrieved_chunks ?? sources.length;
   const retrieveMs = latency?.retrieve_ms;
 
   const showEmpty = !isLoading && !hasSources;
 
   const circumference = 2 * Math.PI * 46;
-  const offset = circumference - (circumference * Math.min(confidence, 100)) / 100;
+  const offset = circumference - (circumference * Math.min(displayConfidence, 100)) / 100;
 
   return (
     <aside className="evidence">
@@ -76,31 +140,35 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming }
         </div>
         <div className="chunk-list">
           {isLoading ? (
-            <div className="empty" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="empty" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[1, 2, 3].map((i) => (
                 <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <Skeleton width="28px" height="28px" />
+                  <Skeleton width="32px" height="32px" />
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <Skeleton width="60%" height="14px" />
-                    <Skeleton width="40%" height="10px" />
+                    <Skeleton width="35%" height="10px" />
                     <Skeleton width="90%" height="10px" />
                   </div>
-                  <Skeleton width="30px" height="14px" />
                 </div>
               ))}
             </div>
           ) : hasSources ? (
-            sources.map((item) => (
-              <article className="chunk" key={item.chunk_id}>
-                <div className="chunk-icon">{formatSourceType(item)}</div>
-                <div className="chunk-body">
+              sources.map((item) => {
+              const type = formatSourceType(item);
+              return (
+                <article className="chunk" key={item.chunk_id}>
+                  <div className={iconClass(type)}>
+                    {chunkIcon(type)}
+                  </div>
                   <div className="chunk-title">{formatSourceTitle(item)}</div>
-                  <div className="chunk-meta">{formatSourceMeta(item)}</div>
-                  <p className="chunk-text">{item.text_preview}</p>
-                </div>
-                <div className="chunk-score">{item.score ? item.score.toFixed(2) : '-'}</div>
-              </article>
-            ))
+                  <div className="chunk-type">{formatTypeLabel(type)}</div>
+                  <div className="chunk-meta">{formatChunkMeta(item)}</div>
+                  {item.text_preview ? (
+                    <p className="chunk-text">{item.text_preview}</p>
+                  ) : null}
+                </article>
+              );
+            })
           ) : (
             <div className="empty">Ask a question to populate sources.</div>
           )}
@@ -147,14 +215,14 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming }
                 />
               </svg>
               <div className="donut-value">
-                <strong>{confidence}%</strong>
+                <strong>{displayConfidence}%</strong>
                 <span>Confidence</span>
               </div>
             </div>
             <div className="confidence-list">
               <div>
                 <span>Answer Confidence</span>
-                <strong>{confidence}%</strong>
+                <strong>{displayConfidence}%</strong>
               </div>
               <div>
                 <span>Source Coverage</span>

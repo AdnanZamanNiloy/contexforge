@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import List
+import math
+from typing import List, Tuple
 
 from app.config.settings import settings
 from core.types import RerankedChunk, RetrievedChunk
@@ -11,6 +12,14 @@ from observability.tracer import observe
 __all__ = ["Reranker"]
 
 logger = logging.getLogger(__name__)
+
+
+def _sigmoid(x: float) -> float:
+    """Logit → probability via the logistic function."""
+    try:
+        return 1.0 / (1.0 + math.exp(-x))
+    except OverflowError:
+        return 0.0 if x < 0 else 1.0
 
 
 class Reranker:
@@ -24,23 +33,47 @@ class Reranker:
         self,
         query: str,
         candidates: List[RetrievedChunk],
-        top_k: int,) -> List[RerankedChunk]:
+        top_k: int,
+    ) -> Tuple[List[RerankedChunk], float]:
+        """Rerank candidates with a cross-encoder, returning (chunks, mean_confidence).
 
+        Each raw logit is normalised via sigmoid into a [0.0, 1.0] probability.
+        The mean of the top‑k normalised scores is returned as the second element.
+
+        Args:
+            query:      User question used as the cross-encoder premise.
+            candidates: RetrievedChunk list from hybrid retrieval.
+            top_k:      Number of reranked chunks to keep.
+
+        Returns:
+            Tuple of (list of RerankedChunk, mean sigmoid confidence in [0.0, 1.0]).
+
+        Raises:
+            ValueError: If *query* is empty or *top_k* is not positive.
+        """
         if not isinstance(query, str) or not query.strip():
             raise ValueError("Reranker.rerank received an empty query")
         if top_k <= 0:
             raise ValueError(f"top_k must be a positive integer, got {top_k}")
 
+        # FIX: guard for empty candidate list — return empty + zero confidence
         if not candidates:
-            logger.debug("Reranker: no candidates — returning empty list.")
-            return []
+            logger.debug("Reranker: no candidates — returning ([], 0.0).")
+            return [], 0.0
 
         await self._ensure_model_loaded()
+
         pairs = [(query, item.chunk.text) for item in candidates]
+
+        # FIX: raw logits from the cross-encoder (unbounded, typically -5 .. +5)
         raw_scores = await asyncio.to_thread(self._model.predict, pairs)
 
+        # FIX: apply sigmoid to convert logits to probabilities
+        probs = [_sigmoid(float(s)) for s in raw_scores]
+
+        # Sort candidates by their sigmoid probability, descending
         scored = sorted(
-            zip(candidates, (float(s) for s in raw_scores)),
+            zip(candidates, probs),
             key=lambda pair: pair[1],
             reverse=True,
         )
@@ -48,19 +81,27 @@ class Reranker:
         trimmed = scored[:top_k]
 
         results = [
-            RerankedChunk(chunk=item.chunk, score=score, rank=rank)
-            for rank, (item, score) in enumerate(trimmed, start=1)
+            RerankedChunk(chunk=item.chunk, score=prob, rank=rank)
+            for rank, (item, prob) in enumerate(trimmed, start=1)
         ]
+
+        # FIX: mean confidence of the top-k only
+        mean_confidence = (
+            sum(prob for _, prob in trimmed) / len(trimmed)
+            if trimmed
+            else 0.0
+        )
 
         logger.debug(
             "Reranker: %d candidates → top %d selected; "
-            "best=%.4f worst=%.4f",
+            "best=%.4f worst=%.4f mean_conf=%.4f",
             len(candidates),
             len(results),
             results[0].score if results else 0.0,
             results[-1].score if results else 0.0,
+            mean_confidence,
         )
-        return results
+        return results, mean_confidence
 
 
     async def _ensure_model_loaded(self) -> None:

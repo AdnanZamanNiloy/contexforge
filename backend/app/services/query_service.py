@@ -5,7 +5,7 @@ Bridges the FastAPI route layer and the Orchestrator.  The service returns
 structured Python objects; SSE formatting is the route layer's responsibility.
 
 Fix #6 — this service no longer emits `data: ...\\n\\n` SSE strings.
-         It yields plain dicts that the route wraps in SSE framing.
+          It yields plain dicts that the route wraps in SSE framing.
 """
 from __future__ import annotations
 
@@ -37,15 +37,15 @@ class QueryService:
         """Run the full RAG pipeline and return the complete result.
 
         FIX #4 — returns the full :class:`GenerationResult` (answer +
-        sources + latency_ms) instead of just the answer string, so the
-        route can build a complete QueryResponse.
+        sources + latency_ms + confidence) instead of just the answer string,
+        so the route can build a complete QueryResponse.
 
         Args:
             request: Validated query request.
 
         Returns:
-            :class:`GenerationResult` with answer, reranked sources, and
-            per-stage latency breakdown.
+            :class:`GenerationResult` with answer, reranked sources,
+            per-stage latency breakdown, and ConfidenceMetrics.
         """
         logger.info("answer: question=%r", request.question)
         result = await self._orchestrator.answer(
@@ -55,8 +55,8 @@ class QueryService:
             use_hyde=request.use_hyde,
         )
         logger.info(
-            "answer complete: sources=%d latency=%s",
-            len(result.sources), result.latency_ms,
+            "answer complete: sources=%d latency=%s confidence=%s",
+            len(result.sources), result.latency_ms, result.confidence,
         )
         return result
 
@@ -68,16 +68,20 @@ class QueryService:
 
         FIX #5 — source payload now includes score and rank from RerankedChunk.
 
+        FIX: done event now includes ``confidence`` with server-side metrics.
+
         Yields:
             ``{"type": "token", "token": str}`` — one per token.
-            ``{"type": "done", "sources": [...], "latency_ms": {...}}`` — terminator.
+            ``{"type": "done", "sources": [...], "latency_ms": {...},
+                "confidence": {...}}`` — terminator.
 
         Args:
             request: Validated query request.
         """
         logger.info("stream_answer: question=%r", request.question)
 
-        reranked, timings = await self._orchestrator.retrieve_context(
+        # FIX: unpack the new 3-tuple from retrieve_context
+        reranked, timings, mean_confidence = await self._orchestrator.retrieve_context(
             request.question,
             top_k_retrieval=request.top_k_retrieval,
             top_k_rerank=request.top_k_rerank,
@@ -93,15 +97,25 @@ class QueryService:
         # Cache sources so get_last_sources() can return them after streaming.
         self._last_sources = list(reranked)
 
+        # FIX: build ConfidenceMetrics and attach to the done payload
+        confidence_metrics = self._orchestrator._build_confidence(reranked, mean_confidence)
+
         yield {
             "type": "done",
             # FIX #5 — full source payload with score + rank
             "sources": [_source_payload(chunk) for chunk in reranked],
             "latency_ms": timings,
+            # FIX: confidence payload for route to emit as [CONFIDENCE] event
+            "confidence": {
+                "answer_confidence": confidence_metrics.answer_confidence,
+                "source_coverage": confidence_metrics.source_coverage,
+                "sources_used": confidence_metrics.sources_used,
+                "retrieved_chunks": confidence_metrics.retrieved_chunks,
+            },
         }
         logger.info(
-            "stream_answer complete: sources=%d latency=%s",
-            len(reranked), timings,
+            "stream_answer complete: sources=%d latency=%s confidence=%s",
+            len(reranked), timings, confidence_metrics,
         )
 
     async def get_last_sources(self, request: QueryRequest) -> list[dict[str, Any]]:

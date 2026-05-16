@@ -360,7 +360,7 @@ body {
   border: 1px solid var(--stroke);
   background: var(--panel);
   box-shadow: var(--shadow);
-  padding: 24px;
+  padding: 24px 0 24px 24px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -445,15 +445,19 @@ body {
 }
 
 .option-icon {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   display: grid;
   place-items: center;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.75rem;
-  background: rgba(96, 165, 250, 0.18);
+  background: rgba(96, 165, 250, 0.15);
   color: var(--accent);
+  flex-shrink: 0;
+}
+
+.option-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .option-card h3 {
@@ -983,49 +987,100 @@ body {
 
 .chunk-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  padding-right: 4px;
 }
 
 .chunk {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--stroke);
-  background: var(--glass);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.chunk:hover {
+  border-color: rgba(122, 162, 247, 0.25);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .chunk-icon {
-  font-size: 0.7rem;
-  padding: 6px 8px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: rgba(96, 165, 250, 0.2);
-  color: #d3e3ff;
-  align-self: start;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--accent);
+  align-self: flex-start;
+}
+
+.chunk-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.chunk-icon.is-pdf {
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+}
+
+.chunk-icon.is-web {
+  background: rgba(96, 165, 250, 0.12);
+  color: #7aa2f7;
+}
+
+.chunk-icon.is-github {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .chunk-title {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  align-self: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chunk-type,
+.chunk-meta,
+.chunk-text {
+  grid-column: 1 / -1;
+}
+
+.chunk-type {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.7;
+  margin-top: 2px;
 }
 
 .chunk-meta {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chunk-text {
-  margin: 6px 0 0;
+  margin: 3px 0 0;
   color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.chunk-score {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.8rem;
-  color: var(--accent);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .confidence {

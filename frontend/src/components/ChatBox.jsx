@@ -204,7 +204,7 @@ export default function ChatBox({
       transition={{ duration: 0.4 }}
       className="flex flex-col flex-1 min-h-0"
     >
-      <div className="flex items-start justify-between gap-4 mb-3">
+      <div className="flex items-start justify-between gap-4 mb-3 pr-6">
         <div className="min-w-0">
           <div className="text-[10px] tracking-[0.2em] uppercase text-[#a6abb3] mb-1.5">
             Active Thread
@@ -258,7 +258,7 @@ export default function ChatBox({
         ))}
       </motion.div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 mb-5 pr-1 scroll-smooth">
+      <div className="flex-1 overflow-y-auto space-y-4 mb-5 pr-6 scroll-smooth">
         <AnimatePresence>
           {messages.map((message, index) => (
             <motion.div
@@ -326,7 +326,7 @@ export default function ChatBox({
         ) : null}
       </div>
 
-      <div className="sticky bottom-0">
+      <div className="sticky bottom-0 pr-6">
         {inputArea}
       </div>
     </motion.section>

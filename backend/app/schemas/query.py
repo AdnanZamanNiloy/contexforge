@@ -3,9 +3,43 @@ schemas/query.py — Request and response schemas for query endpoints.
 """
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
-__all__ = ["QueryRequest", "QueryResponse", "SourceSummary"]
+__all__ = ["ConfidenceMetrics", "QueryRequest", "QueryResponse", "SourceSummary"]
+
+
+# FIX: new Pydantic model so the frontend receives clean server-side confidence
+class ConfidenceMetrics(BaseModel):
+    """Server-side confidence and coverage computed by the orchestrator.
+
+    All fields are required — the backend always computes these values.
+    ``answer_confidence`` is validated to the [0.0, 1.0] range.
+    """
+
+    answer_confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Sigmoid-normalised mean cross-encoder score [0.0, 1.0].",
+    )
+    source_coverage: Literal["Excellent", "Strong", "Moderate", "Low", "Weak"] = Field(
+        ...,
+        description="Categorical label derived from answer_confidence.",
+    )
+    sources_used: int = Field(
+        ...,
+        ge=0,
+        description="Number of unique source documents among retrieved chunks.",
+    )
+    retrieved_chunks: int = Field(
+        ...,
+        ge=0,
+        description="Total chunks returned by the reranker.",
+    )
+
+    model_config = {"frozen": True}
 
 
 class QueryRequest(BaseModel):
@@ -75,6 +109,8 @@ class QueryResponse(BaseModel):
     FIX #1 — includes ``sources`` and ``latency_ms`` so the frontend
     SourceViewer can render citations and the client can observe pipeline
     performance without needing Langfuse access.
+
+    FIX: now includes ``confidence`` with server-side ConfidenceMetrics.
     """
 
     answer: str = Field(description="Generated answer grounded in retrieved sources.")
@@ -88,6 +124,11 @@ class QueryResponse(BaseModel):
             "Per-stage latency breakdown. "
             "Keys: hyde_ms, embed_ms, retrieve_ms, rerank_ms."
         ),
+    )
+    # FIX: attach server-side ConfidenceMetrics — the frontend should not re-derive
+    confidence: ConfidenceMetrics | None = Field(
+        default=None,
+        description="Server-side confidence and coverage metrics.",
     )
 
     model_config = {"frozen": True}

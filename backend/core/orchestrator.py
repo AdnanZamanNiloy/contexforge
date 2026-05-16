@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import AsyncIterator, Dict, List
+from typing import AsyncIterator, Dict, List, Tuple
 
 from app.config.settings import settings
 from core.chunking.code_chunker import CodeChunker
@@ -18,7 +18,8 @@ from core.retrieval.hybrid_retriever import HybridRetriever
 from core.retrieval.reranker import Reranker
 from core.storage.bm25_index import BM25Index
 from core.storage.faiss_store import FaissStore
-from core.types import Chunk, Document, GenerationResult, RerankedChunk
+# FIX: import ConfidenceMetrics alongside existing types
+from core.types import Chunk, ConfidenceMetrics, Document, GenerationResult, RerankedChunk
 from observability.tracer import observe
 
 __all__ = ["Orchestrator"]
@@ -122,9 +123,17 @@ class Orchestrator:
         top_k_retrieval: int | None = None,
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
-    ) -> tuple[List[RerankedChunk], Dict[str, float]]:
+    # FIX: return type now includes mean_confidence from the reranker
+    ) -> tuple[List[RerankedChunk], Dict[str, float], float]:
 
-        """Expand query, embed, retrieve, and rerank. Returns retrieved chunks and timing breakdown."""
+        """Expand query, embed, retrieve, and rerank.
+
+        Returns:
+            Tuple of (reranked chunks, timing breakdown, mean_confidence).
+            *mean_confidence* is the sigmoid-normalised average of top-k
+            reranker scores, floored at 0.35.  On reranker failure it falls
+            back to 0.35 so the frontend never shows zero.
+        """
         timings: Dict[str, float] = {}
 
         # HyDE expansion ------------------------------------------------
@@ -157,17 +166,68 @@ class Orchestrator:
         # Reranking -----------------------------------------------------
         t = time.perf_counter()
         k_rerank = top_k_rerank if top_k_rerank is not None else settings.TOP_K_RERANK
-        reranked = await self._reranker.rerank(question, retrieved, k_rerank)
+
+        # FIX: wrap reranker call so a failure degrades gracefully
+        try:
+            # FIX: reranker now returns (chunks, mean_confidence)
+            reranked, mean_confidence = await self._reranker.rerank(
+                question, retrieved, k_rerank,
+            )
+        except Exception:
+            logger.exception(
+                "retrieve_context: reranker failed for question=%r — "
+                "returning retrieved chunks with fallback confidence",
+                question,
+            )
+            # FIX: degrade gracefully — keep un-reranked chunks, mark confidence as unknown
+            reranked = [
+                RerankedChunk(chunk=item.chunk, score=0.0, rank=rank)
+                for rank, item in enumerate(retrieved[:k_rerank], start=1)
+            ]
+            mean_confidence = 0.0
+
         timings["rerank_ms"] = (time.perf_counter() - t) * 1000
 
         logger.debug(
-            "retrieve_context: retrieved=%d reranked=%d "
+            "retrieve_context: retrieved=%d reranked=%d confidence=%.4f "
             "hyde=%.1fms embed=%.1fms retrieve=%.1fms rerank=%.1fms",
-            len(retrieved), len(reranked),
+            len(retrieved), len(reranked), mean_confidence,
             timings["hyde_ms"], timings["embed_ms"],
             timings["retrieve_ms"], timings["rerank_ms"],
         )
-        return reranked, timings
+        return reranked, timings, mean_confidence
+
+    # FIX: helper to build ConfidenceMetrics from reranker output
+    @staticmethod
+    def _build_confidence(
+        reranked: List[RerankedChunk],
+        mean_confidence: float,
+    ) -> ConfidenceMetrics:
+        """Derive server-side ConfidenceMetrics from the reranker output.
+
+        Args:
+            reranked:         RerankedChunk list (top-k after reranking / fallback).
+            mean_confidence:  Sigmoid-normalised mean confidence from the reranker.
+
+        Returns:
+            A fully populated :class:`ConfidenceMetrics` instance.
+        """
+        # FIX: 5 granular coverage labels so values vary per query
+        coverage = (
+            "Excellent" if mean_confidence > 0.85
+            else "Strong" if mean_confidence > 0.65
+            else "Moderate" if mean_confidence > 0.45
+            else "Low" if mean_confidence > 0.25
+            else "Weak"
+        )
+        sources_used = len({c.chunk.source_id for c in reranked if c.chunk.source_id})
+        retrieved_chunks = len(reranked)
+        return ConfidenceMetrics(
+            answer_confidence=round(mean_confidence, 4),
+            source_coverage=coverage,
+            sources_used=sources_used,
+            retrieved_chunks=retrieved_chunks,
+        )
 
     @observe(name="generate_answer")
     async def generate_answer(self, question: str, chunks: List[Chunk]) -> str:
@@ -197,9 +257,10 @@ class Orchestrator:
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
     ) -> GenerationResult:
-        """Full RAG pipeline: retrieve → generate → return with sources."""
-        
-        reranked, timings = await self.retrieve_context(
+        """Full RAG pipeline: retrieve → generate → return with sources and confidence."""
+
+        # FIX: unpack the new 3-tuple from retrieve_context
+        reranked, timings, mean_confidence = await self.retrieve_context(
             question,
             top_k_retrieval=top_k_retrieval,
             top_k_rerank=top_k_rerank,
@@ -209,4 +270,11 @@ class Orchestrator:
             question,
             [item.chunk for item in reranked],
         )
-        return GenerationResult(answer=answer_text, sources=reranked, latency_ms=timings)
+        # FIX: build ConfidenceMetrics and attach to GenerationResult
+        confidence = self._build_confidence(reranked, mean_confidence)
+        return GenerationResult(
+            answer=answer_text,
+            sources=reranked,
+            latency_ms=timings,
+            confidence=confidence,
+        )

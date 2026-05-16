@@ -9,6 +9,7 @@ __all__ = [
     "Chunk",
     "RetrievedChunk",
     "RerankedChunk",
+    "ConfidenceMetrics",
     "GenerationResult",
 ]
 
@@ -34,7 +35,7 @@ class Document:
             raise ValueError(
                 f"Document '{self.document_id}': text must be a non-blank string"
             )
-     
+      
         if isinstance(self.metadata, dict):
             object.__setattr__(self, "metadata", _freeze_metadata(self.metadata))
 
@@ -90,12 +91,32 @@ class RerankedChunk:
             )
 
 
+# FIX: new dataclass carrying all four confidence fields computed server-side
+@dataclass(frozen=True)
+class ConfidenceMetrics:
+    """Normalised confidence and coverage computed by the reranker / orchestrator.
+
+    Fields:
+        answer_confidence: Sigmoid-normalised mean of cross-encoder scores [0.0, 1.0].
+        source_coverage:   Categorical label derived from answer_confidence.
+        sources_used:      Count of unique source documents among the reranked chunks.
+        retrieved_chunks:  Total reranked chunks returned (top_k).
+    """
+
+    answer_confidence: float
+    source_coverage: str
+    sources_used: int
+    retrieved_chunks: int
+
+
 @dataclass(frozen=True)
 class GenerationResult:
 
     answer: str
     sources: tuple[RerankedChunk, ...]
     latency_ms: MappingProxyType[str, float] = field(default_factory=dict)
+    # FIX: attach server-side ConfidenceMetrics so the frontend never re-derives
+    confidence: ConfidenceMetrics | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.answer, str) or not self.answer.strip():

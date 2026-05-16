@@ -158,6 +158,18 @@ export async function streamQuery(payload, handlers = {}) {
         continue;
       }
 
+      if (data.startsWith('[CONFIDENCE]')) {
+        const json = data.replace('[CONFIDENCE]', '').trim();
+        if (handlers.onConfidence) {
+          try {
+            handlers.onConfidence(JSON.parse(json));
+          } catch {
+            handlers.onConfidence(null);
+          }
+        }
+        continue;
+      }
+
       if (data.startsWith('[ERROR]')) {
         const message = data.replace('[ERROR]', '').trim();
         if (handlers.onError) {
