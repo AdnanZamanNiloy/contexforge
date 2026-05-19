@@ -21,23 +21,6 @@ export default function MessageBubble({ role, title, text, sources = [], status 
         bg-gradient-to-br from-[rgba(122,162,247,0.12)] to-[rgba(122,162,247,0.04)]
         border border-[rgba(122,162,247,0.2)]"
     >
-      <div className="flex items-center gap-3 mb-2.5">
-        <div
-          className="w-8 h-8 rounded-full shrink-0 overflow-hidden
-            bg-[#0b0f1a]
-            shadow-[0_0_14px_rgba(122,162,247,0.35)]"
-        >
-          <img src="/logos/project_logo.png" alt="ContextForge" className="w-full h-full object-contain" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-white brand-title">
-            Context<span className="brand-title-accent">Forge</span>
-          </div>
-          <div className="text-[10px] text-[#a6abb3]">
-            {status === 'streaming' ? 'Streaming reply' : 'RAG response'}
-          </div>
-        </div>
-      </div>
       <p className="text-sm text-[#e6e7ea] leading-relaxed m-0 mb-3 whitespace-pre-line">
         {text || (status === 'streaming' ? (
           <span className="inline-flex items-center gap-0.5 text-[#a6abb3]">
