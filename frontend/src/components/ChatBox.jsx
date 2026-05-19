@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MessageBubble from './MessageBubble';
 
@@ -26,8 +26,10 @@ export default function ChatBox({
   onRetry,
   uploadHint,
 }) {
+  const MAX_TEXTAREA_HEIGHT = 200;
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
   const hasMessages = messages.length > 0;
 
   const threadTitle = hasMessages
@@ -54,9 +56,11 @@ export default function ChatBox({
 
   useEffect(() => {
     if (textareaRef.current) {
+      const element = textareaRef.current;
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height =
-        Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+      const nextHeight = Math.min(element.scrollHeight, MAX_TEXTAREA_HEIGHT);
+      element.style.height = nextHeight + 'px';
+      setIsOverflowing(element.scrollHeight > MAX_TEXTAREA_HEIGHT);
     }
   }, [input]);
 
@@ -65,7 +69,7 @@ export default function ChatBox({
   }, [messages]);
 
   const textareaBase =
-    'w-full resize-none rounded-2xl px-5 py-4 pr-14 ' +
+    'w-full resize-none rounded-2xl px-5 py-4 pr-14 overflow-y-hidden ' +
     'bg-[rgba(255,255,255,0.04)] ' +
     'border border-[rgba(255,255,255,0.08)] ' +
     'text-[#e6e7ea] placeholder-[#a6abb3] ' +
@@ -107,6 +111,7 @@ export default function ChatBox({
             placeholder="Ask anything about your documents..."
             rows={1}
             className={textareaBase}
+            style={{ overflowY: isOverflowing ? 'auto' : 'hidden' }}
             disabled={isStreaming}
           />
           <motion.button

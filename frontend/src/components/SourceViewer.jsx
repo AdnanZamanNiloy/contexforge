@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 function formatSourceTitle(source) {
   const meta = source.metadata || {};
   return meta.filename || meta.title || source.source_id || 'Unknown source';
@@ -100,6 +102,7 @@ function Skeleton({ width, height }) {
 
 // FIX: accept confidence prop from the backend; default to null for loading state
 export default function SourceViewer({ sources = [], latency = {}, isStreaming, confidence = null }) {
+  const DEFAULT_VISIBLE_CHUNKS = 3;
   const hasSources = sources.length > 0;
   const isLoading = isStreaming && !hasSources;
 
@@ -111,11 +114,25 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
   const sourcesUsed = confidence?.sources_used ?? 0;
   const retrievedChunks = confidence?.retrieved_chunks ?? sources.length;
   const retrieveMs = latency?.retrieve_ms;
+  const totalChunks = sources.length;
+
+  const [visibleChunks, setVisibleChunks] = useState(() => Math.min(DEFAULT_VISIBLE_CHUNKS, totalChunks));
+
+  useEffect(() => {
+    setVisibleChunks((current) => {
+      if (totalChunks === 0) return 0;
+      const baseline = Math.min(DEFAULT_VISIBLE_CHUNKS, totalChunks);
+      if (current < baseline) return baseline;
+      return Math.min(current, totalChunks);
+    });
+  }, [totalChunks]);
 
   const showEmpty = !isLoading && !hasSources;
 
   const circumference = 2 * Math.PI * 46;
   const offset = circumference - (circumference * Math.min(displayConfidence, 100)) / 100;
+  const visibleSources = sources.slice(0, visibleChunks);
+  const hasMoreChunks = totalChunks > visibleChunks;
 
   return (
     <aside className="evidence">
@@ -152,8 +169,8 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
                 </div>
               ))}
             </div>
-          ) : hasSources ? (
-              sources.map((item) => {
+            ) : hasSources ? (
+              visibleSources.map((item) => {
               const type = formatSourceType(item);
               return (
                 <article className="chunk" key={item.chunk_id}>
@@ -173,7 +190,11 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
             <div className="empty">Ask a question to populate sources.</div>
           )}
         </div>
-        {hasSources && <button className="ghost wide">View all retrieved chunks</button>}
+        {hasSources && hasMoreChunks && (
+          <button className="ghost wide" onClick={() => setVisibleChunks(totalChunks)}>
+            View all retrieved chunks
+          </button>
+        )}
       </section>
 
       <section className="panel">
