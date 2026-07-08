@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-__all__ = ["IngestRequest", "IngestResponse"]
+__all__ = ["IngestRequest", "IngestResponse", "DeleteResponse"]
 
 # FIX #4 — simple URL prefix check; full RFC validation done by the loader
 _URL_SCHEMES = ("http://", "https://")
@@ -97,6 +97,36 @@ class IngestResponse(BaseModel):
             values["message"] = (
                 f"Successfully indexed {n} chunk{'s' if n != 1 else ''} "
                 f"from source '{sid}'."
+            )
+        return values
+
+    model_config = {"frozen": True}
+
+
+class DeleteResponse(BaseModel):
+    """Response body for DELETE /ingest/source/{source_id}.
+
+    Confirms successful deletion and reports how many chunks were removed.
+    """
+
+    source_id: str = Field(description="The source_id that was deleted.")
+    chunks_deleted: int = Field(
+        description="Number of chunks removed from FAISS and BM25.",
+        ge=0,
+    )
+    message: str = Field(
+        description="Human-readable deletion summary.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_default_message(cls, values: dict) -> dict:
+        if "message" not in values or not values.get("message"):
+            n = values.get("chunks_deleted", 0)
+            sid = values.get("source_id", "")
+            values["message"] = (
+                f"Successfully deleted {n} chunk{'s' if n != 1 else ''} "
+                f"for source '{sid}'."
             )
         return values
 

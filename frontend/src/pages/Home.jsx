@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import ChatBox from '../components/ChatBox';
 import SourceViewer from '../components/SourceViewer';
-import { ingestFile, ingestGithub, ingestSource } from '../services/api';
+import { ingestFile, ingestGithub, ingestSource, deleteSource } from '../services/api';
 import { useChat } from '../hooks/useChat';
 
 function SourceIcon({ type }) {
@@ -363,7 +363,14 @@ export default function Home() {
                       <button
                         className="source-item-delete"
                         title="Delete"
-                        onClick={() => removeSource(source.id)}
+                        onClick={async () => {
+                          try {
+                            await deleteSource(source.id);
+                          } catch {
+                            // Best effort — still remove from UI
+                          }
+                          removeSource(source.id);
+                        }}
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                           <path d="M18 6L6 18M6 6l12 12" />

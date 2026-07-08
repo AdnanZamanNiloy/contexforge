@@ -121,6 +121,29 @@ class IngestService:
         )
         return source_id, chunks_indexed
 
+    async def delete_source(self, source_id: str) -> int:
+        """Remove all chunks for *source_id* from FAISS and BM25.
+
+        Args:
+            source_id: The UUID of the source to delete.
+
+        Returns:
+            Number of chunks removed.
+
+        Raises:
+            ValueError: If *source_id* is empty.
+        """
+        if not source_id or not source_id.strip():
+            raise ValueError("source_id must not be empty")
+
+        logger.info("delete_source: source_id=%s", source_id)
+        chunks_removed = await self._orchestrator.delete_source(source_id)
+        logger.info(
+            "delete_source complete: source_id=%s chunks_removed=%d",
+            source_id, chunks_removed,
+        )
+        return chunks_removed
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

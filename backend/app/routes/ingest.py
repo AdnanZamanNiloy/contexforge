@@ -2,8 +2,9 @@
 routes/ingest.py — Ingestion endpoints for the ContextForge API.
 
 Endpoints:
-    POST /ingest/source  — Ingest a URL or GitHub repo by reference.
-    POST /ingest/file    — Upload and ingest a PDF or DOCX file.
+    POST /ingest/source           — Ingest a URL or GitHub repo by reference.
+    POST /ingest/file             — Upload and ingest a PDF or DOCX file.
+    DELETE /ingest/source/{id}    — Delete a previously ingested source.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import status
 
 from app.dependencies import get_ingest_service
-from app.schemas.ingest import IngestRequest, IngestResponse
+from app.schemas.ingest import DeleteResponse, IngestRequest, IngestResponse
 from app.services.ingest_service import IngestService
 
 __all__ = ["router"]
@@ -118,6 +119,55 @@ async def ingest_file(
         source_id, filename, chunks_indexed,
     )
     return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed)
+
+
+@router.delete(
+    "/source/{source_id}",
+    response_model=DeleteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Delete a previously ingested source",
+)
+async def delete_source(
+    source_id: str,
+    service: IngestService = Depends(get_ingest_service),
+) -> DeleteResponse:
+    """Remove all chunks belonging to *source_id* from FAISS and BM25.
+
+    After deletion the system behaves as if the source was never ingested.
+    Subsequent queries will no longer return chunks from this source.
+
+    Args:
+        source_id: UUID of the source to delete.
+
+    Returns:
+        Deletion confirmation with chunks_deleted count.
+
+    Raises:
+        422: If source_id is empty.
+        500: If deletion fails unexpectedly.
+    """
+    logger.info("delete_source: source_id=%s", source_id)
+
+    if not source_id or not source_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="source_id must not be empty.",
+        )
+
+    try:
+        chunks_deleted = await service.delete_source(source_id)
+    except Exception as exc:
+        logger.error("delete_source failed for source_id=%s: %s", source_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete source '{source_id}': {exc}",
+        )
+
+    logger.info(
+        "delete_source complete: source_id=%s chunks_deleted=%d",
+        source_id, chunks_deleted,
+    )
+    return DeleteResponse(source_id=source_id, chunks_deleted=chunks_deleted)
 
 
 async def _read_with_limit(upload: UploadFile, max_bytes: int) -> bytes:

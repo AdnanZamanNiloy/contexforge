@@ -86,6 +86,12 @@ export async function ingestFile({ source_type, file }) {
   return response.json();
 }
 
+export async function deleteSource(sourceId) {
+  return request(`/ingest/source/${sourceId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function queryAnswer(payload) {
   return request('/query', {
     method: 'POST',

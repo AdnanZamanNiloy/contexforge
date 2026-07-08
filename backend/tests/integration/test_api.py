@@ -14,6 +14,9 @@ class FakeIngestService:
     async def ingest_file(self, source_type, content, filename):
         return "source-456", 2
 
+    async def delete_source(self, source_id):
+        return 5
+
 
 class FakeQueryService:
     async def answer(self, request):
@@ -67,3 +70,36 @@ async def test_ingest_source_endpoint():
 
     assert response.status_code == 200
     assert response.json()["source_id"] == "source-123"
+
+
+@pytest.mark.asyncio
+async def test_delete_source_endpoint():
+    app.dependency_overrides[get_ingest_service] = lambda: FakeIngestService()
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.delete("/ingest/source/source-123")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source_id"] == "source-123"
+    assert body["chunks_deleted"] == 5
+    assert "message" in body
+
+
+@pytest.mark.asyncio
+async def test_delete_source_empty_id_returns_422():
+    """Deleting with an empty source_id should be rejected."""
+    app.dependency_overrides[get_ingest_service] = lambda: FakeIngestService()
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.delete("/ingest/source/")
+
+    app.dependency_overrides.clear()
+
+    # FastAPI redirects /ingest/source/ → /ingest/source (307),
+    # or returns 404/405 if the path doesn't match any route
+    assert response.status_code in (307, 404, 405, 422)

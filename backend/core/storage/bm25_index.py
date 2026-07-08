@@ -20,24 +20,24 @@ _FTS5_SPECIAL = re.compile(r'["\'\(\)\*\:\^]')
 
 
 def _sanitise_query(query: str) -> str:
-
     sanitised = _FTS5_SPECIAL.sub(" ", query)
     return re.sub(r"\s{2,}", " ", sanitised).strip()
 
 
 class BM25Index:
-  
+
     def __init__(self, db_path: Path | None = None) -> None:
         self._db_path: Path = Path(db_path or settings.BM25_DB_PATH)
         self._conn: sqlite3.Connection | None = None
         self._init_lock = asyncio.Lock()
         self._initialized = False
 
-   
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
 
     @observe(name="bm25_add")
     async def add(self, chunks: List[Chunk]) -> None:
-
         if not isinstance(chunks, list) or not chunks:
             logger.debug("bm25_add called with empty chunk list — nothing to do.")
             return
@@ -47,7 +47,6 @@ class BM25Index:
 
     @observe(name="bm25_search")
     async def search(self, query: str, top_k: int) -> List[RetrievedChunk]:
-       
         if not isinstance(query, str) or not query.strip():
             raise ValueError("BM25Index.search received an empty query")
         if top_k <= 0:
@@ -56,23 +55,70 @@ class BM25Index:
         await self._ensure_initialized()
         return await asyncio.to_thread(self._search_sync, query, top_k)
 
+    @observe(name="bm25_delete_by_source")
+    async def delete_by_source_id(self, source_id: str) -> int:
+        """Delete all chunks belonging to *source_id* from the FTS5 index.
+
+        Runs VACUUM after deletion to reclaim disk space and ensure the
+        FTS5 index is compact.
+
+        Returns:
+            Number of chunks deleted.
+        """
+        if not source_id:
+            raise ValueError("source_id must not be empty")
+
+        await self._ensure_initialized()
+        return await asyncio.to_thread(self._delete_by_source_id_sync, source_id)
+
+    async def force_reload(self) -> None:
+        """Close and discard the current connection so the next operation
+        re-opens the database from scratch.
+
+        Call this after an external modification to guarantee the singleton
+        reflects the on-disk truth.
+        """
+        async with self._init_lock:
+            if self._conn is not None:
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+            self._conn = None
+            self._initialized = False
+            logger.info("BM25Index: force_reload — connection discarded.")
+
+    async def clear_all(self) -> int:
+        """Delete every chunk from the store.
+
+        Returns:
+            Number of chunks that were removed.
+        """
+        await self._ensure_initialized()
+        return await asyncio.to_thread(self._clear_all_sync)
+
+    async def count(self) -> int:
+        """Return the total number of chunks in the index."""
+        await self._ensure_initialized()
+        return await asyncio.to_thread(self._count_sync)
+
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
             self._conn = None
             logger.debug("BM25Index SQLite connection closed.")
 
-    
+    # ------------------------------------------------------------------ #
+    # Internals
+    # ------------------------------------------------------------------ #
 
     def _init_sync(self) -> None:
-        
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
 
-        #  WAL mode: readers don't block writers, commits are faster
         self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA synchronous=NORMAL") 
-        self._conn.execute("PRAGMA mmap_size=134217728")  # 128 MB memory map
+        self._conn.execute("PRAGMA synchronous=NORMAL")
+        self._conn.execute("PRAGMA mmap_size=134217728")  # 128 MB
 
         self._conn.execute(
             """
@@ -89,20 +135,61 @@ class BM25Index:
         self._conn.commit()
         logger.debug("BM25Index initialised at %s (WAL mode).", self._db_path)
 
+    def _delete_by_source_id_sync(self, source_id: str) -> int:
+        """Synchronous DELETE + VACUUM against SQLite FTS5."""
+        cursor = self._conn.execute(
+            "SELECT COUNT(*) FROM chunks WHERE source_id = ?", (source_id,)
+        )
+        count = cursor.fetchone()[0]
+
+        if count == 0:
+            logger.info(
+                "delete_by_source_id: no chunks found for source_id=%s.", source_id
+            )
+            return 0
+
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM chunks WHERE source_id = ?", (source_id,)
+            )
+            self._conn.execute("VACUUM")
+
+        logger.info(
+            "delete_by_source_id: deleted %d chunk(s) for source_id=%s, VACUUM complete.",
+            count, source_id,
+        )
+        return count
+
+    def _clear_all_sync(self) -> int:
+        """Delete all rows and VACUUM."""
+        cursor = self._conn.execute("SELECT COUNT(*) FROM chunks")
+        count = cursor.fetchone()[0]
+        if count == 0:
+            return 0
+
+        with self._conn:
+            self._conn.execute("DELETE FROM chunks")
+            self._conn.execute("VACUUM")
+
+        logger.info("clear_all: deleted %d chunk(s), VACUUM complete.", count)
+        return count
+
+    def _count_sync(self) -> int:
+        cursor = self._conn.execute("SELECT COUNT(*) FROM chunks")
+        return cursor.fetchone()[0]
 
     def _add_sync(self, chunks: List[Chunk]) -> None:
-        
         rows = [
             (
                 chunk.chunk_id,
                 chunk.text,
-                json.dumps(chunk.metadata, separators=(",", ":")),
+                json.dumps(dict(chunk.metadata), separators=(",", ":")),
                 chunk.source_id or "",
             )
             for chunk in chunks
         ]
 
-        with self._conn: 
+        with self._conn:
             existing_ids = {
                 row[0]
                 for row in self._conn.execute(
@@ -125,8 +212,6 @@ class BM25Index:
             len(rows) - len(new_rows),
         )
 
-
-
     def _search_sync(self, query: str, top_k: int) -> List[RetrievedChunk]:
         safe_query = _sanitise_query(query)
         if not safe_query:
@@ -141,7 +226,7 @@ class BM25Index:
             SELECT chunk_id, text, metadata, source_id, bm25(chunks) AS score
             FROM chunks
             WHERE chunks MATCH ?
-            ORDER BY score          -- bm25() is negative; lower = better match
+            ORDER BY score
             LIMIT ?
             """,
             (safe_query, top_k),
@@ -170,7 +255,6 @@ class BM25Index:
         )
         return results
 
- 
     async def _ensure_initialized(self) -> None:
         async with self._init_lock:
             if self._initialized:

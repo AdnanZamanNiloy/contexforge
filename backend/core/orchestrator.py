@@ -115,6 +115,70 @@ class Orchestrator:
         )
         return deduplicated
 
+    @observe(name="delete_source")
+    async def delete_source(self, source_id: str) -> int:
+        """Remove all chunks belonging to *source_id* from both stores.
+
+        Deletes from FAISS (rebuild without deleted vectors) and SQLite FTS5
+        (direct DELETE + VACUUM). After both deletions succeed the stores are
+        force-reloaded so the in-memory singleton state is guaranteed to
+        reflect the on-disk truth.
+
+        Returns:
+            Number of chunks removed from FAISS (may differ from BM25 if
+            stores were inconsistent before deletion).
+
+        Raises:
+            ValueError: If *source_id* is empty.
+        """
+        if not source_id or not source_id.strip():
+            raise ValueError("source_id must be a non-blank string")
+
+        start = time.perf_counter()
+        logger.info("delete_source: source_id=%s", source_id)
+
+        faiss_removed = 0
+        bm25_removed = 0
+        errors: list[str] = []
+
+        # --- Phase 1: delete from both stores sequentially ---
+        try:
+            faiss_removed = await self._faiss.delete_by_source_id(source_id)
+        except Exception as exc:
+            logger.exception("delete_source: FAISS deletion failed for source_id=%s", source_id)
+            errors.append(f"FAISS: {exc}")
+
+        try:
+            bm25_removed = await self._bm25.delete_by_source_id(source_id)
+        except Exception as exc:
+            logger.exception("delete_source: BM25 deletion failed for source_id=%s", source_id)
+            errors.append(f"BM25: {exc}")
+
+        # --- Phase 2: force-reload both stores so in-memory state is fresh ---
+        try:
+            await self._faiss.force_reload()
+        except Exception as exc:
+            logger.warning("delete_source: FAISS force_reload failed: %s", exc)
+
+        try:
+            await self._bm25.force_reload()
+        except Exception as exc:
+            logger.warning("delete_source: BM25 force_reload failed: %s", exc)
+
+        elapsed = (time.perf_counter() - start) * 1000
+        logger.info(
+            "delete_source: source_id=%s faiss=%d bm25=%d elapsed=%.1f ms",
+            source_id, faiss_removed, bm25_removed, elapsed,
+        )
+
+        if errors:
+            logger.warning(
+                "delete_source: partial failure for source_id=%s — %s",
+                source_id, "; ".join(errors),
+            )
+
+        return faiss_removed
+
 
     @observe(name="retrieve_context")
     async def retrieve_context(
