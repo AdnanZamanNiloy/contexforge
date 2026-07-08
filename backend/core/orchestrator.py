@@ -243,12 +243,14 @@ class Orchestrator:
                 "returning retrieved chunks with fallback confidence",
                 question,
             )
-            # FIX: degrade gracefully — keep un-reranked chunks, mark confidence as unknown
+            # Degrade gracefully — keep un-reranked chunks.
+            # Use a moderate fallback confidence so the UI doesn't show 0%
+            # when retrieval succeeded but the reranker model failed.
             reranked = [
-                RerankedChunk(chunk=item.chunk, score=0.0, rank=rank)
+                RerankedChunk(chunk=item.chunk, score=0.5, rank=rank)
                 for rank, item in enumerate(retrieved[:k_rerank], start=1)
             ]
-            mean_confidence = 0.0
+            mean_confidence = 0.50
 
         timings["rerank_ms"] = (time.perf_counter() - t) * 1000
 
@@ -261,7 +263,17 @@ class Orchestrator:
         )
         return reranked, timings, mean_confidence
 
-    # FIX: helper to build ConfidenceMetrics from reranker output
+    # Confidence thresholds — tuned for calibrated reranker output.
+    # With temperature=2.0, shift=2.0 calibration:
+    #   raw 0  → 0.73,  raw 2  → 0.88,  raw 4  → 0.95
+    #   raw -2 → 0.50,  raw -4 → 0.27
+    _COVERAGE_THRESHOLDS = (
+        (0.80, "Excellent"),
+        (0.60, "Strong"),
+        (0.40, "Moderate"),
+        (0.25, "Low"),
+    )
+
     @staticmethod
     def _build_confidence(
         reranked: List[RerankedChunk],
@@ -271,19 +283,17 @@ class Orchestrator:
 
         Args:
             reranked:         RerankedChunk list (top-k after reranking / fallback).
-            mean_confidence:  Sigmoid-normalised mean confidence from the reranker.
+            mean_confidence:  Calibrated mean confidence from the reranker.
 
         Returns:
             A fully populated :class:`ConfidenceMetrics` instance.
         """
-        # FIX: 5 granular coverage labels so values vary per query
-        coverage = (
-            "Excellent" if mean_confidence > 0.85
-            else "Strong" if mean_confidence > 0.65
-            else "Moderate" if mean_confidence > 0.45
-            else "Low" if mean_confidence > 0.25
-            else "Weak"
-        )
+        coverage = "Weak"
+        for threshold, label in Orchestrator._COVERAGE_THRESHOLDS:
+            if mean_confidence > threshold:
+                coverage = label
+                break
+
         sources_used = len({c.chunk.source_id for c in reranked if c.chunk.source_id})
         retrieved_chunks = len(reranked)
         return ConfidenceMetrics(
