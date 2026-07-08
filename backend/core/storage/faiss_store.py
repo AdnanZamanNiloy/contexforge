@@ -50,7 +50,7 @@ class FaissStore:
         await asyncio.to_thread(self._add_sync, chunks, vectors)
 
     @observe(name="faiss_search")
-    async def search(self, query_vector: List[float], top_k: int) -> List[RetrievedChunk]:
+    async def search(self, query_vector: List[float], top_k: int, exclude_source_ids: set[str] | None = None) -> List[RetrievedChunk]:
         if not query_vector:
             raise ValueError("query_vector must not be empty")
         if top_k <= 0:
@@ -68,16 +68,20 @@ class FaissStore:
                 "top_k=%d clamped to index size %d.", top_k, effective_top_k
             )
 
-        return await asyncio.to_thread(self._search_sync, query_vector, effective_top_k)
+        return await asyncio.to_thread(
+            self._search_sync, query_vector, effective_top_k, exclude_source_ids
+        )
 
     @observe(name="faiss_delete_by_source")
     async def delete_by_source_id(self, source_id: str) -> int:
         """Remove all chunks belonging to *source_id* from the FAISS index.
 
+        Holds the load lock for the entire delete-persist-reload cycle to
+        prevent concurrent searches from reading stale in-memory state.
+
         FAISS IndexFlatIP does not support native deletion, so this method
-        rebuilds the index from scratch excluding the deleted chunks.
-        Persists atomically (write-to-temp + rename) so a crash during
-        save never leaves a half-written index on disk.
+        rebuilds the index from scratch with a **fresh** IndexFlatIP
+        (not reusing the old object) to avoid accumulated internal state.
 
         Returns:
             Number of chunks removed.
@@ -85,13 +89,35 @@ class FaissStore:
         if not source_id:
             raise ValueError("source_id must not be empty")
 
-        await self._ensure_loaded(None)
+        async with self._load_lock:
+            if not self._loaded:
+                await asyncio.to_thread(self._load_sync, None)
+                self._loaded = True
 
-        if self._index is None or not self._chunks:
-            logger.debug("delete_by_source_id: index empty — nothing to delete.")
-            return 0
+            if self._index is None or not self._chunks:
+                logger.debug("delete_by_source_id: index empty — nothing to delete.")
+                return 0
 
-        return await asyncio.to_thread(self._delete_by_source_id_sync, source_id)
+            removed = await asyncio.to_thread(
+                self._delete_by_source_id_sync, source_id
+            )
+
+            # Force reload from the freshly-persisted disk state so in-memory
+            # is guaranteed to reflect the on-disk truth.  This also clears
+            # any stale FAISS internal state.
+            self._loaded = False
+            self._index = None
+            self._chunks = []
+            self._faiss = None
+            await asyncio.to_thread(self._load_sync, None)
+            self._loaded = True
+
+            logger.info(
+                "delete_by_source_id: completed source_id=%s removed=%d "
+                "remaining=%d vectors.",
+                source_id, removed, self._index.ntotal if self._index else 0,
+            )
+            return removed
 
     async def force_reload(self) -> None:
         """Discard in-memory state and reload from disk on next operation.
@@ -137,7 +163,12 @@ class FaissStore:
     # ------------------------------------------------------------------ #
 
     def _delete_by_source_id_sync(self, source_id: str) -> int:
-        """Synchronous core of delete_by_source_id (runs in thread)."""
+        """Synchronous core of delete_by_source_id (runs in thread).
+
+        Creates a **brand-new** IndexFlatIP rather than reusing the old
+        object, to avoid any accumulated internal FAISS state after
+        repeated delete/rebuild cycles.
+        """
         indices_to_remove = [
             i for i, chunk in enumerate(self._chunks)
             if chunk.source_id == source_id
@@ -154,8 +185,9 @@ class FaissStore:
             chunk for i, chunk in enumerate(self._chunks) if i not in remove_set
         ]
 
+        dimension = self._index.d
+
         if not remaining_chunks:
-            dimension = self._index.d
             self._index = self._faiss.IndexFlatIP(dimension)
             self._chunks = []
             logger.info(
@@ -172,7 +204,9 @@ class FaissStore:
             remaining_vectors.append(vec.tolist())
 
         arr = np.array(remaining_vectors, dtype=np.float32)
-        self._index = self._faiss.IndexFlatIP(arr.shape[1])
+
+        # Always create a fresh index — never reuse the old object.
+        self._index = self._faiss.IndexFlatIP(dimension)
         self._index.add(arr)
         self._chunks = remaining_chunks
 
@@ -192,18 +226,39 @@ class FaissStore:
         self._persist_sync()
 
     def _search_sync(
-        self, query_vector: List[float], top_k: int) -> List[RetrievedChunk]:
+        self, query_vector: List[float], top_k: int,
+        exclude_source_ids: set[str] | None = None,
+    ) -> List[RetrievedChunk]:
         query = np.array([query_vector], dtype=np.float32)
         query = _normalize(query)
-        scores, indices = self._index.search(query, top_k)
+
+        # Over-fetch to account for defensive filtering
+        fetch_k = top_k * 3 if exclude_source_ids else top_k
+        fetch_k = min(fetch_k, self._index.ntotal)
+        scores, indices = self._index.search(query, fetch_k)
 
         results: List[RetrievedChunk] = []
         for score, idx in zip(scores[0], indices[0]):
             if idx < 0 or idx >= len(self._chunks):
                 continue
-            results.append(RetrievedChunk(chunk=self._chunks[idx], score=float(score)))
+            chunk = self._chunks[idx]
+            # Defensive filtering: skip chunks from deleted sources
+            if exclude_source_ids and chunk.source_id in exclude_source_ids:
+                logger.debug(
+                    "FAISS search: filtered out chunk %s (source_id=%s in exclude set).",
+                    chunk.chunk_id, chunk.source_id,
+                )
+                continue
+            results.append(RetrievedChunk(chunk=chunk, score=float(score)))
+            if len(results) >= top_k:
+                break
 
-        logger.debug("FAISS search returned %d result(s).", len(results))
+        logger.debug("FAISS search returned %d result(s) (excluded %d).",
+                      len(results),
+                      sum(1 for score, idx in zip(scores[0], indices[0])
+                          if idx >= 0 and idx < len(self._chunks)
+                          and exclude_source_ids
+                          and self._chunks[idx].source_id in exclude_source_ids))
         return results
 
     def _persist_sync(self) -> None:

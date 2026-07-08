@@ -28,6 +28,7 @@ from core.ingestion.pdf_loader import PDFLoader
 from core.ingestion.text_loader import TextLoader
 from core.ingestion.web_loader import WebLoader
 from core.orchestrator import Orchestrator
+from core.processing.deduplicator import Deduplicator
 from core.retrieval.bm25_retriever import BM25Retriever
 from core.retrieval.dense_retriever import DenseRetriever
 from core.retrieval.hybrid_retriever import HybridRetriever
@@ -98,6 +99,11 @@ def get_code_chunker() -> CodeChunker:
     return CodeChunker()
 
 
+@lru_cache(maxsize=1)
+def get_deduplicator() -> Deduplicator:
+    return Deduplicator()
+
+
 # ---------------------------------------------------------------------------
 # LLM — FIX #2: model strings sourced from settings, not hardcoded defaults
 # ---------------------------------------------------------------------------
@@ -145,6 +151,7 @@ def get_orchestrator() -> Orchestrator:
         # FIX #3 — cached instances, not inline constructors
         text_chunker=get_text_chunker(),
         code_chunker=get_code_chunker(),
+        deduplicator=get_deduplicator(),
     )
 
 

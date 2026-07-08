@@ -59,8 +59,8 @@ class BM25Index:
     async def delete_by_source_id(self, source_id: str) -> int:
         """Delete all chunks belonging to *source_id* from the FTS5 index.
 
-        Runs VACUUM after deletion to reclaim disk space and ensure the
-        FTS5 index is compact.
+        Holds the init lock for the entire delete-reload cycle to prevent
+        concurrent searches from reading stale state.
 
         Returns:
             Number of chunks deleted.
@@ -68,8 +68,31 @@ class BM25Index:
         if not source_id:
             raise ValueError("source_id must not be empty")
 
-        await self._ensure_initialized()
-        return await asyncio.to_thread(self._delete_by_source_id_sync, source_id)
+        async with self._init_lock:
+            if not self._initialized:
+                await asyncio.to_thread(self._init_sync)
+                self._initialized = True
+
+            count = await asyncio.to_thread(self._delete_by_source_id_sync, source_id)
+
+            # Force re-init so in-memory connection state is fresh
+            if self._conn is not None:
+                try:
+                    self._conn.close()
+                except Exception:
+                    pass
+            self._conn = None
+            self._initialized = False
+            await asyncio.to_thread(self._init_sync)
+            self._initialized = True
+
+            # Verify deletion
+            verify_count = await asyncio.to_thread(self._count_sync)
+            logger.info(
+                "delete_by_source_id: source_id=%s deleted=%d remaining=%d",
+                source_id, count, verify_count,
+            )
+            return count
 
     async def force_reload(self) -> None:
         """Close and discard the current connection so the next operation

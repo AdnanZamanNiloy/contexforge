@@ -119,42 +119,47 @@ class Orchestrator:
     async def delete_source(self, source_id: str) -> int:
         """Remove all chunks belonging to *source_id* from both stores.
 
-        Deletes from FAISS (rebuild without deleted vectors) and SQLite FTS5
-        (direct DELETE + VACUUM). After both deletions succeed the stores are
-        force-reloaded so the in-memory singleton state is guaranteed to
-        reflect the on-disk truth.
+        Performs a bulletproof multi-phase deletion:
+        1. Delete from FAISS (holds lock during rebuild + persist + reload)
+        2. Delete from BM25 (holds lock during delete + reload)
+        3. Clear deduplicator so re-ingestion of the same content is not blocked
+        4. Log verification counts from both stores
 
         Returns:
-            Number of chunks removed from FAISS (may differ from BM25 if
-            stores were inconsistent before deletion).
-
-        Raises:
-            ValueError: If *source_id* is empty.
+            Number of chunks removed from FAISS.
         """
         if not source_id or not source_id.strip():
             raise ValueError("source_id must be a non-blank string")
 
         start = time.perf_counter()
-        logger.info("delete_source: source_id=%s", source_id)
+        logger.info("delete_source: source_id=%s — starting deletion", source_id)
 
         faiss_removed = 0
         bm25_removed = 0
         errors: list[str] = []
 
-        # --- Phase 1: delete from both stores sequentially ---
+        # --- Phase 1: delete from FAISS ---
         try:
             faiss_removed = await self._faiss.delete_by_source_id(source_id)
         except Exception as exc:
             logger.exception("delete_source: FAISS deletion failed for source_id=%s", source_id)
             errors.append(f"FAISS: {exc}")
 
+        # --- Phase 2: delete from BM25 ---
         try:
             bm25_removed = await self._bm25.delete_by_source_id(source_id)
         except Exception as exc:
             logger.exception("delete_source: BM25 deletion failed for source_id=%s", source_id)
             errors.append(f"BM25: {exc}")
 
-        # --- Phase 2: force-reload both stores so in-memory state is fresh ---
+        # --- Phase 3: clear deduplicator so re-ingestion works ---
+        try:
+            self._deduplicator.reset()
+            logger.info("delete_source: deduplicator cleared for source_id=%s", source_id)
+        except Exception as exc:
+            logger.warning("delete_source: deduplicator reset failed: %s", exc)
+
+        # --- Phase 4: force-reload both stores (belt-and-suspenders) ---
         try:
             await self._faiss.force_reload()
         except Exception as exc:
@@ -164,6 +169,27 @@ class Orchestrator:
             await self._bm25.force_reload()
         except Exception as exc:
             logger.warning("delete_source: BM25 force_reload failed: %s", exc)
+
+        # --- Phase 5: verification ---
+        try:
+            remaining_faiss = self._faiss.get_source_ids()
+            remaining_bm25_count = await self._bm25.count()
+            source_still_in_faiss = source_id in remaining_faiss
+            logger.info(
+                "delete_source VERIFICATION: source_id=%s "
+                "faiss_removed=%d bm25_removed=%d "
+                "source_still_in_faiss=%s bm25_total_chunks=%d",
+                source_id, faiss_removed, bm25_removed,
+                source_still_in_faiss, remaining_bm25_count,
+            )
+            if source_still_in_faiss:
+                logger.error(
+                    "delete_source: source_id=%s STILL PRESENT in FAISS after deletion! "
+                    "This indicates a bug in the delete logic.",
+                    source_id,
+                )
+        except Exception as exc:
+            logger.warning("delete_source: verification failed: %s", exc)
 
         elapsed = (time.perf_counter() - start) * 1000
         logger.info(
