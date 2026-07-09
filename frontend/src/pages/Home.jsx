@@ -112,6 +112,7 @@ export default function Home() {
     suggestions,
     retryLast,
     showUploadHint,
+    resetChat,
   } = useChat();
 
   const pushNotification = useCallback((type, text) => {
@@ -412,6 +413,7 @@ export default function Home() {
               onSuggestion={sendMessage}
               onRetry={retryLast}
               uploadHint={showUploadHint}
+              onNewChat={resetChat}
             />
           </div>
         </section>

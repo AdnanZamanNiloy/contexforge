@@ -157,6 +157,18 @@ export function useChat() {
     }
   }, [sendMessage]);
 
+  const resetChat = useCallback(() => {
+    stopStream();
+    setMessages([]);
+    setError('');
+    setSources([]);
+    setLatency({});
+    setConfidence(null);
+    setShowUploadHint(false);
+    setInput('');
+    lastQuestionRef.current = '';
+  }, [stopStream]);
+
   return {
     input,
     setInput,
@@ -167,11 +179,11 @@ export function useChat() {
     setError,
     sources,
     latency,
-    // FIX: expose confidence so SourceViewer can consume it
     confidence,
     suggestions,
     retryLast,
     stopStream,
     showUploadHint,
+    resetChat,
   };
 }

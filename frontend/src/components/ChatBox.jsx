@@ -25,6 +25,7 @@ export default function ChatBox({
   onSuggestion,
   onRetry,
   uploadHint,
+  onNewChat,
 }) {
   const MAX_TEXTAREA_HEIGHT = 200;
   const textareaRef = useRef(null);
@@ -218,26 +219,16 @@ export default function ChatBox({
             {threadTitle}
           </h2>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <button
-            className="px-3 py-1.5 rounded-lg text-xs font-medium
-              bg-gradient-to-br from-[#7aa2f7] to-[#9aa8ff]
-              text-[#0b1020] cursor-pointer
-              hover:shadow-[0_0_20px_rgba(122,162,247,0.3)]
-              transition-all duration-200"
-          >
-            Share
-          </button>
-          <button
-            className="px-3 py-1.5 rounded-lg text-xs font-medium
-              bg-gradient-to-br from-[#7aa2f7] to-[#9aa8ff]
-              text-[#0b1020] cursor-pointer
-              hover:shadow-[0_0_20px_rgba(122,162,247,0.3)]
-              transition-all duration-200"
-          >
-            New Chat
-          </button>
-        </div>
+        <button
+          onClick={onNewChat}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium
+            bg-[#1a1e24] text-[#e6e7ea] border border-[rgba(255,255,255,0.08)]
+            cursor-pointer
+            hover:bg-[#252a32] hover:border-[rgba(255,255,255,0.15)]
+            transition-all duration-200 shrink-0"
+        >
+          New Chat
+        </button>
       </div>
 
       <motion.div

@@ -7,7 +7,7 @@ export default function MessageBubble({ role, title, text, sources = [], status 
             bg-[rgba(255,255,255,0.06)]
             border border-[rgba(255,255,255,0.08)]"
         >
-          <p className="text-sm text-[#e6e7ea] leading-relaxed m-0 whitespace-pre-line">
+          <p className="text-base text-white leading-relaxed m-0 whitespace-pre-line">
             {text}
           </p>
         </div>
@@ -17,11 +17,9 @@ export default function MessageBubble({ role, title, text, sources = [], status 
 
   return (
     <div
-      className="rounded-2xl p-4
-        bg-gradient-to-br from-[rgba(122,162,247,0.12)] to-[rgba(122,162,247,0.04)]
-        border border-[rgba(122,162,247,0.2)]"
+      className="rounded-2xl p-4"
     >
-      <p className="text-sm text-[#e6e7ea] leading-relaxed m-0 mb-3 whitespace-pre-line">
+      <p className="text-base text-white leading-relaxed m-0 mb-3 whitespace-pre-line">
         {text || (status === 'streaming' ? (
           <span className="inline-flex items-center gap-0.5 text-[#a6abb3]">
             <span className="animate-pulse duration-1000">Thinking</span>
