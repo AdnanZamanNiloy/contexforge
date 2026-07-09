@@ -516,9 +516,9 @@ body {
 .processing-banner {
   margin-top: 16px;
   border-radius: 12px;
-  border: 1px solid rgba(239, 83, 80, 0.35);
-  background: rgba(239, 83, 80, 0.08);
-  color: var(--warning);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
   padding: 10px 12px;
   font-size: 0.8rem;
 }
@@ -563,6 +563,10 @@ body {
 /* Donut transition */
 .donut svg .value {
   transition: stroke-dashoffset 0.6s ease;
+}
+
+.donut:hover svg .value {
+  stroke: #16A34A;
 }
 
 @keyframes shimmer {
@@ -1112,7 +1116,7 @@ body {
 
 .value {
   fill: none;
-  stroke: var(--accent);
+  stroke: #22C55E;
   stroke-width: 10;
   stroke-linecap: round;
   transform: rotate(-90deg);
@@ -1122,16 +1126,25 @@ body {
 .donut-value {
   position: absolute;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .donut-value strong {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
   display: block;
+  line-height: 1;
 }
 
 .donut-value span {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 500;
   color: var(--muted);
+  line-height: 1;
 }
 
 .confidence-list {
