@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 import ChatBox from '../components/ChatBox';
 import SourceViewer from '../components/SourceViewer';
@@ -98,6 +98,8 @@ export default function Home() {
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [isAddingText, setIsAddingText] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
+  const confirmResolveRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +153,21 @@ export default function Home() {
     setTimeout(() => {
       setNotifications((prev) => prev.filter((item) => item.id !== id));
     }, 4000);
+  }, []);
+
+  const showConfirm = useCallback((message) => {
+    return new Promise((resolve) => {
+      confirmResolveRef.current = resolve;
+      setConfirmState({ open: true, message, onConfirm: resolve });
+    });
+  }, []);
+
+  const handleConfirm = useCallback((result) => {
+    setConfirmState({ open: false, message: '', onConfirm: null });
+    if (confirmResolveRef.current) {
+      confirmResolveRef.current(result);
+      confirmResolveRef.current = null;
+    }
   }, []);
 
   const addSource = useCallback((payload) => {
@@ -317,7 +334,8 @@ export default function Home() {
   const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText;
 
   const handleClearKB = useCallback(async () => {
-    if (!window.confirm('Are you sure you want to clear the entire knowledge base? This cannot be undone.')) {
+    const confirmed = await showConfirm('Are you sure you want to clear the entire knowledge base? This cannot be undone.');
+    if (!confirmed) {
       return;
     }
     try {
@@ -328,7 +346,7 @@ export default function Home() {
     } catch (err) {
       pushNotification('error', err.message || 'Failed to clear knowledge base.');
     }
-  }, [pushNotification, resetChat]);
+  }, [showConfirm, pushNotification, resetChat]);
 
   const indexedCount = sources.filter((s) => s.status === 'indexed').length;
   const processingCount = sources.filter((s) => s.status === 'processing').length;
@@ -445,8 +463,8 @@ export default function Home() {
             <button
               onClick={handleClearKB}
               className="mt-2 w-full px-3 py-1.5 rounded-lg text-xs font-medium
-                bg-[rgba(239,68,68,0.1)] text-[#f5b5b4] border border-[rgba(239,68,68,0.2)]
-                cursor-pointer hover:bg-[rgba(239,68,68,0.2)] hover:border-[rgba(239,68,68,0.4)]
+                bg-white text-[#0b1020] 
+                cursor-pointer hover:shadow-[0_4px_12px_rgba(255,255,255,0.3)]
                 transition-all duration-200"
             >
               Clear Knowledge Base
@@ -636,6 +654,23 @@ export default function Home() {
           </div>
         ))}
       </div>
+
+      {confirmState.open && (
+        <div className="confirm-backdrop" onClick={() => handleConfirm(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Confirm</h3>
+            <p>{confirmState.message}</p>
+            <div className="confirm-actions">
+              <button className="confirm-cancel" onClick={() => handleConfirm(false)}>
+                Cancel
+              </button>
+              <button className="confirm-danger" onClick={() => handleConfirm(true)}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -83,20 +83,20 @@ export default function ChatBox({
 
   const sendBtnBase =
     'absolute right-2 bottom-2 p-2.5 rounded-xl ' +
-    'bg-gradient-to-br from-[#7aa2f7] to-[#9aa8ff] ' +
+    'bg-white ' +
     'text-[#0b1020] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
     'transition-all duration-200 ' +
-    'hover:shadow-[0_0_20px_rgba(122,162,247,0.3)] ' +
+    'hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] ' +
     'cursor-pointer';
 
   const chipBase =
     'px-5 py-2.5 rounded-full text-sm font-medium ' +
-    'bg-[rgba(122,162,247,0.08)] ' +
-    'border border-[rgba(122,162,247,0.2)] ' +
-    'text-[#d3e3ff] hover:text-white ' +
-    'hover:bg-[rgba(122,162,247,0.16)] ' +
-    'hover:border-[rgba(122,162,247,0.4)] ' +
+    'bg-[rgba(255,255,255,0.1)] ' +
+    'border border-[rgba(255,255,255,0.2)] ' +
+    'text-white hover:text-white ' +
+    'hover:bg-[rgba(255,255,255,0.18)] ' +
+    'hover:border-[rgba(255,255,255,0.4)] ' +
     'transition-all duration-200 ' +
     'cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed';
 
@@ -222,9 +222,9 @@ export default function ChatBox({
         <button
           onClick={onNewChat}
           className="px-3 py-1.5 rounded-lg text-xs font-medium
-            bg-[#1a1e24] text-[#e6e7ea] border border-[rgba(255,255,255,0.08)]
+            bg-white text-[#0b1020] 
             cursor-pointer
-            hover:bg-[#252a32] hover:border-[rgba(255,255,255,0.15)]
+            hover:shadow-[0_4px_12px_rgba(255,255,255,0.3)]
             transition-all duration-200 shrink-0"
         >
           New Chat
@@ -286,8 +286,8 @@ export default function ChatBox({
             <button
               onClick={onRetry}
               className="px-3 py-1 rounded-lg text-xs font-medium
-                bg-[rgba(239,83,80,0.15)] text-[#f5b5b4]
-                hover:bg-[rgba(239,83,80,0.25)] transition-colors cursor-pointer"
+                bg-white text-[#0b1020]
+                hover:shadow-[0_4px_12px_rgba(255,255,255,0.3)] transition-colors cursor-pointer"
             >
               Retry
             </button>

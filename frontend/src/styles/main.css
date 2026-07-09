@@ -2,10 +2,10 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0b1020;
-  --bg-2: #111827;
-  --panel: #1a1e24;
-  --panel-2: #20252c;
+  --bg: #1a1d23;
+  --bg-2: #22262b;
+  --panel: #22262b;
+  --panel-2: #2a2e35;
   --glass: rgba(255, 255, 255, 0.04);
   --stroke: rgba(255, 255, 255, 0.08);
   --text: #e6e7ea;
@@ -24,14 +24,14 @@
 body {
   margin: 0;
   font-family: 'Space Grotesk', sans-serif;
-  background: var(--panel);
+  background: var(--bg-2);
   color: var(--text);
   min-height: 100vh;
 }
 
 .app-shell {
   min-height: 100vh;
-  background: var(--panel);
+  background: var(--bg-2);
   color: var(--text);
 }
 
@@ -78,13 +78,13 @@ body {
   font-weight: 600;
   font-size: 0.85rem;
   color: #0b1020;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: #ffffff;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .add-knowledge-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.25);
 }
 
 /* Section title shared */
@@ -674,8 +674,8 @@ body {
 .cta {
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(59, 130, 246, 0.35));
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
   font-weight: 600;
   padding: 12px 16px;
   display: flex;
@@ -695,11 +695,12 @@ body {
 .nav h3,
 .panel h3,
 .status h3 {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .nav ul {
@@ -951,7 +952,8 @@ body {
 .empty {
   color: var(--muted);
   font-size: 0.85rem;
-  padding: 12px 0;
+  padding: 20px 0;
+  text-align: center;
 }
 
 .evidence-tabs {
@@ -960,29 +962,32 @@ body {
 }
 
 .tab {
-  border: 1px solid var(--stroke);
-  background: var(--glass);
-  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
   border-radius: 999px;
   padding: 6px 12px;
   cursor: pointer;
 }
 
 .tab.active {
-  background: rgba(96, 165, 250, 0.2);
-  color: var(--text);
+  background: #ffffff;
+  color: #0b1020;
 }
 
 .panel-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .muted {
   color: var(--muted);
   font-size: 0.8rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chunk-list {
@@ -1147,8 +1152,8 @@ body {
 
 .ghost,
 .primary {
-  background: rgba(122, 162, 247, 0.08);
-  color: var(--accent);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   border-radius: 10px;
   padding: 8px 12px;
   cursor: pointer;
@@ -1157,22 +1162,37 @@ body {
 }
 
 .ghost:hover {
-  background: rgba(122, 162, 247, 0.16);
-  color: #d3e3ff;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 }
 
 .primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: #ffffff;
   color: #0b1020;
 }
 
 .primary:hover {
-  box-shadow: 0 4px 16px rgba(122, 162, 247, 0.35);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
 }
 
 .ghost.wide {
   width: 100%;
   margin-top: 12px;
+}
+
+.icon-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 @media (max-width: 1200px) {
@@ -1188,5 +1208,137 @@ body {
 
   .evidence-shell {
     display: none;
+  }
+}
+
+/* Toast Notifications */
+.toast-stack {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.toast {
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: #ffffff;
+  background: #2a2e35;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: slideInToast 0.25s ease;
+}
+
+.toast.success {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.toast.error {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.toast.info {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+@keyframes slideInToast {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Confirm Modal */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.15s ease;
+}
+
+.confirm-modal {
+  background: #22262b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 28px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.2s ease;
+}
+
+.confirm-modal h3 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  color: #ffffff;
+}
+
+.confirm-modal p {
+  margin: 0 0 22px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirm-actions button {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.confirm-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.confirm-cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.confirm-danger {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.confirm-danger:hover {
+  background: #dc2626;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
