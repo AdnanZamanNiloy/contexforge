@@ -34,6 +34,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup
     configure_logging()
     logger.info("ContextForge starting up.")
+
+    # Optional: clear knowledge base on startup
+    try:
+        from app.config.settings import Settings
+        _settings = Settings()
+        if getattr(_settings, "CLEAR_ON_START", False):
+            logger.info("CLEAR_ON_START=true — wiping knowledge base on startup.")
+            from app.dependencies import get_orchestrator
+            orch = get_orchestrator()
+            result = await orch.clear_all()
+            logger.info(
+                "Startup clear complete: faiss=%d bm25=%d",
+                result.get("faiss_chunks_removed", 0),
+                result.get("bm25_chunks_removed", 0),
+            )
+    except Exception as exc:
+        logger.warning("Startup clear failed: %s", exc)
+
     yield
     # Shutdown — FIX #4/#8
     await close_all()

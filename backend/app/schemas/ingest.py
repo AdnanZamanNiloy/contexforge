@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-__all__ = ["IngestRequest", "IngestResponse", "DeleteResponse"]
+__all__ = ["IngestRequest", "IngestResponse", "DeleteResponse", "ClearResponse", "SourcesResponse"]
 
 # FIX #4 — simple URL prefix check; full RFC validation done by the loader
 _URL_SCHEMES = ("http://", "https://")
@@ -131,3 +131,18 @@ class DeleteResponse(BaseModel):
         return values
 
     model_config = {"frozen": True}
+
+
+class ClearResponse(BaseModel):
+    """Response body for DELETE /clear."""
+
+    message: str = Field(description="Human-readable clear summary.")
+    faiss_chunks_removed: int = Field(ge=0)
+    bm25_chunks_removed: int = Field(ge=0)
+
+
+class SourcesResponse(BaseModel):
+    """Response body for GET /sources — returns current source count."""
+
+    total_chunks: int = Field(ge=0)
+    sources: list[dict] = Field(default_factory=list)

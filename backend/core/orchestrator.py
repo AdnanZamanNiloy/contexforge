@@ -205,6 +205,50 @@ class Orchestrator:
 
         return faiss_removed
 
+    @observe(name="clear_all")
+    async def clear_all(self) -> dict[str, int]:
+        """Clear all data from FAISS, BM25, and the deduplicator.
+
+        Returns:
+            Dict with faiss_chunks_removed and bm25_chunks_removed counts.
+        """
+        start = time.perf_counter()
+        logger.info("clear_all: starting full knowledge base wipe")
+
+        faiss_count = 0
+        bm25_count = 0
+
+        try:
+            faiss_count = await self._faiss.clear_all()
+        except Exception as exc:
+            logger.exception("clear_all: FAISS clear failed: %s", exc)
+
+        try:
+            bm25_count = await self._bm25.clear_all()
+        except Exception as exc:
+            logger.exception("clear_all: BM25 clear failed: %s", exc)
+
+        try:
+            self._deduplicator.reset()
+        except Exception as exc:
+            logger.warning("clear_all: deduplicator reset failed: %s", exc)
+
+        try:
+            await self._faiss.force_reload()
+        except Exception as exc:
+            logger.warning("clear_all: FAISS force_reload failed: %s", exc)
+
+        try:
+            await self._bm25.force_reload()
+        except Exception as exc:
+            logger.warning("clear_all: BM25 force_reload failed: %s", exc)
+
+        elapsed = (time.perf_counter() - start) * 1000
+        logger.info(
+            "clear_all: faiss=%d bm25=%d elapsed=%.1f ms",
+            faiss_count, bm25_count, elapsed,
+        )
+        return {"faiss_chunks_removed": faiss_count, "bm25_chunks_removed": bm25_count}
 
     @observe(name="retrieve_context")
     async def retrieve_context(

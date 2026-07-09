@@ -92,6 +92,18 @@ export async function deleteSource(sourceId) {
   });
 }
 
+export async function clearKnowledgeBase() {
+  return request('/ingest/clear', {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchSources() {
+  return request('/ingest/sources', {
+    method: 'GET',
+  });
+}
+
 export async function queryAnswer(payload) {
   return request('/query', {
     method: 'POST',

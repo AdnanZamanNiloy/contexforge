@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import ChatBox from '../components/ChatBox';
 import SourceViewer from '../components/SourceViewer';
-import { ingestFile, ingestGithub, ingestSource, deleteSource } from '../services/api';
+import { ingestFile, ingestGithub, ingestSource, deleteSource, clearKnowledgeBase, fetchSources } from '../services/api';
 import { useChat } from '../hooks/useChat';
 
 function SourceIcon({ type }) {
@@ -98,6 +98,36 @@ export default function Home() {
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [isAddingText, setIsAddingText] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSources() {
+      try {
+        const data = await fetchSources();
+        if (cancelled) return;
+        if (data && data.sources && data.sources.length > 0) {
+          const synced = data.sources.map((s) => ({
+            id: s.source_id,
+            type: s.type || 'unknown',
+            title: s.title || s.source_id.slice(0, 12),
+            status: 'indexed',
+            chunks: s.chunks || 0,
+            url: s.url || '',
+          }));
+          setSources(synced);
+        } else {
+          setSources([]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to fetch sources from backend:', err);
+          setSources([]);
+        }
+      }
+    }
+    loadSources();
+    return () => { cancelled = true; };
+  }, []);
 
   const {
     input,
@@ -286,6 +316,20 @@ export default function Home() {
 
   const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText;
 
+  const handleClearKB = useCallback(async () => {
+    if (!window.confirm('Are you sure you want to clear the entire knowledge base? This cannot be undone.')) {
+      return;
+    }
+    try {
+      await clearKnowledgeBase();
+      setSources([]);
+      resetChat();
+      pushNotification('success', 'Knowledge base cleared successfully.');
+    } catch (err) {
+      pushNotification('error', err.message || 'Failed to clear knowledge base.');
+    }
+  }, [pushNotification, resetChat]);
+
   const indexedCount = sources.filter((s) => s.status === 'indexed').length;
   const processingCount = sources.filter((s) => s.status === 'processing').length;
   const pdfCount = sources.filter((s) => s.type === 'pdf').length;
@@ -398,6 +442,15 @@ export default function Home() {
                 <span>{processingCount > 0 ? `${processingCount} processing` : 'All idle'}</span>
               </div>
             </div>
+            <button
+              onClick={handleClearKB}
+              className="mt-2 w-full px-3 py-1.5 rounded-lg text-xs font-medium
+                bg-[rgba(239,68,68,0.1)] text-[#f5b5b4] border border-[rgba(239,68,68,0.2)]
+                cursor-pointer hover:bg-[rgba(239,68,68,0.2)] hover:border-[rgba(239,68,68,0.4)]
+                transition-all duration-200"
+            >
+              Clear Knowledge Base
+            </button>
           </div>
         </aside>
 

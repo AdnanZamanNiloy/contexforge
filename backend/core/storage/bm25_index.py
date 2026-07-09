@@ -19,6 +19,15 @@ logger = logging.getLogger(__name__)
 _FTS5_SPECIAL = re.compile(r'["\'\(\)\*\:\^]')
 
 
+def _safe_unlink_db(path: str) -> None:
+    """Best-effort file removal for SQLite DB files."""
+    import os
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
 def _sanitise_query(query: str) -> str:
     sanitised = _FTS5_SPECIAL.sub(" ", query)
     return re.sub(r"\s{2,}", " ", sanitised).strip()
@@ -184,17 +193,34 @@ class BM25Index:
         return count
 
     def _clear_all_sync(self) -> int:
-        """Delete all rows and VACUUM."""
+        """Drop the FTS5 table, recreate it, and delete the DB file."""
         cursor = self._conn.execute("SELECT COUNT(*) FROM chunks")
         count = cursor.fetchone()[0]
-        if count == 0:
-            return 0
 
+        # Drop and recreate the FTS5 table for a guaranteed clean state
         with self._conn:
-            self._conn.execute("DELETE FROM chunks")
-            self._conn.execute("VACUUM")
+            self._conn.execute("DROP TABLE IF EXISTS chunks")
+            self._conn.execute(
+                """
+                CREATE VIRTUAL TABLE chunks
+                USING fts5(
+                    chunk_id UNINDEXED,
+                    text,
+                    metadata UNINDEXED,
+                    source_id UNINDEXED,
+                    tokenize='porter unicode61'
+                )
+                """
+            )
+            self._conn.commit()
 
-        logger.info("clear_all: deleted %d chunk(s), VACUUM complete.", count)
+        # Also delete the DB file so nothing persists across restarts
+        self.close()
+        _safe_unlink_db(str(self._db_path))
+        _safe_unlink_db(str(self._db_path) + "-wal")
+        _safe_unlink_db(str(self._db_path) + "-shm")
+
+        logger.info("clear_all: dropped and recreated chunks table, deleted DB files. Was %d rows.", count)
         return count
 
     def _count_sync(self) -> int:

@@ -144,6 +144,21 @@ class IngestService:
         )
         return chunks_removed
 
+    async def clear_all(self) -> dict[str, int]:
+        """Clear the entire knowledge base (FAISS + BM25 + deduplicator).
+
+        Returns:
+            Dict with faiss_chunks_removed and bm25_chunks_removed counts.
+        """
+        logger.info("clear_all: wiping entire knowledge base")
+        result = await self._orchestrator.clear_all()
+        logger.info(
+            "clear_all complete: faiss=%d bm25=%d",
+            result.get("faiss_chunks_removed", 0),
+            result.get("bm25_chunks_removed", 0),
+        )
+        return result
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

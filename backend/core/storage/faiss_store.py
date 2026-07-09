@@ -24,6 +24,10 @@ class FaissStore:
     def __init__(self, index_path: Path | None = None) -> None:
         self._index_path: Path = Path(index_path or settings.FAISS_INDEX_PATH)
         self._metadata_path: Path = self._index_path.with_suffix(".json")
+        # Fallback: older code may have written metadata to .meta.json
+        self._metadata_path_alt: Path = self._index_path.parent / (
+            self._index_path.stem + ".meta.json"
+        )
 
         self._index = None
         self._faiss = None
@@ -150,13 +154,58 @@ class FaissStore:
             self._index = self._faiss.IndexFlatIP(dimension)
         self._chunks = []
 
-        self._persist_sync()
-        logger.info("clear_all: removed %d chunk(s) — index now empty.", count)
+        # Delete on-disk files so nothing persists across restarts
+        _safe_unlink(str(self._index_path))
+        _safe_unlink(str(self._metadata_path))
+        _safe_unlink(str(self._metadata_path_alt))
+
+        logger.info("clear_all: removed %d chunk(s) — index now empty, files deleted.", count)
         return count
 
     def get_source_ids(self) -> set[str]:
         """Return the set of unique source_ids currently in the store."""
         return {c.source_id for c in self._chunks if c.source_id}
+
+    async def get_source_info(self) -> list[dict]:
+        """Return grouped source info with metadata from stored chunks.
+
+        Groups chunks by source_id and returns one entry per source with
+        title, type, chunk count, and representative metadata.
+        If _chunks is empty but FAISS has vectors, attempts a disk reload.
+        """
+        await self._ensure_loaded(None)
+
+        # If chunks are empty but index has vectors, metadata file was
+        # likely missing/corrupt on first load — try reloading now.
+        if not self._chunks and self._index is not None and self._index.ntotal > 0:
+            logger.warning(
+                "get_source_info: %d vectors in FAISS but 0 chunks in memory — "
+                "attempting disk reload.", self._index.ntotal,
+            )
+            async with self._load_lock:
+                self._loaded = False
+                self._chunks = []
+                await asyncio.to_thread(self._load_sync, None)
+                self._loaded = True
+            logger.info(
+                "get_source_info: after reload — %d chunks in memory.",
+                len(self._chunks),
+            )
+
+        groups: dict[str, dict] = {}
+        for chunk in self._chunks:
+            sid = chunk.source_id or "unknown"
+            if sid not in groups:
+                meta = dict(chunk.metadata) if chunk.metadata else {}
+                groups[sid] = {
+                    "source_id": sid,
+                    "title": meta.get("title") or meta.get("filename") or sid[:12],
+                    "type": meta.get("source_type", "unknown"),
+                    "url": meta.get("url", ""),
+                    "chunks": 0,
+                }
+            groups[sid]["chunks"] += 1
+        return list(groups.values())
 
     # ------------------------------------------------------------------ #
     # Internals
@@ -292,6 +341,8 @@ class FaissStore:
                 os.write(tmp_fd, json_bytes)
                 os.close(tmp_fd)
                 os.replace(tmp_meta_path, str(self._metadata_path))
+                # Remove stale alt metadata file if it exists
+                _safe_unlink(str(self._metadata_path_alt))
             except BaseException:
                 _safe_unlink(tmp_meta_path)
                 raise
@@ -307,7 +358,7 @@ class FaissStore:
 
     async def _ensure_loaded(self, dimension: int | None) -> None:
         async with self._load_lock:
-            if self._loaded:
+            if self._loaded and self._index is not None:
                 return
             await asyncio.to_thread(self._load_sync, dimension)
             self._loaded = True
@@ -328,19 +379,39 @@ class FaissStore:
                 self._index_path,
                 self._index.ntotal,
             )
+            # Try primary metadata path, then alt (.meta.json)
+            metadata_path = None
             if self._metadata_path.exists():
+                metadata_path = self._metadata_path
+            elif self._metadata_path_alt.exists():
+                metadata_path = self._metadata_path_alt
+                logger.info(
+                    "Using alternate metadata file %s", metadata_path
+                )
+
+            if metadata_path is not None:
                 try:
                     payload = json.loads(
-                        self._metadata_path.read_text(encoding="utf-8")
+                        metadata_path.read_text(encoding="utf-8")
                     )
-                    self._chunks = [Chunk(**item) for item in payload]
-                    logger.debug("Loaded %d chunk metadata entries.", len(self._chunks))
+                    if payload:
+                        self._chunks = [Chunk(**item) for item in payload]
+                        logger.debug("Loaded %d chunk metadata entries.", len(self._chunks))
+                    else:
+                        logger.warning("Metadata file %s is empty.", metadata_path)
+                        self._chunks = []
                 except Exception as exc:
                     logger.error(
                         "Chunk metadata at %s is corrupt (%s) — metadata reset.",
-                        self._metadata_path, exc,
+                        metadata_path, exc,
                     )
                     self._chunks = []
+            else:
+                logger.warning(
+                    "FAISS index loaded (%d vectors) but no metadata file found "
+                    "(checked %s and %s).",
+                    self._index.ntotal, self._metadata_path, self._metadata_path_alt,
+                )
             return
 
         if dimension is None:

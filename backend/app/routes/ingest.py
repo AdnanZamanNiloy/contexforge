@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi import status
 
 from app.dependencies import get_ingest_service
-from app.schemas.ingest import DeleteResponse, IngestRequest, IngestResponse
+from app.schemas.ingest import ClearResponse, DeleteResponse, IngestRequest, IngestResponse, SourcesResponse
 from app.services.ingest_service import IngestService
 
 __all__ = ["router"]
@@ -168,6 +168,64 @@ async def delete_source(
         source_id, chunks_deleted,
     )
     return DeleteResponse(source_id=source_id, chunks_deleted=chunks_deleted)
+
+
+@router.delete(
+    "/clear",
+    response_model=ClearResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Clear the entire knowledge base",
+)
+async def clear_knowledge_base(
+    service: IngestService = Depends(get_ingest_service),
+) -> ClearResponse:
+    """Wipe all FAISS vectors, BM25 entries, and the deduplicator.
+
+    Use with caution — this is irreversible.
+    """
+    logger.info("clear_knowledge_base: wiping all data")
+    try:
+        result = await service.clear_all()
+    except Exception as exc:
+        logger.error("clear_knowledge_base failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear knowledge base: {exc}",
+        )
+
+    total = result.get("faiss_chunks_removed", 0) + result.get("bm25_chunks_removed", 0)
+    logger.info("clear_knowledge_base complete: removed %d total chunks", total)
+    return ClearResponse(
+        message=f"Knowledge base cleared. Removed {total} chunks.",
+        faiss_chunks_removed=result.get("faiss_chunks_removed", 0),
+        bm25_chunks_removed=result.get("bm25_chunks_removed", 0),
+    )
+
+
+@router.get(
+    "/sources",
+    response_model=SourcesResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get current source/chunk counts",
+)
+async def get_sources(
+    service: IngestService = Depends(get_ingest_service),
+) -> SourcesResponse:
+    """Return the current number of chunks and grouped source info from the store."""
+    try:
+        faiss_store = service._orchestrator._faiss
+        bm25 = service._orchestrator._bm25
+        sources = await faiss_store.get_source_info()
+        total_chunks = await bm25.count()
+        logger.info("get_sources: found %d source groups, %d total chunks", len(sources), total_chunks)
+    except Exception as exc:
+        logger.error("get_sources failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch sources: {exc}",
+        )
+
+    return SourcesResponse(total_chunks=total_chunks, sources=sources)
 
 
 async def _read_with_limit(upload: UploadFile, max_bytes: int) -> bytes:
