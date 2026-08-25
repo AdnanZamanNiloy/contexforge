@@ -60,12 +60,14 @@ class Reranker:
         candidates: List[RetrievedChunk],
         top_k: int,
     ) -> Tuple[List[RerankedChunk], float]:
-        """Rerank candidates with a cross-encoder, returning (chunks, mean_confidence).
+        """Rerank candidates with a cross-encoder, returning (chunks, confidence).
 
         Each raw logit is calibrated via temperature-scaled sigmoid into a
-        [0.0, 1.0] probability.  The mean of the top-k calibrated scores is
-        returned as the confidence value, floored at ``_MIN_CONFIDENCE_FLOOR``
-        when there are valid results.
+        [0.0, 1.0] probability.  The confidence value is the *best* calibrated
+        score among the top-k results (not the mean), because the answer is
+        grounded in the strongest source — a tail of tangential chunks should
+        not dilute it.  It is floored at ``_MIN_CONFIDENCE_FLOOR`` when there
+        are valid results.
 
         Args:
             query:      User question used as the cross-encoder premise.
@@ -73,7 +75,7 @@ class Reranker:
             top_k:      Number of reranked chunks to keep.
 
         Returns:
-            Tuple of (list of RerankedChunk, mean confidence in [0.0, 1.0]).
+            Tuple of (list of RerankedChunk, confidence in [0.0, 1.0]).
 
         Raises:
             ValueError: If *query* is empty or *top_k* is not positive.
@@ -109,25 +111,26 @@ class Reranker:
             for rank, (item, prob) in enumerate(trimmed, start=1)
         ]
 
-        # Mean confidence of top-k, with floor to avoid 0% on valid results
-        raw_mean = (
-            sum(prob for _, prob in trimmed) / len(trimmed)
+        # Confidence = best calibrated score among the top-k results, with a
+        # floor to avoid 0% on valid results.  Using the best source rather
+        # than the mean stops tangential chunks from diluting a strong match.
+        raw_best = (
+            max(prob for _, prob in trimmed)
             if trimmed
             else 0.0
         )
-        mean_confidence = max(raw_mean, _MIN_CONFIDENCE_FLOOR) if trimmed else 0.0
+        confidence = max(raw_best, _MIN_CONFIDENCE_FLOOR) if trimmed else 0.0
 
         logger.debug(
             "Reranker: %d candidates → top %d selected; "
-            "best=%.4f worst=%.4f raw_mean=%.4f mean_conf=%.4f",
+            "best=%.4f worst=%.4f conf=%.4f",
             len(candidates),
             len(results),
             results[0].score if results else 0.0,
             results[-1].score if results else 0.0,
-            raw_mean,
-            mean_confidence,
+            confidence,
         )
-        return results, mean_confidence
+        return results, confidence
 
     async def _ensure_model_loaded(self) -> None:
         async with self._load_lock:

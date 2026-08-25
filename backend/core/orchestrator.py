@@ -26,6 +26,100 @@ __all__ = ["Orchestrator"]
 
 logger = logging.getLogger(__name__)
 
+# Phrases that signal a generic "tell me about / summarize" intent.  These are
+# poor lexical matches against specific document chunks, so HyDE expansion is
+# worth the extra LLM call for them.
+_VAGUE_INTENT_MARKERS = (
+    "tell me about",
+    "what is this",
+    "what's this",
+    "summarize",
+    "summary",
+    "overview",
+    "describe",
+    "about this",
+    "what can you tell me about",
+    "explain this",
+)
+
+
+def _is_vague_query(question: str) -> bool:
+    """Heuristic: is *question* generic enough to benefit from HyDE?
+
+    Returns True for short questions (<= 3 words) or ones containing generic
+    intent markers such as "tell me about" or "summarize".  Specific questions
+    (with dates, names, numbers, or a concrete subject) are not flagged.
+    """
+    q = question.strip().lower()
+    if not q:
+        return False
+    if len(q.split()) <= 3:
+        return True
+    return any(marker in q for marker in _VAGUE_INTENT_MARKERS)
+
+
+# Short social/greeting utterances that carry no information request.  These
+# should never hit the retrieval pipeline: answering them from general
+# knowledge keeps the response instant and keeps irrelevant KB chunks from
+# being attached as "sources".
+_CHITCHAT_TOKENS = {
+    "hello", "hi", "hey", "yo", "hiya", "howdy", "sup", "hola", "greetings",
+    "hii", "hiii", "thanks", "thank", "thx", "ty", "ok", "okay",
+    "good", "morning", "afternoon", "evening", "bye", "goodbye", "cheers",
+    "welcome", "please", "sure", "yes", "yeah", "cool",
+    "there", "how", "are", "you", "doing", "guys", "everyone",
+}
+
+
+def _is_chitchat(question: str) -> bool:
+    """Heuristic: is *question* a greeting/social utterance (no KB intent)?
+
+    Returns True only for very short utterances made up entirely of
+    greeting/filler tokens.  Anything with a content word (a name, a topic, a
+    verb like "summarize", a plural like "projects") is not treated as chitchat,
+    so queries such as "hello, summarize the projects" still hit retrieval.
+    """
+    q = question.strip().lower()
+    if not q:
+        return False
+    tokens = [tok.strip(".,!? ") for tok in q.replace("/", " ").split()]
+    tokens = [tok for tok in tokens if tok]
+    if not tokens:
+        return True
+    if len(tokens) > 3:
+        return False
+    return all(tok in _CHITCHAT_TOKENS for tok in tokens)
+
+
+# Words that make a query refer to the loaded source(s) themselves rather than
+# to an external topic.  A query like "tell me about source" is a request for an
+# overview of the corpus; "tell me about quantum physics" is not.
+_CORPUS_REF_MARKERS = (
+    "source", "this", "document", "what's in", "in here", "these", "file",
+    "content", "about it", "details about", "overview", "on it", "of this",
+)
+
+# Overview/summary requests about the corpus are inherently low-relevance to the
+# cross-encoder, so they are allowed a focus-based confidence boost without
+# meeting the per-chunk relevance gate.  Off-topic questions about a named
+# external subject still require real relevance.
+_CORPUS_OVERVIEW_MAX_WORDS = 8
+
+
+def _is_corpus_overview(question: str) -> bool:
+    """Heuristic: is *question* an overview/summary request about the corpus?
+
+    Returns True for short questions that refer to the loaded content itself
+    ("tell me about source", "summarize this", "give me details about it").
+    Questions naming an external topic are not treated as corpus overviews.
+    """
+    q = question.strip().lower()
+    if not q:
+        return False
+    if len(q.split()) > _CORPUS_OVERVIEW_MAX_WORDS:
+        return False
+    return any(marker in q for marker in _CORPUS_REF_MARKERS)
+
 
 class Orchestrator:
 
@@ -270,14 +364,27 @@ class Orchestrator:
         """
         timings: Dict[str, float] = {}
 
+        # Chitchat / greeting: no information demand on the KB, so bypass the
+        # whole retrieval pipeline.  The answer is produced from general
+        # knowledge with an empty source list and Weak confidence.
+        if _is_chitchat(question):
+            logger.debug("retrieve_context: chitchat — skipping retrieval for question=%r", question)
+            return [], {}, 0.0
+
         # HyDE expansion ------------------------------------------------
         t = time.perf_counter()
 
-        effective_hyde = use_hyde if use_hyde is not None else settings.USE_HYDE
+        effective_hyde = self._resolve_hyde(use_hyde, question)
         hyde_question = question
         if effective_hyde:
             if self._hyde is not None:
                 hyde_question = await self._hyde.expand(question)
+                if hyde_question != question:
+                    logger.debug(
+                        "retrieve_context: HyDE expanded %d-char question to %d-char "
+                        "hypothesis (auto mode=%s).",
+                        len(question), len(hyde_question), use_hyde,
+                    )
             else:
                 logger.warning(
                     "retrieve_context: use_hyde=True but no HydeQueryExpander "
@@ -294,18 +401,21 @@ class Orchestrator:
         # Retrieval -----------------------------------------------------
         t = time.perf_counter()
         k_retrieve = top_k_retrieval if top_k_retrieval is not None else settings.TOP_K_RETRIEVAL
-        retrieved = await self._hybrid.retrieve(question, query_vector, k_retrieve)
+        k_rerank = top_k_rerank if top_k_rerank is not None else settings.TOP_K_RERANK
+        # FIX: use the (possibly HyDE-expanded) query text for the BM25 + dense
+        # legs too, so expansion is consistent across the whole pipeline.
+        retrieved = await self._hybrid.retrieve(hyde_question, query_vector, k_retrieve)
         timings["retrieve_ms"] = (time.perf_counter() - t) * 1000
 
         # Reranking -----------------------------------------------------
         t = time.perf_counter()
-        k_rerank = top_k_rerank if top_k_rerank is not None else settings.TOP_K_RERANK
 
         # FIX: wrap reranker call so a failure degrades gracefully
         try:
-            # FIX: reranker now returns (chunks, mean_confidence)
+            # FIX: reranker now returns (chunks, mean_confidence).  Use the
+            # HyDE-expanded query so scoring matches what was retrieved.
             reranked, mean_confidence = await self._reranker.rerank(
-                question, retrieved, k_rerank,
+                hyde_question, retrieved, k_rerank,
             )
         except Exception:
             logger.exception(
@@ -324,14 +434,23 @@ class Orchestrator:
 
         timings["rerank_ms"] = (time.perf_counter() - t) * 1000
 
+        # Coverage-aware confidence ------------------------------------
+        # A content-bearing query whose answer surfaces the whole relevant
+        # source is fully grounded even when per-chunk relevance is modest
+        # (e.g. "summarize this resume" over a single small source).  Boost the
+        # confidence in that case so a complete answer never reads as "Weak".
+        display_confidence = await self._apply_confidence(
+            question, reranked, mean_confidence,
+        )
+
         logger.debug(
             "retrieve_context: retrieved=%d reranked=%d confidence=%.4f "
             "hyde=%.1fms embed=%.1fms retrieve=%.1fms rerank=%.1fms",
-            len(retrieved), len(reranked), mean_confidence,
+            len(retrieved), len(reranked), display_confidence,
             timings["hyde_ms"], timings["embed_ms"],
             timings["retrieve_ms"], timings["rerank_ms"],
         )
-        return reranked, timings, mean_confidence
+        return reranked, timings, display_confidence
 
     # Confidence thresholds — tuned for calibrated reranker output.
     # With temperature=2.0, shift=2.0 calibration:
@@ -343,6 +462,86 @@ class Orchestrator:
         (0.40, "Moderate"),
         (0.25, "Low"),
     )
+
+    # A content-bearing query whose retrieved chunks are concentrated in a single
+    # source ("tell me about source", "summarize this") identifies its target
+    # source unambiguously, so the resulting overview is well-grounded even when
+    # the cross-encoder's per-chunk relevance is only modest.  Confidence is
+    # boosted to a tier matching how dominant the single source is in the
+    # retrieved set.  The boost is gated by a minimum relevance so an off-topic
+    # query (low per-chunk score) never reads as confident, and chitchat never
+    # retrieves at all.
+    # Focus tiers: (minimum focus ratio, confidence to report)
+    _FOCUS_TIERS = (
+        (0.90, 0.85),  # a single source dominates → Excellent
+        (0.70, 0.65),  # clearly one source → Strong
+        (0.55, 0.45),  # one source leads → Moderate
+    )
+    # Per-chunk relevance (reranker best score) must reach this before a focus
+    # boost is applied — below it the query is treated as off-topic/no-match.
+    _FOCUS_RELEVANCE_GATE = 0.20
+
+    @staticmethod
+    def _resolve_hyde(use_hyde: bool | None, question: str) -> bool:
+        """Decide whether to run HyDE for this query.
+
+        Precedence:
+          1. Explicit ``use_hyde`` request flag (if not None).
+          2. Global ``settings.USE_HYDE`` (if enabled).
+          3. Auto mode (default): enable HyDE only for vague/generic queries
+             so specific questions stay fast.
+        """
+        if use_hyde is not None:
+            return use_hyde
+        if settings.USE_HYDE:
+            return True
+        return _is_vague_query(question)
+
+    async def _apply_confidence(
+        self,
+        question: str,
+        reranked: List[RerankedChunk],
+        base: float,
+    ) -> float:
+        """Return the confidence to report to the client.
+
+        *base* is the reranker's per-chunk relevance confidence.  When a real,
+        content-bearing query (never chitchat) is answered from a retrieved set
+        concentrated in a single source, the answer is unambiguously about that
+        source, so the confidence is raised to the matching focus tier (if that
+        beats the per-chunk relevance).  A query that barely matches the source
+        (base below ``_FOCUS_RELEVANCE_GATE``) or draws from several sources is
+        left at its per-chunk relevance.
+        """
+        if not reranked or _is_chitchat(question):
+            return base
+        # Overview/summary requests about the corpus are allowed a focus boost
+        # regardless of the per-chunk relevance gate (the cross-encoder scores a
+        # generic "tell me about source" request low against raw article chunks).
+        # Off-topic questions about a named external subject still need relevance.
+        if not _is_corpus_overview(question) and base < self._FOCUS_RELEVANCE_GATE:
+            return base
+
+        source_counts: dict[str, int] = {}
+        for c in reranked:
+            sid = c.chunk.source_id
+            if sid:
+                source_counts[sid] = source_counts.get(sid, 0) + 1
+        if not source_counts:
+            return base
+
+        dominant = max(source_counts, key=source_counts.get)
+        focus = source_counts[dominant] / len(reranked)
+
+        best = base
+        for min_focus, tier_confidence in Orchestrator._FOCUS_TIERS:
+            if focus >= min_focus and tier_confidence > best:
+                best = tier_confidence
+        logger.debug(
+            "_apply_confidence: focus=%.3f dominant=%s chunks=%d total=%d base=%.4f → %.4f",
+            focus, dominant, source_counts[dominant], len(reranked), base, best,
+        )
+        return best
 
     @staticmethod
     def _build_confidence(

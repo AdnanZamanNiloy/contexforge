@@ -18,13 +18,9 @@ class HydeQueryExpander:
 
     @observe(name="hyde_generate")
     async def expand(self, question: str) -> str:
-        
+
         if not isinstance(question, str) or not question.strip():
             raise ValueError("HydeQueryExpander.expand received an empty question")
-
-        if not settings.USE_HYDE:
-            logger.debug("HyDE disabled via settings — returning original question.")
-            return question
 
         try:
             hypothesis = await self._llm.generate(
