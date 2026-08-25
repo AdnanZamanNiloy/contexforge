@@ -17,9 +17,12 @@ from app.services.query_service import QueryService
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
 from core.embedding.voyage_embedder import VoyageEmbedder
+from core.generation.cerebras_llm import CerebrasLLM
 from core.generation.fallback_llm import FallbackLLM
 from core.generation.gemini_llm import GeminiLLM
 from core.generation.groq_llm import GroqLLM
+from core.generation.nvidia_nim_llm import NvidiaNimLLM
+from core.generation.openrouter_llm import OpenRouterLLM
 from core.generation.prompt_builder import PromptBuilder
 from core.ingestion.base_loader import BaseLoader
 from core.ingestion.docx_loader import DocxLoader
@@ -111,9 +114,20 @@ def get_deduplicator() -> Deduplicator:
 @lru_cache(maxsize=1)
 def get_llm() -> FallbackLLM:
     settings = get_settings()
-    primary = GeminiLLM(model=settings.GEMINI_MODEL)
-    fallback = GroqLLM(model=settings.GROQ_MODEL)
-    return FallbackLLM(primary=primary, fallback=fallback)
+    # Ordered fallback chain — try each in turn, falling through on failure.
+    # Gemini and Groq keys are in place; the free aggregators (OpenRouter, NIM,
+    # Cerebras) are added only when their API key is configured in .env.
+    providers = [
+        GeminiLLM(model=settings.GEMINI_MODEL),
+        GroqLLM(model=settings.GROQ_MODEL),
+    ]
+    if settings.OPENROUTER_API_KEY:
+        providers.append(OpenRouterLLM(model=settings.OPENROUTER_MODEL))
+    if settings.NVIDIA_API_KEY:
+        providers.append(NvidiaNimLLM(model=settings.NVIDIA_MODEL))
+    if settings.CEREBRAS_API_KEY:
+        providers.append(CerebrasLLM(model=settings.CEREBRAS_MODEL))
+    return FallbackLLM(providers=providers)
 
 
 # ---------------------------------------------------------------------------

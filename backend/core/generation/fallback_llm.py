@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+from collections.abc import Sequence
 from typing import AsyncIterator
 
 import httpx
@@ -16,84 +18,96 @@ _RETRYABLE = (
     OSError,            # network-level failures
     TimeoutError,       # request timeouts
     RuntimeError,       # API wrapper errors (httpx, google-generativeai, groq)
-    # FIX: httpx errors are what the primary (Gemini) actually re-raises once its
-    # own internal retries are exhausted. Without these the fallback never fires,
-    # so a flaky primary stalls the whole request instead of failing over.
     httpx.HTTPStatusError,
     httpx.TransportError,
 )
 
 
 class FallbackLLM(BaseLLM):
+    """Try a chain of LLM providers in order, falling through on failure.
 
-    def __init__(self, primary: LLM, fallback: LLM) -> None:
-        super().__init__(
-            model=f"{_model_name(primary)}→{_model_name(fallback)}"
-        )
-        self._primary = primary
-        self._fallback = fallback
+    Accepts either an ordered ``providers`` sequence or the legacy
+    ``primary``/``fallback`` keyword arguments (which are normalised into the
+    same ordered chain).  Each provider is tried in turn; a provider failure
+    that is retryable causes the next provider to be attempted.  For streaming,
+    a provider is abandoned for the next one only if it fails *before* the first
+    token, since switching mid-stream is unsafe.
+    """
+
+    def __init__(
+        self,
+        primary: LLM | None = None,
+        fallback: LLM | None = None,
+        *,
+        providers: Sequence[LLM] | None = None,
+    ) -> None:
+        if providers is not None:
+            chain: list[LLM] = list(providers)
+        else:
+            chain = [p for p in (primary, fallback) if p is not None]
+        if not chain:
+            raise ValueError("FallbackLLM requires at least one provider")
+        self._providers = tuple(chain)
+        super().__init__(model="→".join(_model_name(p) for p in self._providers))
 
     async def aclose(self) -> None:
-        """Close the underlying HTTP clients of both LLM backends."""
-        for llm in (self._primary, self._fallback):
+        """Close the underlying HTTP clients of every provider."""
+        for llm in self._providers:
             close = getattr(llm, "aclose", None)
             if close is not None:
                 await close()
 
-
     async def _generate_impl(
         self,
         prompt: str,
-        system_prompt: str | None,) -> str:
-       
-        try:
-            return await self._primary.generate(prompt, system_prompt=system_prompt)
-        except _RETRYABLE as exc:
-            logger.warning(
-                "Primary LLM (%s) failed for generate (%s: %s) — switching to fallback (%s).",
-                _model_name(self._primary),
-                type(exc).__name__,
-                exc,
-                _model_name(self._fallback),
-            )
-        return await self._fallback.generate(prompt, system_prompt=system_prompt)
+        system_prompt: str | None,
+    ) -> str:
+        last_exc: Exception | None = None
+        for idx, llm in enumerate(self._providers):
+            try:
+                return await llm.generate(prompt, system_prompt=system_prompt)
+            except Exception as exc:  # noqa: BLE001 - fall through to next provider
+                if not isinstance(exc, _RETRYABLE) or idx == len(self._providers) - 1:
+                    raise
+                logger.warning(
+                    "FallbackLLM: provider[%d/%d] (%s) failed for generate "
+                    "(%s: %s) — trying next provider.",
+                    idx + 1, len(self._providers),
+                    _model_name(llm), type(exc).__name__, exc,
+                )
+                last_exc = exc
+        raise RuntimeError("All providers failed") from last_exc
 
     async def _stream_impl(
         self,
         prompt: str,
-        system_prompt: str | None,) -> AsyncIterator[str]:
-       
-        tokens_yielded = 0
-        try:
-            async for token in self._primary.stream(prompt, system_prompt=system_prompt):
-                tokens_yielded += 1
-                yield token
-            return  
-
-        except _RETRYABLE as exc:
-            if tokens_yielded > 0:
-               
-                logger.error(
-                    "Primary LLM (%s) failed mid-stream after %d token(s) — "
-                    "cannot fall back safely; re-raising.",
-                    _model_name(self._primary),
-                    tokens_yielded,
+        system_prompt: str | None,
+    ) -> AsyncIterator[str]:
+        last_exc: Exception | None = None
+        for idx, llm in enumerate(self._providers):
+            tokens_yielded = 0
+            try:
+                async for token in llm.stream(prompt, system_prompt=system_prompt):
+                    tokens_yielded += 1
+                    yield token
+                return
+            except Exception as exc:  # noqa: BLE001
+                if not isinstance(exc, _RETRYABLE) or idx == len(self._providers) - 1:
+                    raise
+                if tokens_yielded > 0:
+                    logger.error(
+                        "FallbackLLM: provider (%s) failed mid-stream after %d "
+                        "token(s) — cannot fall back safely; re-raising.",
+                        _model_name(llm), tokens_yielded,
+                    )
+                    raise
+                logger.warning(
+                    "FallbackLLM: provider (%s) stream failed before first token "
+                    "(%s: %s) — trying next provider.",
+                    _model_name(llm), type(exc).__name__, exc,
                 )
-                raise
-
-    
-            logger.warning(
-                "Primary LLM (%s) stream failed before first token (%s: %s) — "
-                "switching to fallback (%s).",
-                _model_name(self._primary),
-                type(exc).__name__,
-                exc,
-                _model_name(self._fallback),
-            )
-
-        async for token in self._fallback.stream(prompt, system_prompt=system_prompt):
-            yield token
-
+                last_exc = exc
+        raise RuntimeError("All providers failed to stream") from last_exc
 
 
 def _model_name(llm: LLM) -> str:

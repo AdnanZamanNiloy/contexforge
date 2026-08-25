@@ -1,6 +1,10 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
-const DEFAULT_TIMEOUT_MS = 25000;
+// RAG queries run HyDE expansion + retrieval + rerank + LLM generation, which
+// routinely takes 8-20s and can exceed 30s under load.  A short timeout aborts a
+// legitimate request, which the browser reports as "NetworkError when attempting
+// to fetch resource".
+const DEFAULT_TIMEOUT_MS = 120000;
 
 function buildUrl(path) {
   if (!path.startsWith('/')) {
@@ -111,7 +115,7 @@ export async function queryAnswer(payload) {
   });
 }
 
-const STREAM_IDLE_TIMEOUT_MS = 30000;
+const STREAM_IDLE_TIMEOUT_MS = 120000;
 
 export async function streamQuery(payload, handlers = {}) {
   const controller = new AbortController();

@@ -9,6 +9,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
+import httpx
+
 from app.dependencies import get_query_service
 from app.schemas.query import ConfidenceMetrics, QueryRequest, QueryResponse
 from app.services.query_service import QueryService
@@ -49,6 +51,21 @@ async def query(
     except RuntimeError as exc:
         logger.error("query failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+    except httpx.HTTPStatusError as exc:
+        # LLM provider throttling / quota exhaustion (transient).  Report a
+        # retryable 503 with a clear message instead of a bare 500 that the
+        # frontend can mistake for a network error.
+        logger.warning("query failed: LLM provider HTTP %s", exc.response.status_code)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI provider is currently at its rate limit — please wait a moment and try again.",
+        )
+    except Exception as exc:
+        logger.exception("query failed: unexpected error")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to generate an answer. Please try again.",
+        )
 
     logger.info(
         "query complete: sources=%d latency=%s confidence=%s",
