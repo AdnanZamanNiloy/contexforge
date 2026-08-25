@@ -83,6 +83,10 @@ class IngestResponse(BaseModel):
         description="Number of text chunks stored in FAISS and BM25.",
         ge=0,
     )
+    analysis_id: str | None = Field(
+        default=None,
+        description="ID of the Repository Intelligence analysis run, when one was auto-started for a GitHub source.",
+    )
     message: str = Field(
         description="Human-readable ingestion summary.",
     )

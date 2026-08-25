@@ -24,8 +24,9 @@ class DenseRetriever(Retriever):
         query: str,  
         query_vector: List[float],
         top_k: int,
+        exclude_source_ids: set[str] | None = None,
     ) -> List[RetrievedChunk]:
        
-        results = await self._store.search(query_vector, top_k)
+        results = await self._store.search(query_vector, top_k, exclude_source_ids)
         logger.debug("DenseRetriever: returned %d result(s).", len(results))
         return results

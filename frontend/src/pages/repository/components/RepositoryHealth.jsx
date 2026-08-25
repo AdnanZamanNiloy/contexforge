@@ -1,7 +1,4 @@
-import { repoHealth } from '../../../data/repoIntelligence';
-import { rankedModules } from '../../../data/repoIntelligence';
-
-function Donut({ score }) {
+function Donut({ score = 0 }) {
   const r = 34;
   const c = 2 * Math.PI * r;
   const off = c - (c * score) / 100;
@@ -32,14 +29,14 @@ function Donut({ score }) {
 
 const MAX_RANK = 100;
 
-export default function RepositoryHealth() {
+export default function RepositoryHealth({ health = {}, rankedModules = [] }) {
   return (
     <section className="sidebar-section">
       <div className="sidebar-section-title">Repository Health</div>
       <div className="health-card">
-        <Donut score={repoHealth.score} />
+        <Donut score={health.score} />
         <div className="health-dimensions">
-          {repoHealth.dimensions.map((d) => (
+          {(health.dimensions || []).map((d) => (
             <div className="health-dim" key={d.label}>
               <div className="health-dim-head">
                 <span>{d.label}</span>
@@ -53,7 +50,7 @@ export default function RepositoryHealth() {
 
       <div className="sidebar-subtitle">Most active / complex modules</div>
       <div className="ranked-modules">
-        {rankedModules.map((m) => (
+        {(rankedModules || []).map((m) => (
           <div className="ranked-row" key={m.name}>
             <code className="ranked-name">{m.name}</code>
             <div className="ranked-bar"><i style={{ width: `${(m.value / MAX_RANK) * 100}%` }} /></div>

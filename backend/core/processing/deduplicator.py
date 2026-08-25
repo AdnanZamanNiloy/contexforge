@@ -57,7 +57,7 @@ class Deduplicator:
         unique: List[Document] = []
 
         for doc in documents:
-            digest = self._fingerprint(doc.text)
+            digest = self._fingerprint(doc.text, doc.metadata.get("source_id"))
             with self._lock:
                 is_duplicate = digest in self._seen_hashes
                 if not is_duplicate:
@@ -78,7 +78,11 @@ class Deduplicator:
         return unique
 
     @staticmethod
-    def _fingerprint(text: str) -> str:
-     
-        normalised = unicodedata.normalize("NFC", text)
+    def _fingerprint(text: str, source_id: str | None = None) -> str:
+        # Scope by source: identical text from *different* sources must still be
+        # indexed (e.g. the same file ingested under a loose UUID source vs. a
+        # repo-scoped `repo:owner/name` source). Only repeat content within the
+        # same source is treated as a duplicate.
+        parts = [source_id or "", text]
+        normalised = unicodedata.normalize("NFC", "\x1f".join(parts))
         return hashlib.blake2b(normalised.encode("utf-8"), digest_size=32).hexdigest()

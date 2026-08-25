@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import RepositoryIntelligencePage from './pages/repository/RepositoryIntelligencePage';
 
 export default function App() {
-  const [view, setView] = useState('home');
-
-  if (view === 'repo-intel') {
-    return <RepositoryIntelligencePage onExit={() => setView('home')} />;
-  }
-
-  return <Home onOpenRepositoryIntelligence={() => setView('repo-intel')} />;
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/repository" element={<RepositoryIntelligencePage />} />
+      <Route path="/repository/:repositoryId" element={<RepositoryIntelligencePage />} />
+    </Routes>
+  );
 }

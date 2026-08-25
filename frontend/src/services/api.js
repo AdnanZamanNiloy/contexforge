@@ -117,7 +117,7 @@ export async function queryAnswer(payload) {
 
 const STREAM_IDLE_TIMEOUT_MS = 120000;
 
-export async function streamQuery(payload, handlers = {}) {
+export async function streamQuery(payload, handlers = {}, path = '/query/stream') {
   const controller = new AbortController();
   const externalSignal = handlers.signal;
   const onExternalAbort = () => controller.abort();
@@ -142,7 +142,7 @@ export async function streamQuery(payload, handlers = {}) {
   };
 
   try {
-    const response = await fetch(buildUrl('/query/stream'), {
+    const response = await fetch(buildUrl(path), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -255,4 +255,40 @@ export async function streamQuery(payload, handlers = {}) {
       externalSignal.removeEventListener('abort', onExternalAbort);
     }
   }
+}
+
+// --- Repository Intelligence -------------------------------------------------
+
+export async function repositoryLatest(repoUrl) {
+  return request(`/repository/latest?repo_url=${encodeURIComponent(repoUrl)}`, {
+    method: 'GET',
+  });
+}
+
+export async function repositoryStatus(analysisId) {
+  return request(`/repository/${analysisId}/status`, { method: 'GET' });
+}
+
+export async function repositoryGet(analysisId) {
+  return request(`/repository/${analysisId}`, { method: 'GET' });
+}
+
+export async function getRepositoryDependencies(analysisId, { selected, depth = 3 } = {}) {
+  const params = new URLSearchParams();
+  if (selected) params.set('selected', selected);
+  params.set('depth', String(depth));
+  const qs = params.toString();
+  return request(`/repository/${analysisId}/dependencies?${qs}`, { method: 'GET' });
+}
+
+export async function repositoryDataFlow(analysisId) {
+  return request(`/repository/${analysisId}/data-flow`, { method: 'GET' });
+}
+
+export async function reanalyzeRepository(analysisId) {
+  return request(`/repository/${analysisId}/reanalyze`, { method: 'POST' });
+}
+
+export function repositoryAsk(analysisId, question, handlers = {}) {
+  return streamQuery({ question }, handlers, `/repository/${analysisId}/ask`);
 }

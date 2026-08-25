@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { ownership } from '../../../data/repoIntelligence';
 
-export default function OwnershipView() {
-  const [activeModule, setActiveModule] = useState(ownership.modules[0].name);
+export default function OwnershipView({ ownership = { modules: [], contributors: [], concentration: {} } }) {
+  const [activeModule, setActiveModule] = useState(ownership.modules[0]?.name || null);
 
   const selected = ownership.modules.find((m) => m.name === activeModule);
   const maxPercent = Math.max(...ownership.contributors.map((c) => c.percent));

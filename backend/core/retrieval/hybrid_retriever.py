@@ -31,7 +31,8 @@ class HybridRetriever:
         self,
         query: str,
         query_vector: List[float],
-        top_k: int,) -> List[RetrievedChunk]:
+        top_k: int,
+        exclude_source_ids: set[str] | None = None,) -> List[RetrievedChunk]:
 
         if not isinstance(query, str) or not query.strip():
             raise ValueError("HybridRetriever.retrieve received an empty query")
@@ -42,8 +43,8 @@ class HybridRetriever:
 
         
         bm25_result, dense_result = await asyncio.gather(
-            self._bm25.retrieve(query, query_vector, top_k),
-            self._dense.retrieve(query, query_vector, top_k),
+            self._bm25.retrieve(query, query_vector, top_k, exclude_source_ids),
+            self._dense.retrieve(query, query_vector, top_k, exclude_source_ids),
             return_exceptions=True,
         )
 

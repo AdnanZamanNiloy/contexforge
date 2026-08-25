@@ -18,5 +18,6 @@ class Retriever(ABC):
         query: str,
         query_vector: List[float],
         top_k: int,
+        exclude_source_ids: set[str] | None = None,
     ) -> List[RetrievedChunk]:
         raise NotImplementedError

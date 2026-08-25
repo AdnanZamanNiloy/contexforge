@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import ChatBox from '../components/ChatBox';
 import SourceViewer from '../components/SourceViewer';
@@ -90,7 +91,8 @@ const TYPE_LABEL = {
   text: 'TXT',
 };
 
-export default function Home({ onOpenRepositoryIntelligence }) {
+export default function Home() {
+  const navigate = useNavigate();
   const [sources, setSources] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -266,7 +268,11 @@ export default function Home({ onOpenRepositoryIntelligence }) {
         });
         pushNotification('success', response.message);
         setIsModalOpen(false);
-        onOpenRepositoryIntelligence?.();
+        if (response.analysis_id) {
+          navigate(`/repository/${response.analysis_id}`);
+        } else {
+          navigate(`/repository?repoUrl=${encodeURIComponent(url)}`);
+        }
       } catch (repoError) {
         updateSource(tempId, { status: 'failed' });
         pushNotification('error', repoError.message || 'GitHub ingest failed');
@@ -274,7 +280,7 @@ export default function Home({ onOpenRepositoryIntelligence }) {
         setIsAddingRepo(false);
       }
     },
-    [addSource, pushNotification, updateSource, onOpenRepositoryIntelligence],
+    [addSource, pushNotification, updateSource, navigate],
   );
 
   const handleTextIngest = useCallback(
@@ -379,15 +385,13 @@ export default function Home({ onOpenRepositoryIntelligence }) {
             <span>Add Source</span>
           </button>
 
-          {onOpenRepositoryIntelligence ? (
-            <button className="repo-intel-nav" onClick={onOpenRepositoryIntelligence}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
-              </svg>
-              <span>Repository Intelligence</span>
-              <span className="repo-intel-arrow">→</span>
-            </button>
-          ) : null}
+          <button className="repo-intel-nav" onClick={() => navigate('/repository')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
+            </svg>
+            <span>Repository Intelligence</span>
+            <span className="repo-intel-arrow">→</span>
+          </button>
 
           <section className="kb-section">
             <div className="section-title">Knowledge Base</div>

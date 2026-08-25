@@ -1,15 +1,14 @@
 import { useMemo, useState } from 'react';
 import GraphViewer from '../GraphViewer';
 import InfoPanel from '../components/InfoPanel';
-import { architecture, graphDimensions } from '../../../data/repoIntelligence';
 
-const LAYOUTS = ['Hierarchical', 'Cluster', 'Radial'];
+const LAYOUTS = ['Hierarchical', 'Tree', 'Radial'];
 
-export default function ArchitectureView({ onSelectChange }) {
+export default function ArchitectureView({ architecture = { nodes: [], edges: [] }, graphDimensions = { width: 1240, height: 860 } }) {
   const [selected, setSelected] = useState(null);
   const [layout, setLayout] = useState('Hierarchical');
   const [query, setQuery] = useState('');
-  const [fitKey, setFitKey] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const selectedNode = useMemo(
     () => architecture.nodes.find((n) => n.id === selected) || null,
@@ -27,8 +26,34 @@ export default function ArchitectureView({ onSelectChange }) {
 
   const handleSelect = (id) => {
     setSelected(id);
-    onSelectChange?.(id ? architecture.nodes.find((n) => n.id === id) : null);
   };
+
+  const graphNodes = useMemo(() => {
+    if (layout === 'Radial') return radialSpread(architecture.nodes);
+    if (layout === 'Tree') return treeLayout(architecture.nodes, architecture.edges);
+    return architecture.nodes;
+  }, [layout, architecture]);
+
+  const graphToolbar = (
+    <>
+      <div className="graph-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search nodes..."
+          spellCheck={false}
+        />
+        {query ? <button className="search-clear" onClick={() => setQuery('')}>×</button> : null}
+      </div>
+      <div className="layout-select">
+        <span>Layout</span>
+        <select value={layout} onChange={(e) => setLayout(e.target.value)}>
+          {LAYOUTS.map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </div>
+    </>
+  );
 
   return (
     <div className="intel-view">
@@ -38,25 +63,9 @@ export default function ArchitectureView({ onSelectChange }) {
           <p className="intel-subtext">High-level structure of the repository</p>
         </div>
         <div className="arch-toolbar">
-          <div className="graph-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search nodes..."
-              spellCheck={false}
-            />
-            {query ? <button className="search-clear" onClick={() => setQuery('')}>×</button> : null}
-          </div>
-          <div className="layout-select">
-            <span>Layout</span>
-            <select value={layout} onChange={(e) => setLayout(e.target.value)}>
-              {LAYOUTS.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
-          </div>
-          <button className="tool-btn" onClick={() => setFitKey((k) => k + 1)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" /></svg>
-            Fit
+          <button className="tool-btn" title="Toggle full screen" onClick={() => setFullscreen((f) => !f)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" /></svg>
+            Full screen
           </button>
         </div>
       </div>
@@ -70,13 +79,15 @@ export default function ArchitectureView({ onSelectChange }) {
       </div>
 
       <GraphViewer
-        nodes={layout === 'Radial' ? radialSpread(architecture.nodes) : architecture.nodes}
+        nodes={graphNodes}
         edges={architecture.edges}
         dims={graphDimensions}
         selected={selected}
         onSelect={handleSelect}
         highlight={highlighted}
-        fitKey={fitKey}
+        fullscreen={fullscreen}
+        onToggleFullscreen={() => setFullscreen((f) => !f)}
+        toolbar={graphToolbar}
         className="arch-graph"
         height={560}
       />
@@ -100,4 +111,56 @@ function radialSpread(nodes) {
     return { ...n, x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
   });
   return [{ ...root, x: cx, y: cy }, ...spread];
+}
+
+// Tidy rooted tree from the "contains" hierarchy (repo -> area -> dir ->
+// module -> file). Depth grows left-to-right; siblings stack vertically.
+function treeLayout(nodes, edges) {
+  if (!nodes.length) return nodes;
+  const label = (id) => nodes.find((n) => n.id === id)?.label || id;
+
+  const children = new Map(nodes.map((n) => [n.id, []]));
+  const hasParent = new Set();
+  edges.forEach((e) => {
+    if (e.kind !== 'contains') return;
+    if (children.has(e.source)) {
+      children.get(e.source).push(e.target);
+      hasParent.add(e.target);
+    }
+  });
+  children.forEach((arr) => arr.sort((a, b) => label(a).localeCompare(label(b))));
+
+  const rootId =
+    nodes.find((n) => n.kind === 'repo')?.id ||
+    nodes.find((n) => !hasParent.has(n.id))?.id;
+  if (!rootId) return nodes;
+
+  const DX = 240;
+  const DY = 62;
+  const pos = new Map();
+  let leaf = 0;
+
+  const walk = (id, depth) => {
+    const kids = children.get(id) || [];
+    if (!kids.length) {
+      pos.set(id, { x: depth * DX, y: leaf * DY });
+      leaf += 1;
+      return;
+    }
+    kids.forEach((k) => walk(k, depth + 1));
+    const avgY = kids.reduce((s, k) => s + pos.get(k).y, 0) / kids.length;
+    pos.set(id, { x: depth * DX, y: avgY });
+  };
+  walk(rootId, 0);
+
+  const maxDepth = Math.max(0, ...nodes.filter((n) => pos.has(n.id)).map((n) => Math.round(pos.get(n.id).x / DX)));
+  nodes.filter((n) => !pos.has(n.id)).forEach((n, i) => {
+    const col = Math.floor(i / 10);
+    pos.set(n.id, { x: (maxDepth + 1) * DX + col * 220, y: (i % 10) * DY });
+  });
+
+  return nodes.map((n) => {
+    const p = pos.get(n.id);
+    return { ...n, x: p.x, y: p.y };
+  });
 }

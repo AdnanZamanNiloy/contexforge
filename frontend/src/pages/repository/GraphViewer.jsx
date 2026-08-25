@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 // Shared interactive SVG node-and-edge graph viewer.
 // Responsive: zooms/pans/fits, supports search, hover + selection with
@@ -14,7 +15,7 @@ import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 //   highlight?: Set<string> | null  — show only these + their connectors
 
 const DEFAULT_DIMS = { width: 1240, height: 860 };
-const MIN_ZOOM = 0.25;
+const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 2.5;
 
 function kindColor(kind, accentOverride) {
@@ -49,14 +50,32 @@ export default function GraphViewer({
   fitKey,
   className = '',
   height = 560,
+  fullscreen: fullscreenProp,
+  onToggleFullscreen,
+  toolbar,
 }) {
   const viewportRef = useRef(null);
   const [view, setView] = useState({ scale: 1, x: 40, y: 40 });
   const [isPanning, setIsPanning] = useState(false);
+  const [fullscreen, setFullscreen] = useState(!!fullscreenProp);
+  const [viewAnim, setViewAnim] = useState(false);
+  const viewTimer = useRef(null);
   const panStart = useRef(null);
   const svgRef = useRef(null);
 
+  // Controlled mode: parent drives fullscreen via props.
+  const isControlled = typeof onToggleFullscreen === 'function';
+  const isFullscreen = isControlled ? !!fullscreenProp : fullscreen;
+  const setFull = isControlled ? onToggleFullscreen : setFullscreen;
+
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+
+  // Unique node colors drive per-color radial gradient defs.
+  const nodeColors = useMemo(() => {
+    const set = new Set();
+    nodes.forEach((n) => set.add(kindColor(n.kind, accentFor?.(n))));
+    return [...set];
+  }, [nodes, accentFor]);
 
   const fitScale = useCallback((w, h) => {
     if (!nodes.length) return { scale: 1, x: 40, y: 40 };
@@ -82,13 +101,35 @@ export default function GraphViewer({
     const el = viewportRef.current;
     if (!el) return;
     const { clientWidth, clientHeight } = el;
-    setView(fitScale(clientWidth, clientHeight));
+    applyView(fitScale(clientWidth, clientHeight), true);
   }, [fitScale]);
 
+  const applyView = useCallback((next, animate = false) => {
+    setView(next);
+    setViewAnim(animate);
+    if (viewTimer.current) clearTimeout(viewTimer.current);
+    if (animate) {
+      viewTimer.current = setTimeout(() => setViewAnim(false), 500);
+    }
+  }, []);
+
   useEffect(() => {
-    autoFit();
+    // Re-fit whenever the graph changes or enters/exits fullscreen.
+    // Wait a frame so the portal/viewport has laid out before measuring.
+    const raf = requestAnimationFrame(() => autoFit());
+    return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey, nodes.length]);
+  }, [fitKey, nodes.length, isFullscreen]);
+
+  // Escape closes the fullscreen overlay.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setFull(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFullscreen, isControlled, fullscreenProp, setFull]);
 
   useEffect(() => {
     if (dims && selected) {
@@ -98,7 +139,7 @@ export default function GraphViewer({
         const el = viewportRef.current;
         if (!el) return;
         const { clientWidth, clientHeight } = el;
-        setView((v) => ({ ...v, x: clientWidth / 2 - n.x * v.scale, y: clientHeight / 2 - n.y * v.scale + 20 }));
+        applyView({ ...view, x: clientWidth / 2 - n.x * view.scale, y: clientHeight / 2 - n.y * view.scale + 20 }, true);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -167,8 +208,9 @@ export default function GraphViewer({
     onSelect?.(id);
   };
 
-  return (
-    <div className={`graph-viewer ${className}`} style={{ height }}>
+  const graphBody = (
+    <div className="graph-frame">
+      {toolbar ? <div className="graph-toolbar">{toolbar}</div> : null}
       <div
         ref={viewportRef}
         className="graph-viewport"
@@ -179,7 +221,13 @@ export default function GraphViewer({
         onClick={() => onSelect?.(null)}
       >
         <svg ref={svgRef} width="100%" height="100%" className="graph-svg">
-          <g transform={`translate(${view.x},${view.y}) scale(${view.scale})`}>
+          <rect width="100%" height="100%" fill="url(#dotGrid)" />
+          <g
+            style={{
+              transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
+              transition: viewAnim ? 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+            }}
+          >
             {edges.map((edge, i) => {
               const s = nodeMap.get(edge.source);
               const t = nodeMap.get(edge.target);
@@ -188,18 +236,22 @@ export default function GraphViewer({
               const color = kindColor(edge.kind === 'direct' ? 'route' : edge.kind === 'indirect' ? 'func' : 'module');
               const dx = t.x - s.x;
               const dy = t.y - s.y;
+              const bend = 14 + Math.min(28, Math.abs(dx) * 0.18);
               const cx = s.x + dx * 0.5;
-              const cy = s.y + dy * 0.5 - 14;
+              const cy = s.y + dy * 0.5 - bend;
               return (
-                <g key={`e${i}`} opacity={active ? 1 : 0.12}>
+                <g key={`e${i}`} opacity={active ? 1 : 0.1}>
                   <path
                     d={`M ${s.x} ${s.y} C ${cx} ${s.y} ${cx} ${t.y} ${t.x} ${t.y}`}
                     fill="none"
                     stroke={color}
-                    strokeWidth={active ? 1.4 : 1}
-                    strokeDasharray={edge.kind === 'imports' || edge.kind === 'indirect' ? '4 4' : edge.kind === 'writes' || edge.kind === 'reads' ? '2 4' : undefined}
-                    strokeOpacity={active ? 0.5 : 0.3}
+                    strokeWidth={active ? 1.6 : 1}
+                    strokeLinecap="round"
+                    strokeDasharray={edge.kind === 'imports' || edge.kind === 'indirect' ? '5 5' : edge.kind === 'writes' || edge.kind === 'reads' ? '2 5' : undefined}
+                    strokeOpacity={active ? 0.7 : 0.35}
                     markerEnd={active ? 'url(#graphArrow)' : undefined}
+                    filter={active ? 'url(#edgeGlow)' : undefined}
+                    className={active ? 'graph-edge-active' : undefined}
                   />
                 </g>
               );
@@ -208,6 +260,8 @@ export default function GraphViewer({
               const dimmed = isDimmed(node.id);
               const isSel = selected === node.id;
               const color = kindColor(node.kind, accentFor?.(node));
+              const grad = `url(#grad-${color.replace('#', '')})`;
+              const r = node.kind === 'repo' ? 22 : node.kind === 'area' ? 18 : 14;
               return (
                 <g
                   key={node.id}
@@ -215,18 +269,18 @@ export default function GraphViewer({
                   data-id={node.id}
                   transform={`translate(${node.x},${node.y})`}
                   onClick={(e) => handleNodeClick(e, node.id)}
-                  opacity={dimmed ? 0.18 : 1}
+                  opacity={dimmed ? 0.15 : 1}
                   style={{ cursor: 'pointer' }}
                 >
                   {isSel ? (
-                    <circle r={34} fill={color} fillOpacity={0.14} stroke={color} strokeWidth={1.5} className="graph-node-halo" />
+                    <circle r={r + 6} className="graph-node-pulse" fill="none" stroke={color} strokeWidth={1.6} />
                   ) : null}
                   <circle
-                    r={node.kind === 'repo' ? 22 : node.kind === 'area' ? 18 : 14}
-                    fill={isSel ? color : 'rgba(34,38,43,0.95)'}
-                    stroke={isSel ? color : color}
-                    strokeWidth={isSel ? 2 : 1.2}
-                    className="graph-node-circle"
+                    r={r}
+                    fill={grad}
+                    stroke={color}
+                    strokeWidth={isSel ? 2.4 : 1.4}
+                    className={isSel ? 'graph-node-circle graph-node-circle-selected' : 'graph-node-bubble'}
                   />
                   <text
                     x={0}
@@ -242,9 +296,34 @@ export default function GraphViewer({
               );
             })}
           </g>
+          <rect width="100%" height="100%" fill="url(#vignette)" pointerEvents="none" />
           <defs>
-            <marker id="graphArrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L0,6 L8,3 z" fill="rgba(122,162,247,0.7)" />
+            <pattern id="dotGrid" width="26" height="26" patternUnits="userSpaceOnUse">
+              <circle cx="1.5" cy="1.5" r="1.5" fill="rgba(255,255,255,0.05)" />
+            </pattern>
+            <radialGradient id="vignette" cx="50%" cy="50%" r="78%">
+              <stop offset="68%" stopColor="rgba(0,0,0,0)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0.45)" />
+            </radialGradient>
+            {nodeColors.map((c) => {
+              const gid = `grad-${c.replace('#', '')}`;
+              return (
+                <radialGradient key={gid} id={gid} cx="32%" cy="30%" r="80%">
+                  <stop offset="0%" stopColor={shade(c, 0.55)} />
+                  <stop offset="46%" stopColor={c} />
+                  <stop offset="100%" stopColor={shade(c, -0.5)} />
+                </radialGradient>
+              );
+            })}
+            <filter id="edgeGlow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="2.6" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <marker id="graphArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,7 L7,3.5 z" fill="rgba(170,198,255,0.95)" />
             </marker>
           </defs>
         </svg>
@@ -261,11 +340,49 @@ export default function GraphViewer({
         <button title="Fit to screen" onClick={autoFit}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" /></svg>
         </button>
+        {!isControlled ? (
+          <button title="Full screen" onClick={() => setFull(!isFullscreen)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" /></svg>
+          </button>
+        ) : null}
       </div>
+    </div>
+  );
+
+  if (isFullscreen) {
+    return createPortal(
+      <div className="graph-fullscreen">
+        <button className="graph-fullscreen-close" title="Exit full screen (Esc)" onClick={() => setFull(false)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        </button>
+        <div className="graph-viewer graph-fullscreen-body">
+          {graphBody}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return (
+    <div className={`graph-viewer ${className}`} style={{ height }}>
+      {graphBody}
     </div>
   );
 }
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+}
+
+// Lighten (amt > 0) or darken (amt < 0) a hex color, amt in [-1, 1].
+function shade(hex, amt) {
+  const c = hex.replace('#', '');
+  const num = parseInt(c, 16);
+  let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  const t = amt < 0 ? 0 : 255;
+  const a = Math.abs(amt);
+  r = Math.round((t - r) * a + r);
+  g = Math.round((t - g) * a + g);
+  b = Math.round((t - b) * a + b);
+  return `rgb(${r},${g},${b})`;
 }

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import GraphViewer from '../GraphViewer';
-import { changeImpact } from '../../../data/repoIntelligence';
 
 const RISK_TONE = {
   LOW: 'is-low',
@@ -9,7 +8,7 @@ const RISK_TONE = {
   CRITICAL: 'is-critical',
 };
 
-export default function ChangeImpactView() {
+export default function ChangeImpactView({ changeImpact = { nodes: [], blastRadius: { nodes: [], edges: [] }, estimated: {} } }) {
   const [selected, setSelected] = useState(null);
 
   const selectedNode = useMemo(
@@ -18,7 +17,7 @@ export default function ChangeImpactView() {
   );
 
   const estimate = selectedNode || changeImpact.nodes[0];
-  const risk = estimate.risk || changeImpact.risk;
+  const risk = String(estimate?.risk || changeImpact.risk || 'MEDIUM').toUpperCase();
 
   return (
     <div className="intel-view">

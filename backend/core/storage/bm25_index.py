@@ -16,7 +16,7 @@ __all__ = ["BM25Index"]
 
 logger = logging.getLogger(__name__)
 
-_FTS5_SPECIAL = re.compile(r'["\'\(\)\*\:\^]')
+_FTS5_SPECIAL = re.compile(r"[^\w\s]+")
 
 
 def _safe_unlink_db(path: str) -> None:
@@ -29,6 +29,10 @@ def _safe_unlink_db(path: str) -> None:
 
 
 def _sanitise_query(query: str) -> str:
+    # FTS5 MATCH treats punctuation as query operators.  Strip everything that
+    # is not a word character or whitespace so natural-language questions
+    # (which routinely contain '?', '!', '.', commas, etc.) don't raise
+    # "fts5: syntax error near ...".
     sanitised = _FTS5_SPECIAL.sub(" ", query)
     return re.sub(r"\s{2,}", " ", sanitised).strip()
 
@@ -55,14 +59,14 @@ class BM25Index:
         await asyncio.to_thread(self._add_sync, chunks)
 
     @observe(name="bm25_search")
-    async def search(self, query: str, top_k: int) -> List[RetrievedChunk]:
+    async def search(self, query: str, top_k: int, exclude_source_ids: set[str] | None = None) -> List[RetrievedChunk]:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("BM25Index.search received an empty query")
         if top_k <= 0:
             raise ValueError(f"top_k must be a positive integer, got {top_k}")
 
         await self._ensure_initialized()
-        return await asyncio.to_thread(self._search_sync, query, top_k)
+        return await asyncio.to_thread(self._search_sync, query, top_k, exclude_source_ids)
 
     @observe(name="bm25_delete_by_source")
     async def delete_by_source_id(self, source_id: str) -> int:
@@ -269,7 +273,7 @@ class BM25Index:
             len(rows) - len(new_rows),
         )
 
-    def _search_sync(self, query: str, top_k: int) -> List[RetrievedChunk]:
+    def _search_sync(self, query: str, top_k: int, exclude_source_ids: set[str] | None = None) -> List[RetrievedChunk]:
         safe_query = _sanitise_query(query)
         if not safe_query:
             logger.warning(
@@ -291,6 +295,9 @@ class BM25Index:
 
         results: List[RetrievedChunk] = []
         for chunk_id, text, metadata_raw, source_id, score in cursor.fetchall():
+            # Scoped retrieval: drop chunks from sources we are told to exclude.
+            if exclude_source_ids and source_id and source_id in exclude_source_ids:
+                continue
             try:
                 metadata = json.loads(metadata_raw) if metadata_raw else {}
             except json.JSONDecodeError:

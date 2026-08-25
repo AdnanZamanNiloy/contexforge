@@ -1,14 +1,12 @@
-import { overviewStats } from '../../../data/repoIntelligence';
-
-export default function RepositoryStats() {
+export default function RepositoryStats({ stats = {} }) {
   const items = [
-    { label: 'Files', value: overviewStats.files },
-    { label: 'Modules', value: overviewStats.modules },
-    { label: 'Commits', value: overviewStats.commits },
-    { label: 'Contributors', value: overviewStats.contributors },
-    { label: 'Branches', value: overviewStats.branches },
-    { label: 'Pull Requests', value: overviewStats.pullRequests },
-    { label: 'Issues', value: overviewStats.issues },
+    { label: 'Files', value: stats.files },
+    { label: 'Modules', value: stats.modules },
+    { label: 'Commits', value: stats.commits },
+    { label: 'Contributors', value: stats.contributors },
+    { label: 'Branches', value: stats.branches },
+    { label: 'Pull Requests', value: stats.pullRequests },
+    { label: 'Issues', value: stats.issues },
   ];
 
   return (

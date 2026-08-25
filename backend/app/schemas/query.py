@@ -60,6 +60,13 @@ class QueryRequest(BaseModel):
         description="The question to answer.  Must be non-blank.",
         examples=["What is Reciprocal Rank Fusion?"],
     )
+    source_id: str | None = Field(
+        default=None,
+        description=(
+            "Restrict retrieval to the chunks of a single source document "
+            "(e.g. a GitHub repository). This scopes the answer to that source."
+        ),
+    )
     # FIX #2 — upper bounds prevent absurd values reaching FAISS / BM25
     top_k_retrieval: int | None = Field(
         default=None,

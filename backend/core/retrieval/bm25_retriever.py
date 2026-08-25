@@ -24,8 +24,9 @@ class BM25Retriever(Retriever):
         query: str,
         query_vector: List[float],  
         top_k: int,
+        exclude_source_ids: set[str] | None = None,
     ) -> List[RetrievedChunk]:
 
-        results = await self._index.search(query, top_k)
+        results = await self._index.search(query, top_k, exclude_source_ids)
         logger.debug("BM25Retriever: query=%r returned %d result(s).", query, len(results))
         return results

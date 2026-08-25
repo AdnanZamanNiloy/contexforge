@@ -1,120 +1,257 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { dataFlows } from '../../../data/repoIntelligence';
+import { useEffect, useMemo, useState } from 'react';
+import GraphViewer from '../GraphViewer';
+import { repositoryDataFlow } from '../../../services/api';
 
-const FLOW_KIND_ICON = {
-  input: 'arrow',
-  output: 'terminal',
-  service: 'box',
-  core: 'cog',
-  module: 'module',
-  llm: 'spark',
-  transport: 'wifi',
-  storage: 'database',
+// Detected execution flow kinds -> label + node colour. Purely data-driven.
+const KIND_META = {
+  route: { label: 'API / route', color: '#f0b36e' },
+  input: { label: 'Entry point', color: '#67e0c8' },
+  output: { label: 'Output', color: '#67e0c8' },
+  service: { label: 'Service', color: '#7aa2f7' },
+  storage: { label: 'Storage / data', color: '#67e0c8' },
+  external: { label: 'External API', color: '#f0b36e' },
+  llm: { label: 'LLM / model', color: '#c9a7ff' },
+  core: { label: 'Core pipeline', color: '#7aa2f7' },
+  transport: { label: 'Transport', color: '#f0b36e' },
+  module: { label: 'Module', color: '#6f9ff2' },
+  file: { label: 'File', color: '#8f7bf5' },
+  func: { label: 'Function', color: '#c9a7ff' },
 };
 
-function FlowIcon({ kind }) {
-  switch (kind) {
-    case 'input':
-      return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>;
-    case 'output':
-      return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9l3 3-3 3M13 15h4" /></svg>;
-    case 'llm':
-      return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z" /></svg>;
-    case 'transport':
-      return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1.4 9a16 16 0 0 1 21.2 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0" /><circle cx="12" cy="19.5" r="1" /></svg>;
-    case 'storage':
-      return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14a9 3 0 0 0 18 0V5M3 12a9 3 0 0 0 18 0" /></svg>;
-    case 'service':
-    default:
-      return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /></svg>;
-  }
+const GRAPH_DIMS = { width: 1240, height: 860 };
+
+function accentFor(node) {
+  return KIND_META[node.kind]?.color || '#8b94a5';
 }
 
-function Pipelines() {
-  const [animKey, setAnimKey] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setAnimKey((k) => k + 1), 9000);
-    return () => clearInterval(id);
-  }, []);
+// Layered left-to-right layout: depth (from entry) -> x, sibling index -> y.
+function layoutFlow(nodes, edges) {
+  if (!nodes.length) return nodes;
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const children = new Map(nodes.map((n) => [n.id, []]));
+  const hasParent = new Set();
+  edges.forEach((e) => {
+    if (byId.has(e.source) && byId.has(e.target)) {
+      children.get(e.source)?.push(e.target);
+      hasParent.add(e.target);
+    }
+  });
 
+  const entryId =
+    nodes.find((n) => n.entry)?.id ||
+    nodes.find((n) => !hasParent.has(n.id))?.id ||
+    nodes[0].id;
+
+  const depth = new Map([[entryId, 0]]);
+  const levels = new Map([[0, [entryId]]]);
+  const queue = [[entryId, 0]];
+  while (queue.length) {
+    const [cur, d] = queue.shift();
+    for (const child of children.get(cur) || []) {
+      if (!depth.has(child)) {
+        depth.set(child, d + 1);
+        if (!levels.has(d + 1)) levels.set(d + 1, []);
+        levels.get(d + 1).push(child);
+        queue.push([child, d + 1]);
+      }
+    }
+  }
+
+  const DX = 250;
+  const ROW_H = 88;
+  const positions = {};
+  levels.forEach((ids, d) => {
+    ids.forEach((id, i) => {
+      positions[id] = { x: d * DX + 40, y: i * ROW_H + 60 };
+    });
+  });
+  nodes.filter((n) => !positions[n.id]).forEach((n, i) => {
+    positions[n.id] = { x: (levels.size + 1) * DX + 40, y: (i % 12) * ROW_H + 60 };
+  });
+
+  return nodes.map((n) => ({ ...n, x: positions[n.id].x, y: positions[n.id].y }));
+}
+
+function NodeDetails({ node }) {
+  if (!node) return null;
+  const kind = KIND_META[node.kind];
+  const list = (items) =>
+    items && items.length ? items.join(', ') : '—';
   return (
-    <div className="pipe-row">
-      {(Object.values(dataFlows)).map((flow) => (
-        <div className="pipeline" key={animKey + flow.title}>
-          <div className="pipeline-title">{flow.title}</div>
-          <div className="pipeline-bodies">
-            {flow.steps.map((step, i) => (
-              <div className="pipe-segment" key={step.id}>
-                <motion.div
-                  className={`pipe-node ${step.kind}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06 }}
-                >
-                  <span className="pipe-node-icon"><FlowIcon kind={step.kind} /></span>
-                  <span className="pipe-node-label">{step.label}</span>
-                </motion.div>
-                {i < flow.steps.length - 1 ? (
-                  <div className="pipe-connector">
-                    <motion.span
-                      className="pipe-dot"
-                      animate={{ left: ['0%', '100%'] }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: 'linear', delay: i * 0.12 }}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+    <div className="flow-detail-card">
+      <div className="flow-detail-head">
+        <span className="flow-kind-dot" style={{ background: kind?.color }} />
+        <b>{node.label}</b>
+        <span className="flow-detail-kind">{kind?.label || node.kind}</span>
+      </div>
+      {node.entry ? <div className="flow-detail-badge">Entry point</div> : null}
+      <div className="flow-detail-row"><span>Path</span><code>{node.path || '—'}</code></div>
+      <div className="flow-detail-row"><span>Functions</span><code>{list(node.functions)}</code></div>
+      <div className="flow-detail-row"><span>Callers</span><code>{list(node.callers)}</code></div>
+      <div className="flow-detail-row"><span>Callees</span><code>{list(node.callees)}</code></div>
+      <div className="flow-detail-row"><span>Dependencies</span><code>{list(node.dependencies)}</code></div>
+      <div className="flow-detail-row"><span>Caller count</span><b>{node.dependents || 0}</b></div>
+      <div className="flow-detail-row"><span>Depends on</span><b>{node.deps || 0}</b></div>
+      {node.latencyMs != null ? (
+        <div className="flow-detail-row"><span>Measured latency</span><b>{node.latencyMs.toFixed(1)} ms</b></div>
+      ) : null}
     </div>
   );
 }
 
-export default function DataFlowView() {
-  const [active, setActive] = useState('both');
+function FlowGraph({ flow }) {
+  const [selected, setSelected] = useState(null);
+  const nodes = useMemo(() => layoutFlow(flow.nodes, flow.edges), [flow]);
+  const selectedNode = useMemo(
+    () => flow.nodes.find((n) => n.id === selected) || null,
+    [selected, flow],
+  );
+
+  const legend = useMemo(() => {
+    const kinds = [...new Set(flow.nodes.map((n) => n.kind))];
+    return kinds.filter((k) => KIND_META[k]).map((k) => (
+      <span key={k}>
+        <i className="legend-dot" style={{ background: KIND_META[k].color }} />
+        {KIND_META[k].label}
+      </span>
+    ));
+  }, [flow]);
+
+  return (
+    <div className="flow-graph-wrap">
+      <div className="arch-legend flow-legend">{legend}</div>
+      <GraphViewer
+        nodes={nodes}
+        edges={flow.edges}
+        dims={GRAPH_DIMS}
+        selected={selected}
+        onSelect={setSelected}
+        accentFor={accentFor}
+        className="flow-graph"
+        height={520}
+      />
+      <div className="flow-bottlenecks">
+        {flow.bottlenecks && flow.bottlenecks.length > 0 ? (
+          <>
+            <div className="fact-title">Coupling hotspots (from code analysis)</div>
+            {flow.bottlenecks.map((b) => (
+              <div className="fact-row" key={b.id}>
+                <span>{b.path || b.label}</span>
+                <b>{b.dependents} caller{b.dependents === 1 ? '' : 's'}</b>
+              </div>
+            ))}
+          </>
+        ) : null}
+      </div>
+      <NodeDetails node={selectedNode} />
+    </div>
+  );
+}
+
+export default function DataFlowView({ analysisId }) {
+  const [flows, setFlows] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading | ok | empty | error
+  const [error, setError] = useState('');
+  const [activeId, setActiveId] = useState(null);
+
+  useEffect(() => {
+    if (!analysisId) {
+      setFlows({});
+      setStatus('empty');
+      return;
+    }
+    let cancelled = false;
+    setStatus('loading');
+    setError('');
+    repositoryDataFlow(analysisId)
+      .then((data) => {
+        if (cancelled) return;
+        const flowList = data && typeof data === 'object' ? Object.values(data) : [];
+        setFlows(flowList);
+        setStatus(flowList.length ? 'ok' : 'empty');
+        setActiveId((prev) => (flowList.some((f) => f.id === prev) ? prev : flowList[0]?.id || null));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.message || 'Failed to load data flow.');
+        setFlows({});
+        setStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
+
+  const active = useMemo(
+    () => (flows || []).find((f) => f.id === activeId) || (flows || [])[0],
+    [flows, activeId],
+  );
+
+  if (status === 'loading') {
+    return (
+      <div className="intel-view">
+        <div className="intel-view-header">
+          <div><h3>Data Flow</h3><p className="intel-subtext">Directional execution flow from repository analysis</p></div>
+        </div>
+        <div className="intel-state">
+          <div className="intel-spinner" />
+          <p>Analyzing data flow…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="intel-view">
+        <div className="intel-view-header">
+          <div><h3>Data Flow</h3><p className="intel-subtext">Directional execution flow from repository analysis</p></div>
+        </div>
+        <div className="intel-state">
+          <p className="intel-error">Data flow analysis failed</p>
+          <p className="intel-subtext">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'empty' || !active) {
+    return (
+      <div className="intel-view">
+        <div className="intel-view-header">
+          <div><h3>Data Flow</h3><p className="intel-subtext">Directional execution flow from repository analysis</p></div>
+        </div>
+        <div className="intel-state">
+          <p className="intel-subtext">No executable flow detected</p>
+          <span className="intel-empty-hint">No runnable entry points (routes, CLIs, mains) with a call chain were found in this repository.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="intel-view">
       <div className="intel-view-header">
         <div>
           <h3>Data Flow</h3>
-          <p className="intel-subtext">Directional execution and ingestion pipelines</p>
-        </div>
-        <div className="flow-toggle">
-          <button className={active !== 'ingestion' ? 'active' : ''} onClick={() => setActive('query')}>Query</button>
-          <button className={active !== 'query' ? 'active' : ''} onClick={() => setActive('ingestion')}>Ingestion</button>
-          <button className={active === 'both' ? 'active' : ''} onClick={() => setActive('both')}>Both</button>
+          <p className="intel-subtext">Directional execution flow detected from repository analysis</p>
         </div>
       </div>
 
-      <div className="flow-summary">
-        <span><b>Question</b> → <b>QueryService</b> → <b>Orchestrator</b> → <b>HyDE</b> → <b>Hybrid Retrieval</b> → <b>RRF</b> → <b>Reranker</b> → <b>Prompt Builder</b> → <b>LLM</b> → <b>SSE</b> → <b>Frontend</b></span>
+      <div className="flow-tabs">
+        {(flows || []).map((f) => (
+          <button
+            key={f.id}
+            className={f.id === active?.id ? 'active' : ''}
+            onClick={() => setActiveId(f.id)}
+            title={f.entry}
+          >
+            {f.title || f.id}
+          </button>
+        ))}
       </div>
 
-      <div className="flow-canvas">
-        <Pipelines />
-      </div>
-
-      <div className="flow-notes">
-        <div className="fact-card">
-          <div className="fact-title">Query path heat</div>
-          <div className="fact-list">
-            <div className="fact-row"><span>Hybrid Retrieval</span><div className="mini-bar"><i style={{ width: '94%' }} /></div></div>
-            <div className="fact-row"><span>Reranker</span><div className="mini-bar"><i style={{ width: '72%' }} /></div></div>
-            <div className="fact-row"><span>LLM</span><div className="mini-bar"><i style={{ width: '58%' }} /></div></div>
-          </div>
-        </div>
-        <div className="fact-card">
-          <div className="fact-title">Bottlenecks</div>
-          <div className="fact-list">
-            <div className="fact-row"><span>Embedding API latency</span><b className="warn-text">8.2s avg</b></div>
-            <div className="fact-row"><span>Cross-encoder rerank</span><b className="warn-text">0.4s</b></div>
-            <div className="fact-row"><span>LLM generation</span><b className="ok-text">streamed</b></div>
-          </div>
-        </div>
-      </div>
+      <FlowGraph key={active?.id} flow={active} />
     </div>
   );
 }

@@ -183,12 +183,20 @@ class Orchestrator:
             logger.warning("ingest: chunking produced no chunks from %d document(s).", len(processed))
             return 0
 
-        embeddings = await self._embedder.embed_texts(
-            [chunk.text for chunk in chunks],
-            input_type="document",
-        )
-        await self._faiss.add(chunks, embeddings)
-        await self._bm25.add(chunks)
+        # Embedding runs after the deduplicator has already recorded these
+        # fingerprints in *_preprocess*.  If any step below fails we abandon the
+        # batch, so clear the deduplicator too — otherwise the retry would see
+        # every document as "seen" and silently index nothing.
+        try:
+            embeddings = await self._embedder.embed_texts(
+                [chunk.text for chunk in chunks],
+                input_type="document",
+            )
+            await self._faiss.add(chunks, embeddings)
+            await self._bm25.add(chunks)
+        except Exception:
+            self._deduplicator.reset()
+            raise
 
         elapsed = (time.perf_counter() - start) * 1000
         logger.info(
@@ -351,6 +359,7 @@ class Orchestrator:
         top_k_retrieval: int | None = None,
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
+        source_id: str | None = None,
     # FIX: return type now includes mean_confidence from the reranker
     ) -> tuple[List[RerankedChunk], Dict[str, float], float]:
 
@@ -402,9 +411,16 @@ class Orchestrator:
         t = time.perf_counter()
         k_retrieve = top_k_retrieval if top_k_retrieval is not None else settings.TOP_K_RETRIEVAL
         k_rerank = top_k_rerank if top_k_rerank is not None else settings.TOP_K_RERANK
+        # When the query is scoped to a single source (e.g. a repository in the
+        # Repository Intelligence chat), exclude every other source's chunks so
+        # the answer is grounded only in that repository.  The exclusion set is
+        # the store's full source list minus the target source_id.
+        exclude_source_ids = self._source_exclude_set(source_id)
         # FIX: use the (possibly HyDE-expanded) query text for the BM25 + dense
         # legs too, so expansion is consistent across the whole pipeline.
-        retrieved = await self._hybrid.retrieve(hyde_question, query_vector, k_retrieve)
+        retrieved = await self._hybrid.retrieve(
+            hyde_question, query_vector, k_retrieve, exclude_source_ids=exclude_source_ids,
+        )
         timings["retrieve_ms"] = (time.perf_counter() - t) * 1000
 
         # Reranking -----------------------------------------------------
@@ -480,6 +496,21 @@ class Orchestrator:
     # Per-chunk relevance (reranker best score) must reach this before a focus
     # boost is applied — below it the query is treated as off-topic/no-match.
     _FOCUS_RELEVANCE_GATE = 0.20
+
+    def _source_exclude_set(self, source_id: str | None) -> set[str] | None:
+        """Return source_ids to exclude so retrieval is scoped to *source_id*.
+
+        When ``source_id`` is ``None`` no filtering is applied.  Otherwise every
+        currently-indexed source except the target is excluded, so the hybrid
+        retrieval only ever returns chunks belonging to that source.
+        """
+        if not source_id:
+            return None
+        try:
+            known = self._faiss.get_source_ids()
+        except Exception:  # pragma: no cover - defensive
+            return None
+        return {sid for sid in known if sid and sid != source_id}
 
     @staticmethod
     def _resolve_hyde(use_hyde: bool | None, question: str) -> bool:
@@ -599,6 +630,7 @@ class Orchestrator:
         top_k_retrieval: int | None = None,
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
+        source_id: str | None = None,
     ) -> GenerationResult:
         """Full RAG pipeline: retrieve → generate → return with sources and confidence."""
 
@@ -608,6 +640,7 @@ class Orchestrator:
             top_k_retrieval=top_k_retrieval,
             top_k_rerank=top_k_rerank,
             use_hyde=use_hyde,
+            source_id=source_id,
         )
         # FIX: time the LLM generation so it shows up in the latency breakdown
         # (previously the biggest cost was invisible to the client).

@@ -12,6 +12,9 @@ from functools import lru_cache
 from typing import Dict
 
 from app.config.settings import Settings
+from app.repository_intelligence.analyzer import RepositoryAnalyzer
+from app.repository_intelligence.service import RepositoryIntelligenceService
+from app.repository_intelligence.storage import RepositoryStore
 from app.services.ingest_service import IngestService
 from app.services.query_service import QueryService
 from core.chunking.code_chunker import CodeChunker
@@ -203,6 +206,28 @@ def get_query_service() -> QueryService:
 
 
 # ---------------------------------------------------------------------------
+# Repository Intelligence — route -> service -> analyzer -> storage
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=1)
+def get_repository_store() -> RepositoryStore:
+    return RepositoryStore()
+
+
+@lru_cache(maxsize=1)
+def get_repository_analyzer() -> RepositoryAnalyzer:
+    return RepositoryAnalyzer()
+
+
+@lru_cache(maxsize=1)
+def get_repository_intelligence_service() -> RepositoryIntelligenceService:
+    return RepositoryIntelligenceService(
+        store=get_repository_store(),
+        analyzer=get_repository_analyzer(),
+    )
+
+
+# ---------------------------------------------------------------------------
 # FIX #4 — graceful shutdown: close all resources that hold connections
 # Called from the lifespan context manager in main.py
 # ---------------------------------------------------------------------------
@@ -233,3 +258,9 @@ async def close_all() -> None:
         logger.debug("BM25Index closed.")
     except Exception as exc:
         logger.warning("Error closing BM25Index: %s", exc)
+
+    try:
+        get_repository_store().close()
+        logger.debug("RepositoryStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing RepositoryStore: %s", exc)

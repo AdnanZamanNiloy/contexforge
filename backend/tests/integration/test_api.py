@@ -90,6 +90,43 @@ async def test_ingest_source_endpoint():
     assert response.json()["source_id"] == "source-123"
 
 
+class FailingIngestService(FakeIngestService):
+    async def ingest_source(self, request):
+        raise RuntimeError("Voyage API failed after 5 attempts")
+
+
+@pytest.mark.asyncio
+async def test_github_ingest_survives_rag_failure(monkeypatch):
+    """RAG ingest failure (e.g. embedding rate-limit) must not fail the endpoint;
+    it should still return 200 with an analysis_id."""
+    import app.dependencies as deps
+
+    class FakeRIntelligence:
+        async def start_analysis(self, repo_url, branch=None):
+            return {"analysis_id": "ri-123"}
+
+    monkeypatch.setattr(
+        deps, "get_repository_intelligence_service", lambda: FakeRIntelligence()
+    )
+    app.dependency_overrides[get_ingest_service] = lambda: FailingIngestService()
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/github/ingest",
+            json={"repo_url": "https://github.com/octocat/Hello-World"},
+        )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["chunks_indexed"] == 0
+    assert body["analysis_id"] == "ri-123"
+    assert "skipped" in body["message"]
+    assert "Repository Intelligence analysis started" in body["message"]
+
+
 @pytest.mark.asyncio
 async def test_delete_source_endpoint():
     app.dependency_overrides[get_ingest_service] = lambda: FakeIngestService()

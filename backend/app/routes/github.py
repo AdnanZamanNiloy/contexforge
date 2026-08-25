@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -72,7 +73,13 @@ async def ingest_github(
 
     logger.info("ingest_github: repo_url=%s branch=%s", request.repo_url, request.branch)
 
-    # FIX #2 — map service errors to clean HTTP responses
+    # FIX #2 — map service errors to clean HTTP responses.
+    # The RAG ingest is best-effort: a failure here (e.g. the embedding
+    # service being rate-limited) must not block the Repository Intelligence
+    # analysis, which is the primary deliverable for GitHub sources.
+    source_id: str | None = None
+    chunks_indexed = 0
+    rag_message = ""
     try:
         # FIX: the service expects an IngestRequest (source_type + source).
         # Re-map the dedicated schema to it, keeping the dedicated validation
@@ -83,19 +90,48 @@ async def ingest_github(
             metadata={"branch": request.branch} if request.branch else None,
         )
         source_id, chunks_indexed = await service.ingest_source(ingest_request)
+        rag_message = (
+            f"Successfully indexed {chunks_indexed} chunk"
+            f"{'s' if chunks_indexed != 1 else ''}."
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         )
     except RuntimeError as exc:
-        logger.error("ingest_github failed for '%s': %s", request.repo_url, exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        logger.warning(
+            "ingest_github: knowledge-base ingest failed for '%s': %s",
+            request.repo_url, exc,
+        )
+        rag_message = "Knowledge-base indexing skipped (embedding service unavailable)."
+
+    if source_id is None:
+        source_id = str(uuid.uuid4())
+
+    # Auto-trigger Repository Intelligence analysis for the ingested repo.
+    # Best-effort: analysis failures must not fail the ingest response.
+    analysis_id = None
+    try:
+        from app.dependencies import get_repository_intelligence_service
+        analysis = await get_repository_intelligence_service().start_analysis(
+            request.repo_url, branch=request.branch
+        )
+        analysis_id = analysis.get("analysis_id")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(
+            "Could not auto-start repository intelligence for %s: %s",
+            request.repo_url, exc,
         )
 
-    # FIX #5 — log completion with key metrics
-    logger.info(
-        "ingest_github complete: source_id=%s repo=%s chunks=%d",
-        source_id, request.repo_url, chunks_indexed,
+    message = rag_message
+    if analysis_id:
+        message += " Repository Intelligence analysis started."
+    else:
+        message += " Repository Intelligence analysis was not started."
+
+    return IngestResponse(
+        source_id=source_id,
+        chunks_indexed=chunks_indexed,
+        analysis_id=analysis_id,
+        message=message,
     )
-    return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed)

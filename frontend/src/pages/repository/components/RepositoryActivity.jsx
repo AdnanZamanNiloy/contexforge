@@ -1,5 +1,3 @@
-import { recentActivity } from '../../../data/repoIntelligence';
-
 function timeAgo(iso) {
   try {
     const d = new Date(iso);
@@ -26,12 +24,12 @@ function kindIcon(kind) {
   return null;
 }
 
-export default function RepositoryActivity({ onViewHistory }) {
+export default function RepositoryActivity({ activity = [], onViewHistory }) {
   return (
     <section className="sidebar-section">
       <div className="sidebar-section-title">Recent Activity</div>
       <div className="activity-list">
-        {recentActivity.map((a) => (
+        {activity.map((a) => (
           <div className="activity-row" key={a.id}>
             <span className="activity-icon">{kindIcon(a.kind)}</span>
             <div className="activity-body">
