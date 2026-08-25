@@ -15,5 +15,6 @@ class BaseLoader(ABC):
         source: str | bytes,
         source_id: str,
         filename: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> List[Document]:
         raise NotImplementedError

@@ -50,7 +50,7 @@ async def ingest_source(
 ) -> IngestResponse:
     """Ingest a remote source (web URL or GitHub repo) by reference.
     """
-    logger.info("ingest_source: source_url=%s", getattr(request, "source_url", "?"))
+    logger.info("ingest_source: source_type=%s source=%s", request.source_type, request.source)
     try:
         source_id, chunks_indexed = await service.ingest_source(request)
     except ValueError as exc:

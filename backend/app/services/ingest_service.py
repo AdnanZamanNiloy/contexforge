@@ -58,7 +58,7 @@ class IngestService:
         )
 
         try:
-            documents = await loader.load(request.source, source_id)
+            documents = await loader.load(request.source, source_id, metadata=request.metadata)
         except Exception as exc:
             logger.error(
                 "ingest_source: loader failed for source_id=%s: %s", source_id, exc

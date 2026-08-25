@@ -22,6 +22,7 @@ async def test_reranker_uses_scores(monkeypatch) -> None:
         RetrievedChunk(chunk=Chunk(chunk_id="c1", text="short", metadata={}), score=0.1),
         RetrievedChunk(chunk=Chunk(chunk_id="c2", text="much longer", metadata={}), score=0.2),
     ]
-    results = await reranker.rerank("query", candidates, top_k=1)
+    results, mean_confidence = await reranker.rerank("query", candidates, top_k=1)
     assert results[0].chunk.chunk_id == "c2"
     assert results[0].rank == 1
+    assert mean_confidence > 0

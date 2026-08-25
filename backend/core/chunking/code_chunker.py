@@ -29,18 +29,26 @@ class CodeChunker:
         except SyntaxError:
             return self._fallback.chunk_documents([doc])
 
+        # ast.walk yields in BFS order; sort by line number so chunks are
+        # emitted in source order (deterministic + matches file layout).
+        symbol_nodes = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        ]
+        symbol_nodes.sort(key=lambda node: node.lineno)
+
         chunks: List[Chunk] = []
         index = 0
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                segment = ast.get_source_segment(doc.text, node)
-                if not segment:
-                    continue
-                name = getattr(node, "name", "")
-                metadata = {**doc.metadata, "symbol": name}
-                chunk_id = f"{doc.document_id}:{index}"
-                chunks.append(Chunk(chunk_id=chunk_id, text=segment, metadata=metadata, source_id=doc.document_id))
-                index += 1
+        for node in symbol_nodes:
+            segment = ast.get_source_segment(doc.text, node)
+            if not segment:
+                continue
+            name = getattr(node, "name", "")
+            metadata = {**doc.metadata, "symbol": name}
+            chunk_id = f"{doc.document_id}:{index}"
+            chunks.append(Chunk(chunk_id=chunk_id, text=segment, metadata=metadata, source_id=metadata.get("source_id") or doc.document_id))
+            index += 1
 
         if not chunks:
             return self._fallback.chunk_documents([doc])

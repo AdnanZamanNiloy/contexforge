@@ -9,7 +9,7 @@ from observability.tracer import observe
 
 class TextLoader(BaseLoader):
     @observe(name="load_text")
-    async def load(self, source: str | bytes, source_id: str) -> List[Document]:
+    async def load(self, source: str | bytes, source_id: str, filename: str | None = None, metadata: dict | None = None) -> List[Document]:
         if isinstance(source, bytes):
             text = source.decode("utf-8", errors="ignore")
         else:

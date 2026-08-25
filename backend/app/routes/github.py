@@ -12,7 +12,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import get_ingest_service
-from app.schemas.ingest import IngestResponse
+from app.schemas.ingest import IngestRequest, IngestResponse
 from app.schemas.github import GithubIngestRequest
 from app.services.ingest_service import IngestService
 
@@ -74,7 +74,15 @@ async def ingest_github(
 
     # FIX #2 — map service errors to clean HTTP responses
     try:
-        source_id, chunks_indexed = await service.ingest_source(request)
+        # FIX: the service expects an IngestRequest (source_type + source).
+        # Re-map the dedicated schema to it, keeping the dedicated validation
+        # above (which rejects non-canonical GitHub URLs before this point).
+        ingest_request = IngestRequest(
+            source_type="github",
+            source=request.repo_url,
+            metadata={"branch": request.branch} if request.branch else None,
+        )
+        source_id, chunks_indexed = await service.ingest_source(ingest_request)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)

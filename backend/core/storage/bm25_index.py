@@ -184,7 +184,9 @@ class BM25Index:
             self._conn.execute(
                 "DELETE FROM chunks WHERE source_id = ?", (source_id,)
             )
-            self._conn.execute("VACUUM")
+        # VACUUM must run outside the transaction; SQLite rejects it from
+        # within a transaction ("cannot VACUUM from within a transaction").
+        self._conn.execute("VACUUM")
 
         logger.info(
             "delete_by_source_id: deleted %d chunk(s) for source_id=%s, VACUUM complete.",
@@ -216,6 +218,12 @@ class BM25Index:
 
         # Also delete the DB file so nothing persists across restarts
         self.close()
+
+        # FIX #8 — `close()` nulls the connection but leaves _initialized=True;
+        # clear the flag so the next operation re-initialises a fresh DB instead
+        # of crashing on a None connection.
+        self._initialized = False
+
         _safe_unlink_db(str(self._db_path))
         _safe_unlink_db(str(self._db_path) + "-wal")
         _safe_unlink_db(str(self._db_path) + "-shm")

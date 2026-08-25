@@ -201,6 +201,13 @@ async def close_all() -> None:
     - BM25Index       (sqlite3.Connection)
     """
     logger.info("Shutting down ContextForge — releasing resources.")
+
+    try:
+        await get_llm().aclose()
+        logger.debug("LLM clients closed.")
+    except Exception as exc:
+        logger.warning("Error closing LLM clients: %s", exc)
+
     try:
         await get_embedder().aclose()
         logger.debug("VoyageEmbedder closed.")

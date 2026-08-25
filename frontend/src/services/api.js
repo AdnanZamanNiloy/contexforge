@@ -111,101 +111,144 @@ export async function queryAnswer(payload) {
   });
 }
 
-export async function streamQuery(payload, handlers = {}) {
-  const response = await fetch(buildUrl('/query/stream'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-    signal: handlers.signal,
-  });
+const STREAM_IDLE_TIMEOUT_MS = 30000;
 
-  if (!response.ok || !response.body) {
-    throw new Error('Streaming request failed to start');
+export async function streamQuery(payload, handlers = {}) {
+  const controller = new AbortController();
+  const externalSignal = handlers.signal;
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+  let idleTimer = null;
+  let timedOut = false;
+  const resetIdle = () => {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+    }
+    idleTimer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, STREAM_IDLE_TIMEOUT_MS);
+  };
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) {
-      break;
+  try {
+    const response = await fetch(buildUrl('/query/stream'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    resetIdle();
+
+    if (!response.ok || !response.body) {
+      throw new Error('Streaming request failed to start');
     }
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    for (const line of lines) {
-      const cleaned = line.replace(/\r$/, '');
-      if (!cleaned.startsWith('data:')) {
-        continue;
-      }
-      let data = cleaned.slice(5);
-      if (data.startsWith(' ')) {
-        data = data.slice(1);
-      }
-      if (!data) {
-        continue;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
       }
 
-      if (data.startsWith('[SOURCES]')) {
-        const json = data.replace('[SOURCES]', '').trim();
-        if (handlers.onSources) {
-          try {
-            handlers.onSources(JSON.parse(json));
-          } catch {
-            handlers.onSources([]);
+      resetIdle();
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const cleaned = line.replace(/\r$/, '');
+        if (!cleaned.startsWith('data:')) {
+          continue;
+        }
+        let data = cleaned.slice(5);
+        if (data.startsWith(' ')) {
+          data = data.slice(1);
+        }
+        if (!data) {
+          continue;
+        }
+
+        if (data.startsWith('[SOURCES]')) {
+          const json = data.replace('[SOURCES]', '').trim();
+          if (handlers.onSources) {
+            try {
+              handlers.onSources(JSON.parse(json));
+            } catch {
+              handlers.onSources([]);
+            }
           }
+          continue;
         }
-        continue;
-      }
 
-      if (data.startsWith('[LATENCY]')) {
-        const json = data.replace('[LATENCY]', '').trim();
-        if (handlers.onLatency) {
-          try {
-            handlers.onLatency(JSON.parse(json));
-          } catch {
-            handlers.onLatency({});
+        if (data.startsWith('[LATENCY]')) {
+          const json = data.replace('[LATENCY]', '').trim();
+          if (handlers.onLatency) {
+            try {
+              handlers.onLatency(JSON.parse(json));
+            } catch {
+              handlers.onLatency({});
+            }
           }
+          continue;
         }
-        continue;
-      }
 
-      if (data.startsWith('[CONFIDENCE]')) {
-        const json = data.replace('[CONFIDENCE]', '').trim();
-        if (handlers.onConfidence) {
-          try {
-            handlers.onConfidence(JSON.parse(json));
-          } catch {
-            handlers.onConfidence(null);
+        if (data.startsWith('[CONFIDENCE]')) {
+          const json = data.replace('[CONFIDENCE]', '').trim();
+          if (handlers.onConfidence) {
+            try {
+              handlers.onConfidence(JSON.parse(json));
+            } catch {
+              handlers.onConfidence(null);
+            }
           }
+          continue;
         }
-        continue;
-      }
 
-      if (data.startsWith('[ERROR]')) {
-        const message = data.replace('[ERROR]', '').trim();
-        if (handlers.onError) {
-          handlers.onError(message || 'Streaming error');
+        if (data.startsWith('[ERROR]')) {
+          const message = data.replace('[ERROR]', '').trim();
+          if (handlers.onError) {
+            handlers.onError(message || 'Streaming error');
+          }
+          continue;
         }
-        continue;
-      }
 
-      if (data.startsWith('[DONE]')) {
-        if (handlers.onDone) {
-          handlers.onDone();
+        if (data.startsWith('[DONE]')) {
+          if (handlers.onDone) {
+            handlers.onDone();
+          }
+          continue;
         }
-        continue;
-      }
 
-      if (handlers.onToken) {
-        handlers.onToken(data);
+        if (handlers.onToken) {
+          handlers.onToken(data);
+        }
       }
+    }
+  } catch (error) {
+    if (timedOut) {
+      throw new Error('Backend stopped responding — please try again.');
+    }
+    throw error;
+  } finally {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+    }
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
     }
   }
 }

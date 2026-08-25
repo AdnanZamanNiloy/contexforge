@@ -19,6 +19,7 @@ class DocxLoader(BaseLoader):
         source: str | bytes,
         source_id: str,
         filename: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> List[Document]:
         text = await asyncio.to_thread(self._extract_text, source)
         return [

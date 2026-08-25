@@ -10,6 +10,7 @@ Fix #6 — this service no longer emits `data: ...\\n\\n` SSE strings.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, AsyncIterator
 
 from app.schemas.query import QueryRequest
@@ -88,17 +89,33 @@ class QueryService:
             use_hyde=request.use_hyde,
         )
 
-        async for token in self._orchestrator.stream_answer(
-            request.question,
-            [item.chunk for item in reranked],
-        ):
-            yield {"type": "token", "token": token}
+        # FIX: time the LLM stream so generation latency is visible in the
+        # breakdown (time-to-first-token + total generation time).
+        gen_start = time.perf_counter()
+        first_token_ms: float | None = None
+        try:
+            async for token in self._orchestrator.stream_answer(
+                request.question,
+                [item.chunk for item in reranked],
+            ):
+                if first_token_ms is None:
+                    first_token_ms = (time.perf_counter() - gen_start) * 1000
+                yield {"type": "token", "token": token}
+        finally:
+            timings["generate_ms"] = (time.perf_counter() - gen_start) * 1000
+            if first_token_ms is not None:
+                timings["first_token_ms"] = first_token_ms
 
         # Cache sources so get_last_sources() can return them after streaming.
         self._last_sources = list(reranked)
 
         # FIX: build ConfidenceMetrics and attach to the done payload
-        confidence_metrics = self._orchestrator._build_confidence(reranked, mean_confidence)
+        confidence_metrics =             self._orchestrator._build_confidence(reranked, mean_confidence)
+
+        # FIX: surface a total now that generate_ms is populated (log only; the
+        # stream already emitted the timing dict above).
+        total = sum(v for v in timings.values() if isinstance(v, (int, float)))
+        timings.setdefault("total_ms", total)
 
         yield {
             "type": "done",

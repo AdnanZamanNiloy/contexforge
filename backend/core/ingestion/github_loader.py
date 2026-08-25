@@ -23,13 +23,16 @@ class GitHubLoader(BaseLoader):
         source: str | bytes,
         source_id: str,
         filename: str | None = None,
+        metadata: dict | None = None,
     ) -> List[Document]:
         if not isinstance(source, str):
             raise ValueError("GitHubLoader expects a repo URL string")
         owner, repo = self._parse_repo(source)
+        # FIX — honour the caller-supplied branch; fall back to the repo default.
+        requested_branch = (metadata or {}).get("branch")
         async with httpx.AsyncClient(timeout=30.0) as client:
             repo_data = await self._fetch_repo(client, owner, repo)
-            branch = repo_data.get("default_branch", "main")
+            branch = requested_branch or repo_data.get("default_branch", "main")
             tree = await self._fetch_tree(client, owner, repo, branch)
             file_paths = self._filter_paths(tree)
             documents: List[Document] = []

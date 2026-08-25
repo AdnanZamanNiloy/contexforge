@@ -109,7 +109,11 @@ class TextChunker:
                     chunk_id=f"{doc.document_id}:{index}",
                     text=text,
                     metadata=metadata,
-                    source_id=doc.document_id,
+                    # FIX #9 — prefer metadata["source_id"] (the source UUID) so
+                    # sources whose document_id differs (e.g. GitHub files named
+                    # "{uuid}:path") can be deleted by source_id.  All loaders set
+                    # metadata["source_id"] = the ingestion source UUID.
+                    source_id=metadata.get("source_id") or doc.document_id,
                 )
             )
         return chunks

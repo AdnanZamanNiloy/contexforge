@@ -18,9 +18,27 @@ class FakeIngestService:
         return 5
 
 
+from core.types import Chunk, GenerationResult, RerankedChunk
+
+
 class FakeQueryService:
     async def answer(self, request):
-        return "hello world"
+        return GenerationResult(
+            answer="hello world",
+            sources=[
+                RerankedChunk(
+                    chunk=Chunk(
+                        chunk_id="c1",
+                        text="sample context",
+                        metadata={"source_id": "s1"},
+                        source_id="s1",
+                    ),
+                    score=0.8,
+                    rank=1,
+                )
+            ],
+            latency_ms={"total": 1.0},
+        )
 
     async def stream_answer(self, request):
         yield "data: {\"type\": \"token\", \"token\": \"hi\"}\n\n"

@@ -2,6 +2,8 @@ from __future__ import annotations
 import logging
 from typing import AsyncIterator
 
+import httpx
+
 from core.generation.base_llm import BaseLLM
 from core.interfaces.llm import LLM
 
@@ -11,9 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 _RETRYABLE = (
-    OSError,           # network-level failures
-    TimeoutError,      # request timeouts
-    RuntimeError,      # API wrapper errors (httpx, google-generativeai, groq)
+    OSError,            # network-level failures
+    TimeoutError,       # request timeouts
+    RuntimeError,       # API wrapper errors (httpx, google-generativeai, groq)
+    # FIX: httpx errors are what the primary (Gemini) actually re-raises once its
+    # own internal retries are exhausted. Without these the fallback never fires,
+    # so a flaky primary stalls the whole request instead of failing over.
+    httpx.HTTPStatusError,
+    httpx.TransportError,
 )
 
 
@@ -25,6 +32,13 @@ class FallbackLLM(BaseLLM):
         )
         self._primary = primary
         self._fallback = fallback
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP clients of both LLM backends."""
+        for llm in (self._primary, self._fallback):
+            close = getattr(llm, "aclose", None)
+            if close is not None:
+                await close()
 
 
     async def _generate_impl(

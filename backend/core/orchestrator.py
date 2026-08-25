@@ -410,10 +410,15 @@ class Orchestrator:
             top_k_rerank=top_k_rerank,
             use_hyde=use_hyde,
         )
+        # FIX: time the LLM generation so it shows up in the latency breakdown
+        # (previously the biggest cost was invisible to the client).
+        t = time.perf_counter()
         answer_text = await self.generate_answer(
             question,
             [item.chunk for item in reranked],
         )
+        timings["generate_ms"] = (time.perf_counter() - t) * 1000
+        timings["total_ms"] = sum(v for v in timings.values() if isinstance(v, (int, float)))
         # FIX: build ConfidenceMetrics and attach to GenerationResult
         confidence = self._build_confidence(reranked, mean_confidence)
         return GenerationResult(

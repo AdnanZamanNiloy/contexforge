@@ -40,6 +40,7 @@ class WebLoader(BaseLoader):
         source: str | bytes,
         source_id: str,
         filename: str | None = None,
+        metadata: dict | None = None,
     ) -> List[Document]:
     
         if not isinstance(source, str):

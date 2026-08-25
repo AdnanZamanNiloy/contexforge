@@ -73,7 +73,7 @@ class VoyageEmbedder(Embedder):
         await self._ensure_cache_loaded()
 
         # Partition texts into cache hits and misses
-        result: List[List[float]] = [[]] * len(texts)
+        result: List[List[float]] = [[] for _ in range(len(texts))]
         missing_texts: List[str] = []
         missing_indices: List[int] = []
 

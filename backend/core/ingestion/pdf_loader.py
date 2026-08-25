@@ -20,6 +20,7 @@ class PDFLoader(BaseLoader):
         source: str | bytes,
         source_id: str,
         filename: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> List[Document]:
         text, metadata = await asyncio.to_thread(self._extract_text, source)
         metadata.update({
