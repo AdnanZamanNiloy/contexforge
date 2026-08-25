@@ -90,7 +90,7 @@ const TYPE_LABEL = {
   text: 'TXT',
 };
 
-export default function Home() {
+export default function Home({ onOpenRepositoryIntelligence }) {
   const [sources, setSources] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -265,6 +265,8 @@ export default function Home() {
           meta: response.message,
         });
         pushNotification('success', response.message);
+        setIsModalOpen(false);
+        onOpenRepositoryIntelligence?.();
       } catch (repoError) {
         updateSource(tempId, { status: 'failed' });
         pushNotification('error', repoError.message || 'GitHub ingest failed');
@@ -272,7 +274,7 @@ export default function Home() {
         setIsAddingRepo(false);
       }
     },
-    [addSource, pushNotification, updateSource],
+    [addSource, pushNotification, updateSource, onOpenRepositoryIntelligence],
   );
 
   const handleTextIngest = useCallback(
@@ -376,6 +378,16 @@ export default function Home() {
             </svg>
             <span>Add Source</span>
           </button>
+
+          {onOpenRepositoryIntelligence ? (
+            <button className="repo-intel-nav" onClick={onOpenRepositoryIntelligence}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
+              </svg>
+              <span>Repository Intelligence</span>
+              <span className="repo-intel-arrow">→</span>
+            </button>
+          ) : null}
 
           <section className="kb-section">
             <div className="section-title">Knowledge Base</div>
