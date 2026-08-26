@@ -8,6 +8,7 @@ import RepositoryHealth from './components/RepositoryHealth';
 import RepositoryActivity from './components/RepositoryActivity';
 import RepositoryAIInput from './components/RepositoryAIInput';
 import RepositoryAnswerPanel from './components/RepositoryAnswerPanel';
+import RepositoryAnalysisLoading from './components/RepositoryAnalysisLoading';
 
 import ArchitectureView from './views/ArchitectureView';
 import DependencyView from './views/DependencyView';
@@ -112,21 +113,30 @@ export default function RepositoryIntelligencePage() {
   const ActiveView = TABS[activeTab] || ArchitectureView;
 
   if (loading && !analysis) {
+    let repoName = status?.name || '';
+    if (!repoName && repoUrl) {
+      try {
+        repoName = decodeURIComponent(repoUrl).replace('https://github.com/', '');
+      } catch {
+        repoName = repoUrl;
+      }
+    }
     return (
-      <main className="app-shell intel-shell">
-        <div className="intel-loading">
-          <div className="intel-spinner" />
-          <p>{status ? `Analyzing repository… ${status.progress || 0}%` : 'Loading repository analysis…'}</p>
-        </div>
-      </main>
+      <RepositoryAnalysisLoading
+        progress={status?.progress || 0}
+        status={status?.status || 'queued'}
+        name={repoName}
+      />
     );
   }
 
   if (error) {
     return (
       <main className="app-shell intel-shell">
-        <div className="intel-loading">
-          <p className="intel-error">{error}</p>
+        <div className="intel-loading intel-analyzing">
+          <div className="intel-analyzing-card">
+            <p className="intel-error">{error}</p>
+          </div>
         </div>
       </main>
     );
@@ -137,7 +147,7 @@ export default function RepositoryIntelligencePage() {
 
   return (
     <main className="app-shell intel-shell">
-      <div className="app-layout intel-layout">
+      <div className="app-layout intel-layout intel-enter">
         {/* Left sidebar — preserved ContextForge chrome */}
         <aside className="sidebar-shell intel-sidebar">
           <div className="brand">
@@ -196,8 +206,8 @@ export default function RepositoryIntelligencePage() {
         </aside>
 
         {/* Center workspace */}
-        <section className="main-shell intel-main">
-          <div className="intel-card">
+        <section className="main-shell intel-main intel-reveal-1">
+          <div className="intel-card intel-reveal-inner">
             <RepositoryHeader repo={repo} onSync={reanalyze} />
             <RepositoryTabs active={activeTab} onChange={setActiveTab} />
             <div className="intel-viewport">
@@ -228,7 +238,7 @@ export default function RepositoryIntelligencePage() {
         </section>
 
         {/* Right sidebar — repository-level information only */}
-        <aside className="intel-right">
+        <aside className="intel-right intel-reveal-2">
           <RepositoryStats stats={repo} />
           <RepositoryHealth health={analysis.health || {}} rankedModules={analysis.rankedModules || []} />
           <RepositoryActivity activity={analysis.activity || []} onViewHistory={() => setActiveTab('git-history')} />

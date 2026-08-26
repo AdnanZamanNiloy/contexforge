@@ -2165,6 +2165,218 @@ body {
 }
 @keyframes intelSpin { to { transform: rotate(360deg); } }
 
+/* ---------- Route crossfade (chat view <-> Repository Intelligence) ---------- */
+.page-transition {
+  animation: pageTransition 0.36s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+  min-height: 100vh;
+}
+@keyframes pageTransition {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrance for the fully-loaded Repository Intelligence layout. The columns
+   rise in with a slight stagger so the destination reads as arriving, not
+   snapping into place. */
+.intel-layout.intel-enter { animation: intelEnter 0.42s cubic-bezier(0.32, 0.72, 0.24, 1) both; }
+@keyframes intelEnter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.intel-reveal-1 { animation: revealUp 0.5s cubic-bezier(0.32, 0.72, 0.24, 1) 0.05s both; }
+.intel-reveal-2 { animation: revealUp 0.5s cubic-bezier(0.32, 0.72, 0.24, 1) 0.14s both; }
+.intel-reveal-inner { animation: revealUp 0.55s cubic-bezier(0.32, 0.72, 0.24, 1) 0.10s both; }
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Repository analysis loading view ---------- */
+.intel-analyzing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 32px 20px;
+}
+.intel-analyzing-card {
+  width: min(560px, 100%);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: revealUp 0.4s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+}
+.intel-analyzing-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.intel-analyzing-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: linear-gradient(135deg, rgba(122, 162, 247, 0.16), rgba(154, 168, 255, 0.08));
+  border: 1px solid rgba(122, 162, 247, 0.24);
+}
+.intel-analyzing-identity { min-width: 0; flex: 1; }
+.intel-analyzing-title { font-size: 1.05rem; font-weight: 600; color: var(--text); letter-spacing: 0.1px; }
+.intel-analyzing-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intel-analyzing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #d3e3ff;
+  background: rgba(122, 162, 247, 0.1);
+  border: 1px solid rgba(122, 162, 247, 0.26);
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+.intel-analyzing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: intelPulse 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(122, 162, 247, 0.8);
+}
+@keyframes intelPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.8); }
+}
+.intel-analyzing-progress { display: flex; align-items: center; gap: 12px; }
+.intel-analyzing-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.intel-analyzing-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 12px rgba(122, 162, 247, 0.5);
+  transition: width 0.3s ease;
+}
+.intel-analyzing-percent {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.intel-analyzing-stage { display: flex; flex-direction: column; gap: 3px; }
+.intel-analyzing-stage-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.intel-analyzing-stage-detail { font-size: 0.8rem; color: var(--muted); }
+.intel-analyzing-meta { margin-top: 8px; }
+.intel-analyzing-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.intel-analyzing-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: intelPulse 1.4s ease-in-out infinite;
+}
+.intel-steps {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--stroke);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 18px;
+}
+.intel-step { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.intel-step-index {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--stroke);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: transparent;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+.intel-step-label { font-size: 0.78rem; color: var(--muted); transition: color 0.25s ease; }
+.intel-step.is-active .intel-step-index {
+  border-color: var(--accent);
+  background: rgba(122, 162, 247, 0.14);
+  animation: intelPulse 1.4s ease-in-out infinite;
+}
+.intel-step.is-active .intel-step-label { color: var(--text); }
+.intel-step.is-done .intel-step-index { border-color: rgba(103, 224, 200, 0.5); background: rgba(103, 224, 200, 0.12); }
+.intel-step.is-done .intel-step-label { color: var(--muted); }
+
+/* Skeleton preview of the destination layout during analysis. */
+.intel-skeleton {
+  width: min(560px, 100%);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: revealUp 0.5s cubic-bezier(0.32, 0.72, 0.24, 1) 0.18s both;
+}
+.intel-skeleton-header { display: flex; justify-content: space-between; align-items: center; }
+.intel-skeleton-tabs { display: flex; gap: 8px; }
+.intel-skeleton-body { display: flex; flex-direction: column; gap: 12px; }
+.skeleton-block {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(100deg, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 70%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+}
+.skeleton-pill {
+  width: 68px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(100deg, rgba(255,255,255,0.04) 30%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 70%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s ease-in-out infinite;
+}
+.w-40 { width: 40%; max-width: 180px; height: 18px; }
+.w-24 { width: 24%; max-width: 110px; height: 18px; }
+.h-10 { height: 40px; }
+.h-40 { height: 160px; }
+.h-32 { height: 128px; }
+.w-full { width: 100%; }
+.w-3\/4 { width: 75%; }
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .intel-state {
   border: 1px solid var(--stroke);
   border-radius: 12px;
@@ -2827,4 +3039,19 @@ body {
   .git-grid { grid-template-columns: 1fr; }
   .ownership-grid { grid-template-columns: 1fr; }
   .dep-panel-strip { grid-template-columns: 1fr; }
+  .intel-steps { grid-template-columns: 1fr; }
+}
+
+/* Respect users who prefer reduced motion — keep transitions but drop movement. */
+@media (prefers-reduced-motion: reduce) {
+  .page-transition,
+  .intel-layout.intel-enter,
+  .intel-reveal-1,
+  .intel-reveal-2,
+  .intel-reveal-inner,
+  .intel-analyzing-card,
+  .intel-skeleton {
+    animation: none;
+  }
+  .intel-analyzing-fill { transition: none; }
 }
