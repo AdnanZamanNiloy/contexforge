@@ -35,6 +35,7 @@ from core.ingestion.github_loader import GitHubLoader
 from core.ingestion.pdf_loader import PDFLoader
 from core.ingestion.text_loader import TextLoader
 from core.ingestion.web_loader import WebLoader
+from core.ingestion.youtube_loader import YouTubeLoader
 from core.orchestrator import Orchestrator
 from core.processing.deduplicator import Deduplicator
 from core.retrieval.bm25_retriever import BM25Retriever
@@ -182,11 +183,12 @@ def get_orchestrator() -> Orchestrator:
 def get_loaders() -> Dict[str, BaseLoader]:
     # FIX #1 — typed as Dict[str, BaseLoader] for safety
     return {
-        "pdf":    PDFLoader(),
-        "docx":   DocxLoader(),
-        "web":    WebLoader(),
-        "github": GitHubLoader(),
-        "text":   TextLoader(),
+        "pdf":     PDFLoader(),
+        "docx":    DocxLoader(),
+        "web":     WebLoader(),
+        "github":  GitHubLoader(),
+        "text":    TextLoader(),
+        "youtube": YouTubeLoader(),
     }
 
 

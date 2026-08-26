@@ -32,6 +32,13 @@ function SourceIcon({ type }) {
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
           </svg>
         );
+      case 'youtube':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
+            <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
+          </svg>
+        );
       default:
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -49,6 +56,7 @@ function SourceIcon({ type }) {
       case 'pdf': return 'source-item-icon is-pdf';
       case 'web': return 'source-item-icon is-web';
       case 'github': return 'source-item-icon is-github';
+      case 'youtube': return 'source-item-icon is-youtube';
       default: return 'source-item-icon';
     }
   })();
@@ -72,6 +80,8 @@ function formatSourceMeta(source) {
       return `Web • ${source.date ? new Date(source.date).toLocaleDateString('en-GB') : ''}`;
     case 'github':
       return `GitHub Repo • ${source.chunks || 0} files`;
+    case 'youtube':
+      return `YouTube • ${source.author || 'Video'}`;
     default:
       return `${source.type.toUpperCase()} • ${source.chunks || 0} items`;
   }
@@ -89,6 +99,7 @@ const TYPE_LABEL = {
   web: 'WEB',
   github: 'GIT',
   text: 'TXT',
+  youtube: 'YT',
 };
 
 export default function Home() {
@@ -99,6 +110,7 @@ export default function Home() {
   const [isAddingRepo, setIsAddingRepo] = useState(false);
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [isAddingText, setIsAddingText] = useState(false);
+  const [isAddingYoutube, setIsAddingYoutube] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const confirmResolveRef = useRef(null);
@@ -317,6 +329,36 @@ export default function Home() {
     [addSource, pushNotification, updateSource],
   );
 
+  const handleYoutubeIngest = useCallback(
+    async (url) => {
+      const tempId = `youtube-${Date.now()}`;
+      addSource({
+        id: tempId,
+        type: 'youtube',
+        title: url.replace(/^https?:\/\//, ''),
+        status: 'processing',
+        chunks: 0,
+      });
+      setIsAddingYoutube(true);
+      try {
+        const response = await ingestSource({ source_type: 'youtube', source: url });
+        updateSource(tempId, {
+          id: response.source_id,
+          status: 'indexed',
+          chunks: response.chunks_indexed,
+          meta: response.message,
+        });
+        pushNotification('success', response.message);
+      } catch (ingestError) {
+        updateSource(tempId, { status: 'failed' });
+        pushNotification('error', ingestError.message || 'YouTube ingest failed');
+      } finally {
+        setIsAddingYoutube(false);
+      }
+    },
+    [addSource, pushNotification, updateSource],
+  );
+
   const handleFileDrop = useCallback(
     (event) => {
       event.preventDefault();
@@ -339,7 +381,7 @@ export default function Home() {
     [handleFileUpload],
   );
 
-  const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText;
+  const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText || isAddingYoutube;
 
   const handleClearKB = useCallback(async () => {
     const confirmed = await showConfirm('Are you sure you want to clear the entire knowledge base? This cannot be undone.');
@@ -361,6 +403,7 @@ export default function Home() {
   const pdfCount = sources.filter((s) => s.type === 'pdf').length;
   const webCount = sources.filter((s) => s.type === 'web').length;
   const githubCount = sources.filter((s) => s.type === 'github').length;
+  const youtubeCount = sources.filter((s) => s.type === 'youtube').length;
 
   return (
     <main className="app-shell">
@@ -415,6 +458,11 @@ export default function Home() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
                 <span>GitHub Repos</span>
                 <span className="kb-count">{githubCount}</span>
+              </div>
+              <div className="kb-row">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" /><path d="M10 9l6 3-6 3z" fill="#FFFFFF" /></svg>
+                <span>YouTube Videos</span>
+                <span className="kb-count">{youtubeCount}</span>
               </div>
             </div>
           </section>
@@ -584,6 +632,37 @@ export default function Home() {
                   <input name="url" placeholder="https://example.com" className="text-input" />
                   <button className="primary" type="submit" disabled={isAddingUrl}>
                     {isAddingUrl ? 'Ingesting...' : 'Ingest Website'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="option-card">
+                  <div className="option-head">
+                    <div className="option-icon">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
+                        <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
+                      </svg>
+                    </div>
+                  <div>
+                    <h3>YouTube Transcript</h3>
+                    <p>Index a video's transcript.</p>
+                  </div>
+                </div>
+                <form
+                  className="inline-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const url = event.currentTarget.elements.url?.value || '';
+                    if (url.trim()) {
+                      handleYoutubeIngest(url.trim());
+                      event.currentTarget.reset();
+                    }
+                  }}
+                >
+                  <input name="url" placeholder="https://www.youtube.com/watch?v=..." className="text-input" />
+                  <button className="primary" type="submit" disabled={isAddingYoutube}>
+                    {isAddingYoutube ? 'Ingesting...' : 'Ingest Transcript'}
                   </button>
                 </form>
               </div>

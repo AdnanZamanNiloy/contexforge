@@ -23,7 +23,7 @@ class IngestRequest(BaseModel):
         metadata:    Optional caller-supplied metadata attached to all chunks.
     """
 
-    source_type: Literal["pdf", "docx", "web", "github", "text"]
+    source_type: Literal["pdf", "docx", "web", "github", "text", "youtube"]
     source: str = Field(
         ...,
         min_length=1,
@@ -46,6 +46,14 @@ class IngestRequest(BaseModel):
             if not any(src.startswith(scheme) for scheme in _URL_SCHEMES):
                 raise ValueError(
                     f"source_type='web' requires an http/https URL, got: '{src}'"
+                )
+
+        if st == "youtube":
+            # Defer to the loader's own URL parser for a precise error message;
+            # here we only require an http(s) URL so the request is well-formed.
+            if not any(src.startswith(scheme) for scheme in _URL_SCHEMES):
+                raise ValueError(
+                    f"source_type='youtube' requires an http/https URL, got: '{src}'"
                 )
 
         if st == "github":

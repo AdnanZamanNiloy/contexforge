@@ -236,6 +236,11 @@ body {
   color: rgba(255, 255, 255, 0.8);
 }
 
+.source-item-icon.is-youtube {
+  background: rgba(255, 0, 0, 0.12);
+  color: #FF0000;
+}
+
 .source-item-body {
   flex: 1;
   min-width: 0;
@@ -1060,6 +1065,11 @@ body {
 .chunk-icon.is-github {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.8);
+}
+
+.chunk-icon.is-youtube {
+  background: rgba(255, 0, 0, 0.12);
+  color: #FF0000;
 }
 
 .chunk-title {

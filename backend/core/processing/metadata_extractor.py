@@ -61,7 +61,12 @@ class MetadataExtractor:
 
         enriched: List[Document] = []
         for doc in documents:
-            title = self._extract_title(doc.text)
+            # A loader that already knows the real title (e.g. a web page's
+            # <title>, a YouTube video title) should not be clobbered by the
+            # first line of body text.  Fall back to content-derived titles
+            # only when the source supplied none.
+            existing_title = (doc.metadata or {}).get("title")
+            title = existing_title or self._extract_title(doc.text)
             keywords = self._extract_keywords(doc.text)
             named_entities = self._extract_entities(doc.text)
 
