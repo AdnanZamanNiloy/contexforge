@@ -235,7 +235,7 @@ export default function SourceViewer({
         )}
       </section>
 
-      <section className="panel">
+      <section className="panel panel-confidence">
         <div className="panel-head">
           <h3>Confidence & Coverage</h3>
         </div>

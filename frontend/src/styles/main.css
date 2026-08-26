@@ -1175,9 +1175,30 @@ body {
   overflow: hidden;
 }
 
+.panel-confidence .panel-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.panel-confidence .panel-head h3 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
 .confidence {
-  display: grid;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 18px 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .donut {
@@ -1233,6 +1254,7 @@ body {
 .confidence-list {
   display: grid;
   gap: 10px;
+  width: 100%;
 }
 
 .confidence-list div {
