@@ -73,7 +73,7 @@ class GeminiLLM(BaseLLM):
         system_prompt: str | None,) -> AsyncIterator[str]:
 
         request_payload = self._build_payload(prompt, system_prompt)
-        url = self._endpoint("streamGenerateContent")
+        url = self._endpoint("streamGenerateContent") + "?alt=sse"
 
         async with self._client.stream(
             "POST",

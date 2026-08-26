@@ -121,8 +121,8 @@ def get_llm() -> FallbackLLM:
     # Gemini and Groq keys are in place; the free aggregators (OpenRouter, NIM,
     # Cerebras) are added only when their API key is configured in .env.
     providers = [
-        GeminiLLM(model=settings.GEMINI_MODEL),
         GroqLLM(model=settings.GROQ_MODEL),
+        GeminiLLM(model=settings.GEMINI_MODEL),
     ]
     if settings.OPENROUTER_API_KEY:
         providers.append(OpenRouterLLM(model=settings.OPENROUTER_MODEL))
