@@ -142,9 +142,11 @@ class WebLoader(BaseLoader):
         return text or ""
 
     def _extract_title(self, html: str) -> str:
-      
-        meta = trafilatura.bare_extraction(html) or {}
-        return meta.get("title", "") or ""
+        # trafilatura >= 2.0 returns a Document object (attribute access);
+        # older versions return a dict. Handle both to stay version-agnostic.
+        meta = trafilatura.bare_extraction(html)
+        title = meta.get("title", "") if hasattr(meta, "get") else getattr(meta, "title", "") or ""
+        return title or ""
 
     # ------------------------------------------------------------------ #
     # CLEANING
