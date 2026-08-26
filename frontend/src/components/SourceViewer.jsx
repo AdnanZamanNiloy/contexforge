@@ -136,23 +136,15 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
 
   return (
     <aside className="evidence">
-      <div className="evidence-tabs">
-        <button className="tab active">Evidence</button>
-        <button className="tab">Debug</button>
-        <button className="tab">Statistics</button>
-      </div>
-
-      <section className="panel panel-scroll">
+      <section className="panel panel-scroll panel-chunks">
         <div className="panel-head">
-          <h3>Top Retrieved Chunks</h3>
+          <h3 className="chunks-label">Top Retrieved Chunks</h3>
           <span className="muted">
             {isLoading ? (
               <Skeleton width="80px" height="14px" />
             ) : hasSources ? (
               `${sources.length} sources`
-            ) : (
-              'No sources yet'
-            )}
+            ) : null}
           </span>
         </div>
         <div className="chunk-list">

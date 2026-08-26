@@ -197,10 +197,19 @@ class FaissStore:
             sid = chunk.source_id or "unknown"
             if sid not in groups:
                 meta = dict(chunk.metadata) if chunk.metadata else {}
+                source_type = meta.get("source_type") or meta.get("source") or "unknown"
+                if source_type == "github" and meta.get("repo"):
+                    title = meta["repo"]
+                elif meta.get("title"):
+                    title = meta["title"]
+                elif meta.get("filename"):
+                    title = meta["filename"]
+                else:
+                    title = sid[:12]
                 groups[sid] = {
                     "source_id": sid,
-                    "title": meta.get("title") or meta.get("filename") or sid[:12],
-                    "type": meta.get("source_type", "unknown"),
+                    "title": title,
+                    "type": source_type,
                     "url": meta.get("url", ""),
                     "chunks": 0,
                 }

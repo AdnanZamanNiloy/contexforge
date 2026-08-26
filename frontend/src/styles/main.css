@@ -923,7 +923,7 @@ body {
   overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--stroke);
-  border-radius: 14px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
 
@@ -960,23 +960,37 @@ body {
   text-align: center;
 }
 
-.evidence-tabs {
-  display: flex;
-  gap: 8px;
-}
-
-.tab {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.7);
-  border-radius: 999px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.tab.active {
-  background: #ffffff;
+.panel .chunks-label {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   color: #0b1020;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 6px 14px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.panel-chunks .panel-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.panel-chunks .chunks-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.panel-chunks .muted {
+  text-align: center;
 }
 
 .panel-head {

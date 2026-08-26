@@ -7,6 +7,7 @@ assigns source IDs, and delegates all pipeline logic to Orchestrator.ingest().
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from typing import Dict
 
@@ -15,6 +16,20 @@ from core.ingestion.base_loader import BaseLoader
 from core.orchestrator import Orchestrator
 
 __all__ = ["IngestService"]
+
+_GITHUB_URL_RE = re.compile(r"https?://github\.com/([^/]+)/([^/]+)", re.IGNORECASE)
+
+
+def _github_source_id(url: str) -> str:
+    """Deterministic, idempotent source_id for a GitHub repository.
+
+    Matches the ``repo:<owner>/<name>`` id used by Repository Intelligence chat
+    so the same repo is never indexed twice under different ids.
+    """
+    match = _GITHUB_URL_RE.match(url)
+    if not match:
+        raise ValueError("Invalid GitHub repository URL")
+    return f"repo:{match.group(1)}/{match.group(2).replace('.git', '')}"
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +66,9 @@ class IngestService:
         # FIX #1 — KeyError → ValueError with a helpful message
         loader = self._resolve_loader(request.source_type)
 
-        source_id = str(uuid.uuid4())
+        # GitHub repos use a deterministic, idempotent source id so re-connecting
+        # the same repo never creates a second "My Sources" entry.
+        source_id = _github_source_id(request.source) if request.source_type == "github" else str(uuid.uuid4())
         logger.info(
             "ingest_source: source_type=%s source=%r source_id=%s",
             request.source_type, request.source, source_id,
