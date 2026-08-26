@@ -2,9 +2,9 @@ import { useState } from 'react';
 
 // Repository AI ask box. Streams a repository-grounded answer from the backend
 // via `streamAnswer(text, handlers)` (POST /repository/{id}/ask). The answer
-// itself is rendered by <RepositoryAnswerPanel/> placed between the tabs and the
-// repository visualization, so this component only captures the ask and defers
-// to `onAnswer` / `onSources` for the live answer state.
+// itself is rendered by <RepositoryAnswerPanel/> at the top of the shared
+// intel-viewport scroll area, so this component only captures the ask and
+// defers to `onAnswer` / `onSources` for the live answer state.
 export default function RepositoryAIInput({ suggestedQuestions = [], streamAnswer, onTabHint, onAsk }) {
   const [value, setValue] = useState('');
 

@@ -42,9 +42,9 @@ export default function RepositoryIntelligencePage() {
 
   const [activeTab, setActiveTab] = useState('architecture');
 
-  // Live AI answer state, lifted here so <RepositoryAnswerPanel/> (rendered
-  // between the tabs and the visualization) can reserve space and stream while
-  // the repository graph stays in normal flow below it.
+  // Live AI answer state, lifted here so <RepositoryAnswerPanel/> (rendered at
+  // the top of <intel-viewport>) can stream alongside the repository graph —
+  // both share one continuous scroll container.
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiSources, setAiSources] = useState([]);
@@ -83,8 +83,8 @@ export default function RepositoryIntelligencePage() {
     [id],
   );
 
-  // Kick off a question: reset the answer panel (reserving its space), then
-  // stream tokens into it while keeping the repository visualization below.
+  // Kick off a question: reset the answer panel, then stream tokens into it
+  // while it sits inline above the visualization in the shared scroll area.
   const handleAsk = useCallback(
     (text, askFn) => {
       if (!text) return;
@@ -200,14 +200,14 @@ export default function RepositoryIntelligencePage() {
           <div className="intel-card">
             <RepositoryHeader repo={repo} onSync={reanalyze} />
             <RepositoryTabs active={activeTab} onChange={setActiveTab} />
-            <RepositoryAnswerPanel
-              question={aiQuestion}
-              answer={aiAnswer}
-              sources={aiSources}
-              loading={aiLoading}
-              error={aiError}
-            />
             <div className="intel-viewport">
+              <RepositoryAnswerPanel
+                question={aiQuestion}
+                answer={aiAnswer}
+                sources={aiSources}
+                loading={aiLoading}
+                error={aiError}
+              />
               <ActiveView
                 analysisId={id}
                 architecture={analysis.architecture}

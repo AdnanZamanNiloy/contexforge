@@ -1,6 +1,8 @@
 // Repository AI answer panel. Renders the active question, the streamed
-// answer, and references — as an in-flow, bounded section that sits above the
-// repository visualization and pushes it downward rather than overlaying it.
+// answer, and references — as an in-flow section that sits at the top of the
+// shared intel-viewport scroll area, scrolling together with the repository
+// visualization rather than operating as its own bounded, independently
+// scrolling box.
 export default function RepositoryAnswerPanel({ question, answer, sources = [], loading = false, error = '' }) {
   if (!question && !loading && !answer && !error) return null;
 
