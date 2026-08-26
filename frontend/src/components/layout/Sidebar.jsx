@@ -66,7 +66,7 @@ export default function Sidebar({
           {kbRows.map((row) => (
             <div className="kb-row" key={row.id}>
               {row.icon}
-              <span>{row.label}</span>
+              <span className="kb-label">{row.label}</span>
               <span className="kb-count">{row.count}</span>
             </div>
           ))}
