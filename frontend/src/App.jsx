@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
+import MindMapPage from './pages/MindMapPage';
 import RepositoryIntelligencePage from './pages/repository/RepositoryIntelligencePage';
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
     <div className="page-transition" key={location.pathname}>
       <Routes location={location}>
         <Route path="/" element={<Home />} />
+        <Route path="/mindmap/:sourceId" element={<MindMapPage />} />
         <Route path="/repository" element={<RepositoryIntelligencePage />} />
         <Route path="/repository/:repositoryId" element={<RepositoryIntelligencePage />} />
       </Routes>

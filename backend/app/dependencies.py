@@ -12,6 +12,8 @@ from functools import lru_cache
 from typing import Dict
 
 from app.config.settings import Settings
+from app.mindmap.service import MindMapService
+from app.mindmap.storage import MindMapStore
 from app.repository_intelligence.analyzer import RepositoryAnalyzer
 from app.repository_intelligence.service import RepositoryIntelligenceService
 from app.repository_intelligence.storage import RepositoryStore
@@ -228,6 +230,25 @@ def get_repository_intelligence_service() -> RepositoryIntelligenceService:
 
 
 # ---------------------------------------------------------------------------
+# Mind Map — generated from a source's chunks via the existing LLM chain
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=1)
+def get_mindmap_store() -> MindMapStore:
+    return MindMapStore()
+
+
+@lru_cache(maxsize=1)
+def get_mindmap_service() -> MindMapService:
+    return MindMapService(
+        store=get_mindmap_store(),
+        faiss=get_faiss_store(),
+        llm=get_llm(),
+        prompt_builder=get_prompt_builder(),
+    )
+
+
+# ---------------------------------------------------------------------------
 # FIX #4 — graceful shutdown: close all resources that hold connections
 # Called from the lifespan context manager in main.py
 # ---------------------------------------------------------------------------
@@ -264,3 +285,9 @@ async def close_all() -> None:
         logger.debug("RepositoryStore closed.")
     except Exception as exc:
         logger.warning("Error closing RepositoryStore: %s", exc)
+
+    try:
+        get_mindmap_store().close()
+        logger.debug("MindMapStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing MindMapStore: %s", exc)

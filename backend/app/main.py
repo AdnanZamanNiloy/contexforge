@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from app.config.settings import Settings
 from app.dependencies import close_all
+from app.mindmap.routes import router as mindmap_router
 from app.repository_intelligence.routes import router as repository_router
 from app.routes.github import router as github_router
 from app.routes.ingest import router as ingest_router
@@ -114,6 +115,7 @@ app.include_router(ingest_router)
 app.include_router(github_router)
 app.include_router(query_router)
 app.include_router(repository_router)
+app.include_router(mindmap_router)
 
 
 # ---------------------------------------------------------------------------

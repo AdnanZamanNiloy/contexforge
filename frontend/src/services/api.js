@@ -292,3 +292,32 @@ export async function reanalyzeRepository(analysisId) {
 export function repositoryAsk(analysisId, question, handlers = {}) {
   return streamQuery({ question }, handlers, `/repository/${analysisId}/ask`);
 }
+
+// --- Mind Map ---------------------------------------------------------------
+
+export async function createMindMap(sourceId) {
+  return request('/mindmap/generate', {
+    method: 'POST',
+    body: JSON.stringify({ source_id: sourceId }),
+  });
+}
+
+export async function getMindMap(sourceId) {
+  const response = await fetch(buildUrl(`/mindmap/${encodeURIComponent(sourceId)}`), {
+    method: 'GET',
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    let detail = 'Failed to load mind map';
+    try {
+      const data = await response.json();
+      detail = data.detail || data.message || detail;
+    } catch {
+      detail = await response.text();
+    }
+    throw new Error(detail);
+  }
+  return response.json();
+}

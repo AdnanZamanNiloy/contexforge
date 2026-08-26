@@ -166,6 +166,20 @@ class FaissStore:
         """Return the set of unique source_ids currently in the store."""
         return {c.source_id for c in self._chunks if c.source_id}
 
+    async def get_chunks_by_source_id(self, source_id: str | None) -> list[Chunk]:
+        """Return all chunks belonging to *source_id* in storage order.
+
+        Used by the Mind Map generator to build a map from a single source's
+        full content.  A ``None`` or blank source_id returns every chunk in the
+        store (fallback for unsourced content).
+        """
+        await self._ensure_loaded(None)
+        if not source_id:
+            return list(self._chunks)
+        return [
+            chunk for chunk in self._chunks if chunk.source_id == source_id
+        ]
+
     async def get_source_info(self) -> list[dict]:
         """Return grouped source info with metadata from stored chunks.
 

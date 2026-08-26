@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import CreateMindMapButton from './CreateMindMapButton';
 
 function formatSourceTitle(source) {
   const meta = source.metadata || {};
@@ -134,9 +135,30 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
   const visibleSources = sources.slice(0, visibleChunks);
   const hasMoreChunks = totalChunks > visibleChunks;
 
+  const dominantSourceId = useMemo(() => {
+    const counts = {};
+    for (const item of sources) {
+      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1;
+    }
+    let best = null;
+    let bestCount = 0;
+    for (const [id, count] of Object.entries(counts)) {
+      if (count > bestCount) {
+        best = id;
+        bestCount = count;
+      }
+    }
+    return best;
+  }, [sources]);
+
   return (
     <aside className="evidence">
       <section className="panel panel-scroll panel-chunks">
+        {dominantSourceId ? (
+          <div className="mindmap-cta-row">
+            <CreateMindMapButton sourceId={dominantSourceId} />
+          </div>
+        ) : null}
         <div className="panel-head">
           <h3 className="chunks-label">Top Retrieved Chunks</h3>
           <span className="muted">
