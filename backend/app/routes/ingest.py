@@ -122,7 +122,7 @@ async def ingest_file(
 
 
 @router.delete(
-    "/source/{source_id}",
+    "/source/{source_id:path}",
     response_model=DeleteResponse,
     status_code=status.HTTP_200_OK,
     summary="Delete a previously ingested source",

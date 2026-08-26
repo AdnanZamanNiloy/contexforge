@@ -91,7 +91,7 @@ export async function ingestFile({ source_type, file }) {
 }
 
 export async function deleteSource(sourceId) {
-  return request(`/ingest/source/${sourceId}`, {
+  return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
     method: 'DELETE',
   });
 }
