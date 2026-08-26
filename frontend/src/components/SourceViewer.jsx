@@ -154,11 +154,9 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
   return (
     <aside className="evidence">
       <section className="panel panel-scroll panel-chunks">
-        {dominantSourceId ? (
-          <div className="mindmap-cta-row">
-            <CreateMindMapButton sourceId={dominantSourceId} />
-          </div>
-        ) : null}
+        <div className="mindmap-cta-row">
+          <CreateMindMapButton sourceId={dominantSourceId} />
+        </div>
         <div className="panel-head">
           <h3 className="chunks-label">Top Retrieved Chunks</h3>
           <span className="muted">
