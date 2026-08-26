@@ -18,7 +18,11 @@ logger = logging.getLogger(__name__)
 
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# NOTE: 429 is intentionally NOT retried. QPD/TPD quota-exceeded responses
+# (e.g. "try again in 19m") never recover within a single request, so retrying
+# only burns ~seconds of backoff per query. We fail fast so FallbackLLM can
+# advance to the next provider immediately.
+_RETRYABLE_STATUS = {500, 502, 503, 504}
 _MAX_RETRIES      = 3
 _RETRY_BASE_DELAY = 1.0   # seconds (doubles each attempt)
 _RETRY_MAX_DELAY  = 16.0  # seconds

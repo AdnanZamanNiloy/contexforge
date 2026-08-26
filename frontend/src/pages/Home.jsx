@@ -645,8 +645,8 @@ export default function Home() {
                       </svg>
                     </div>
                   <div>
-                    <h3>YouTube Transcript</h3>
-                    <p>Index a video's transcript.</p>
+                    <h3>YouTube Video</h3>
+                    <p>Paste a YouTube video URL to index it.</p>
                   </div>
                 </div>
                 <form
@@ -662,7 +662,7 @@ export default function Home() {
                 >
                   <input name="url" placeholder="https://www.youtube.com/watch?v=..." className="text-input" />
                   <button className="primary" type="submit" disabled={isAddingYoutube}>
-                    {isAddingYoutube ? 'Ingesting...' : 'Ingest Transcript'}
+                    {isAddingYoutube ? 'Ingesting...' : 'Ingest Video'}
                   </button>
                 </form>
               </div>

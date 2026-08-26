@@ -63,6 +63,7 @@ class YouTubeLoader(BaseLoader):
     def __init__(self, timeout: float = 30.0, max_retries: int = 2) -> None:
         self._timeout = timeout
         self._max_retries = max_retries
+        self._transcript_timeout = max(45.0, timeout * 1.5)
 
     @observe(name="load_youtube")
     async def load(
@@ -81,11 +82,7 @@ class YouTubeLoader(BaseLoader):
         video_id = extract_video_id(video_url)
 
         transcript = await self._fetch_transcript(video_id)
-        if not transcript:
-            raise RuntimeError(
-                f"No transcript available for video '{video_id}'. "
-                "The video may lack captions or be unavailable."
-            )
+        transcript, language_code = await self._fetch_transcript(video_id)
 
         video_meta = await self._fetch_video_meta(video_url, video_id)
 
@@ -97,7 +94,7 @@ class YouTubeLoader(BaseLoader):
             "thumbnail": video_meta.get("thumbnail_url") or "",
             "author": video_meta.get("author_name") or "",
             "video_id": video_id,
-            "language": _DEFAULT_LANGUAGES[0],
+            "language": language_code or _DEFAULT_LANGUAGES[0],
             "content_length": len(transcript),
         }
         if metadata:
@@ -116,27 +113,57 @@ class YouTubeLoader(BaseLoader):
     # TRANSCRIPT
     # ------------------------------------------------------------------ #
 
-    async def _fetch_transcript(self, video_id: str) -> str:
+    async def _fetch_transcript(self, video_id: str) -> tuple[str, str | None]:
         # youtube_transcript_api is synchronous (requests-based); run it in a
         # worker thread so the event loop is not blocked during ingestion.
+        # The whole fetch is time-bounded so a slow/throttled caption endpoint
+        # (e.g. listing a video with captions in an unusual language) can never
+        # make the ingest request hang indefinitely.
         try:
-            snippets = await asyncio.to_thread(
-                self._get_transcript_snippets, video_id
+            snippets, language_code = await asyncio.wait_for(
+                asyncio.to_thread(self._get_transcript_snippets, video_id),
+                timeout=self._transcript_timeout,
             )
+        except asyncio.TimeoutError:
+            logger.error("Transcript fetch timed out. video_id=%s", video_id)
+            raise RuntimeError(
+                f"Timed out fetching a transcript for video '{video_id}'."
+            ) from None
         except Exception as exc:
             logger.error("Failed to fetch transcript. video_id=%s error=%s", video_id, exc)
             raise RuntimeError(f"Failed to fetch YouTube transcript: {exc}") from exc
-        return " ".join(snippet.text for snippet in snippets)
+        text = " ".join(snippet.text for snippet in snippets)
+        return text, language_code
 
     @staticmethod
-    def _get_transcript_snippets(video_id: str):
+    def _get_transcript_snippets(video_id: str) -> tuple[list, str | None]:
         from youtube_transcript_api import YouTubeTranscriptApi
 
         api = YouTubeTranscriptApi()
-        return api.fetch(
-            video_id,
-            languages=list(_DEFAULT_LANGUAGES),
-            preserve_formatting=False,
+
+        # Preferred languages first (English + Hindi, matching the reference
+        # implementation).  Transcripts are served directly in these languages
+        # and need no translation.
+        try:
+            fetched = api.fetch(
+                video_id,
+                languages=list(_DEFAULT_LANGUAGES),
+                preserve_formatting=False,
+            )
+            return fetched.snippets, _DEFAULT_LANGUAGES[0]
+        except Exception:
+            # Fallback: this video may only carry captions in another language
+            # (e.g. auto-generated Korean).  Pick the first available transcript
+            # — manually-created transcripts are yielded before generated ones.
+            for transcript in api.list(video_id):
+                try:
+                    fetched = transcript.fetch(preserve_formatting=False)
+                    return fetched.snippets, getattr(transcript, "language_code", None)
+                except Exception:
+                    continue
+
+        raise RuntimeError(
+            f"No retrievable transcript found for video '{video_id}'."
         )
 
     # ------------------------------------------------------------------ #

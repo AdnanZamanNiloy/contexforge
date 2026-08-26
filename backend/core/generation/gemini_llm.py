@@ -14,7 +14,10 @@ from observability.tracer import observe
 logger = logging.getLogger(__name__)
 
 
-_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# NOTE: 429 is intentionally NOT retried. Quota-exceeded responses (e.g.
+# "retry in 55s", daily caps) never recover within a single request, so retrying
+# only burns time. Fail fast so FallbackLLM advances to the next provider.
+_RETRYABLE_STATUS = {500, 502, 503, 504}
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 1.0   
 _RETRY_MAX_DELAY  = 16.0 
