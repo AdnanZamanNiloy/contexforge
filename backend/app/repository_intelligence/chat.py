@@ -78,6 +78,7 @@ async def ensure_repo_indexed(
                 "repo": full_name,
                 "branch": branch or "",
                 "source_id": source_id,
+                "url": repo_url,
             }
             documents.append(
                 Document(

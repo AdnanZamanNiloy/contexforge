@@ -1,83 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MindMapViewer } from '@xiangfa/mindmap';
-import '@xiangfa/mindmap/style.css';
-import { getMindMap } from '../services/api';
+
+import MindMapCanvas from '../components/MindMapCanvas';
 
 export default function MindMapPage() {
   const { sourceId } = useParams();
   const navigate = useNavigate();
   const [map, setMap] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const viewerRef = useRef(null);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+  const handleReady = useCallback((data) => {
+    setMap(data);
     setError('');
-    (async () => {
-      try {
-        const data = await getMindMap(sourceId);
-        if (cancelled) return;
-        setMap(data);
-      } catch (err) {
-        if (cancelled) return;
-        setError(err.message || 'Failed to load mind map');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [sourceId]);
-
-  const requestFit = useCallback(() => {
-    // Wait a frame so the container has laid out and the viewport has real
-    // dimensions before the library measures it; without this the canvas
-    // renders at its natural scale and looks tiny.
-    requestAnimationFrame(() => viewerRef.current?.fitView?.());
   }, []);
 
-  // Refit once the map content is rendered and whenever the viewport resizes.
-  useEffect(() => {
-    if (!map) return;
-    requestFit();
-  }, [map, requestFit]);
+  const handleError = useCallback((msg) => {
+    setError(msg);
+  }, []);
 
-  useEffect(() => {
-    const onResize = () => requestFit();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [requestFit]);
-
-  // Observe the shell so the fit is recomputed with the canvas's real
-  // dimensions. The library computes its initial fit on the first render, at
-  // which point the container may not have its final size yet (especially in
-  // normal view) — ResizeObserver catches the settled size and re-fits so the
-  // graph fills the whole area.
-  const shellRef = useRef(null);
-  useEffect(() => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    let rafId = 0;
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        if (map) requestFit();
-      });
-    });
-    observer.observe(shell);
-    return () => {
-      cancelAnimationFrame(rafId);
-      observer.disconnect();
-    };
-  }, [map, requestFit]);
-
-  // Refit when re-entering fullscreen (element dimensions change).
-  useEffect(() => {
-    if (isFullscreen) requestFit();
-  }, [isFullscreen, requestFit]);
+  const requestFit = useCallback(() => {
+    window.dispatchEvent(new Event('resize'));
+  }, []);
 
   // Escape exits fullscreen.
   useEffect(() => {
@@ -128,22 +72,15 @@ export default function MindMapPage() {
         </div>
       </header>
 
-      <div className="mindmap-container-shell" ref={shellRef}>
-        {loading ? (
-          <div className="empty">Generating mind map…</div>
-        ) : error ? (
+      <div className="mindmap-container-shell">
+        {error ? (
           <div className="empty">
             <p>{error}</p>
             <button className="ghost" onClick={() => navigate('/')}>Back to chat</button>
           </div>
-        ) : map ? (
-          <MindMapViewer
-            ref={viewerRef}
-            markdown={map.markdown}
-            theme="dark"
-            toolbar={{ zoom: true, history: true, search: true }}
-          />
-        ) : null}
+        ) : (
+          <MindMapCanvas sourceId={sourceId} isFullscreen={isFullscreen} onReady={handleReady} onError={handleError} />
+        )}
       </div>
 
       <div className="mindmap-footer">

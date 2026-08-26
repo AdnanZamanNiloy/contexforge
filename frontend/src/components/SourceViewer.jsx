@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import CreateMindMapButton from './CreateMindMapButton';
+import RepositoryIntelButton from './RepositoryIntelButton';
 
 function formatSourceTitle(source) {
   const meta = source.metadata || {};
@@ -114,7 +115,15 @@ function Skeleton({ width, height }) {
 }
 
 // FIX: accept confidence prop from the backend; default to null for loading state
-export default function SourceViewer({ sources = [], latency = {}, isStreaming, confidence = null }) {
+export default function SourceViewer({
+  sources = [],
+  latency = {},
+  isStreaming,
+  confidence = null,
+  repoUrl,
+  onOpenIntel,
+  showQuickActions = false,
+}) {
   const DEFAULT_VISIBLE_CHUNKS = 3;
   const hasSources = sources.length > 0;
   const isLoading = isStreaming && !hasSources;
@@ -166,9 +175,14 @@ export default function SourceViewer({ sources = [], latency = {}, isStreaming, 
   return (
     <aside className="evidence">
       <section className="panel panel-scroll panel-chunks">
-        <div className="mindmap-cta-row">
-          <CreateMindMapButton sourceId={dominantSourceId} />
-        </div>
+        {showQuickActions ? (
+          <div className="mindmap-cta-row">
+            <CreateMindMapButton sourceId={dominantSourceId} />
+            {onOpenIntel ? (
+              <RepositoryIntelButton repoUrl={repoUrl} onOpen={onOpenIntel} />
+            ) : null}
+          </div>
+        ) : null}
         <div className="panel-head">
           <h3 className="chunks-label">Top Retrieved Chunks</h3>
           <span className="muted">

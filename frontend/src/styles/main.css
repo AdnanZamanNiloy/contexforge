@@ -12,13 +12,35 @@
   --muted: #a6abb3;
   --accent: #7aa2f7;
   --accent-2: #9aa8ff;
+  --accent-soft: rgba(122, 162, 247, 0.14);
+  --accent-grad: linear-gradient(135deg, #7aa2f7 0%, #9aa8ff 100%);
   --warning: #e07b7b;
   --radius: 10px;
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --ease: cubic-bezier(0.32, 0.72, 0.24, 1);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow: 0 6px 22px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.5);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Keyboard accessibility — a consistent luminous ring on every interactive
+   surface without disturbing the mouse-driven look. */
+:focus-visible {
+  outline: none;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 body {
@@ -27,6 +49,7 @@ body {
   background: var(--bg-2);
   color: var(--text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app-shell {
@@ -68,7 +91,7 @@ body {
 .sidebar-shell::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 99px; }
 
 .add-knowledge-btn {
-  border: none;
+  border: 1px solid rgba(154, 168, 255, 0.5);
   border-radius: 10px;
   padding: 10px 14px;
   display: flex;
@@ -77,14 +100,19 @@ body {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
-  color: #0b1020;
-  background: #ffffff;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: var(--bg);
+  background: var(--accent-grad);
+  transition: transform 0.18s var(--ease), box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .add-knowledge-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, #88b0ff 0%, #aebaff 100%);
+  box-shadow: 0 6px 20px rgba(122, 162, 247, 0.32);
+}
+
+.add-knowledge-btn:active {
+  transform: translateY(0);
 }
 
 /* Section title shared */
@@ -352,6 +380,26 @@ body {
 
 .status-dot.is-failed {
   background: var(--warning);
+}
+
+.clear-kb-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.clear-kb-btn:hover {
+  color: #ffd9d4;
+  background: rgba(224, 123, 123, 0.1);
+  border-color: rgba(224, 123, 123, 0.32);
 }
 
 .main-shell {
@@ -967,12 +1015,13 @@ body {
 
 .panel .chunks-label {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #0b1020;
-  background: #ffffff;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(122, 162, 247, 0.28);
   border-radius: 10px;
   padding: 6px 14px;
   flex-shrink: 0;
@@ -1189,27 +1238,57 @@ body {
 
 .ghost,
 .primary {
-  background: rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 9px 14px;
   cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
+  font-weight: 550;
+  font-size: 0.86rem;
+  transition: transform 0.16s var(--ease), box-shadow 0.2s ease, background 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .ghost:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
   color: #ffffff;
 }
 
+.ghost:active {
+  transform: translateY(1px);
+}
+
+/* Primary action: an accent gradient that carries ContextForge's light-on-dark
+   identity, with a lift + glow on hover and a light focus ring for keyboard. */
 .primary {
-  background: #ffffff;
-  color: #0b1020;
+  background: var(--accent-grad);
+  color: var(--bg);
+  border: 1px solid rgba(154, 168, 255, 0.5);
+  font-weight: 600;
 }
 
 .primary:hover {
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #88b0ff 0%, #aebaff 100%);
+  box-shadow: 0 6px 20px rgba(122, 162, 247, 0.32);
+  transform: translateY(-1px);
+}
+
+.primary:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 10px rgba(122, 162, 247, 0.24);
+}
+
+.primary:disabled,
+.ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .ghost.wide {
@@ -1220,16 +1299,24 @@ body {
 .icon-button {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 8px;
   padding: 6px 10px;
   cursor: pointer;
   font-size: 1rem;
-  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.16s var(--ease);
 }
 
 .icon-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.icon-button:active {
+  transform: translateY(1px);
 }
 
 @media (max-width: 1200px) {
@@ -1503,27 +1590,29 @@ body {
 /* ---------- Repository header ---------- */
 .repo-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 22px 26px 16px;
+  gap: 12px 20px;
+  padding: 11px 26px;
   border-bottom: 1px solid var(--stroke);
   flex-wrap: wrap;
 }
-.repo-header-left { display: flex; gap: 16px; min-width: 0; flex: 1; }
-.repo-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--stroke);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.85);
+.repo-context {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
-.repo-identity { min-width: 0; }
-.repo-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.repo-name { font-size: 1.3rem; font-weight: 600; color: #fff; font-family: 'Space Mono', monospace; }
+.repo-name {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #fff;
+  font-family: 'Space Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .repo-visibility {
   font-size: 0.6rem;
   text-transform: uppercase;
@@ -1531,6 +1620,7 @@ body {
   padding: 3px 8px;
   border-radius: 999px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 .repo-visibility.is-public { background: rgba(103, 224, 200, 0.14); color: #67e0c8; }
 .repo-visibility.is-private { background: rgba(240, 179, 110, 0.14); color: #f0b36e; }
@@ -1541,26 +1631,26 @@ body {
   font-size: 0.72rem;
   color: var(--muted);
   font-family: 'Space Mono', monospace;
+  white-space: nowrap;
 }
-.repo-desc {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 0.86rem;
-  line-height: 1.4;
-  max-width: 560px;
-}
-.repo-stats {
+.repo-header-right {
   display: flex;
-  gap: 14px;
-  margin-top: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+.repo-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-size: 0.74rem;
   color: var(--muted);
+  flex-wrap: wrap;
+  white-space: nowrap;
 }
-.repo-stats span { white-space: nowrap; }
-.repo-stats b { color: #e6e7ea; font-weight: 600; }
+.repo-meta b { color: #e6e7ea; font-weight: 600; }
+.repo-meta-sep { opacity: 0.45; }
 .repo-analyzed { color: rgba(166, 171, 179, 0.8); }
-.repo-header-right { display: flex; align-items: center; gap: 10px; }
 .sync-btn {
   display: inline-flex;
   align-items: center;
@@ -2583,8 +2673,9 @@ body {
 .branch-count { color: var(--muted); font-family: 'Space Mono', monospace; font-size: 0.7rem; }
 .branch-active {
   font-size: 0.58rem;
-  color: #0b1020;
-  background: #fff;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(122, 162, 247, 0.28);
   border-radius: 5px;
   padding: 1px 6px;
   font-weight: 700;
@@ -2902,18 +2993,18 @@ body {
 }
 .repo-ai-form input::placeholder { color: var(--muted); }
 .repo-ai-send {
-  border: none;
-  background: #fff;
-  color: #0b1020;
+  border: 1px solid rgba(154, 168, 255, 0.5);
+  background: var(--accent-grad);
+  color: var(--bg);
   border-radius: 9px;
   padding: 8px;
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: box-shadow 0.2s ease, opacity 0.2s ease, transform 0.16s var(--ease);
 }
-.repo-ai-send:hover { box-shadow: 0 0 16px rgba(255, 255, 255, 0.3); }
-.repo-ai-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.repo-ai-send:hover { box-shadow: 0 6px 20px rgba(122, 162, 247, 0.32); transform: translateY(-1px); }
+.repo-ai-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .ai-thinking { display: flex; gap: 3px; width: 16px; height: 16px; align-items: center; justify-content: center; }
 .ai-thinking i {
   width: 4px;
@@ -3045,7 +3136,7 @@ body {
 }
 @media (max-width: 760px) {
   .repo-header { width: 100%; }
-  .repo-header-left { flex-wrap: wrap; }
+  .repo-context { flex-wrap: wrap; }
   .git-grid { grid-template-columns: 1fr; }
   .ownership-grid { grid-template-columns: 1fr; }
   .dep-panel-strip { grid-template-columns: 1fr; }
@@ -3070,17 +3161,19 @@ body {
 .evidence .mindmap-cta-row {
   margin-bottom: 12px;
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.mindmap-cta {
-  width: 100%;
+.mindmap-cta,
+.repo-intel-cta {
+  order: 0;
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--accent);
-  color: #0b1020;
-  border: none;
   border-radius: 10px;
   padding: 10px 14px;
   font-size: 0.85rem;
@@ -3089,12 +3182,47 @@ body {
   transition: all 0.2s ease;
 }
 
+.mindmap-cta {
+  background: var(--accent-grad);
+  color: var(--bg);
+  border: 1px solid rgba(154, 168, 255, 0.5);
+}
+
 .mindmap-cta:hover:not(:disabled) {
-  background: #8ab0f8;
-  box-shadow: 0 4px 16px rgba(122, 162, 247, 0.35);
+  background: linear-gradient(135deg, #88b0ff 0%, #aebaff 100%);
+  box-shadow: 0 6px 20px rgba(122, 162, 247, 0.32);
 }
 
 .mindmap-cta:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Repository Intelligence launch button. Always carries the brand accent so it
+   reads as a first-class action; it only *navigates* once the repo is ingested,
+   otherwise it surfaces guidance. */
+.repo-intel-cta {
+  background: var(--accent-grad);
+  color: var(--bg);
+  border: 1px solid rgba(154, 168, 255, 0.5);
+}
+
+.repo-intel-cta svg {
+  color: var(--bg);
+  transition: color 0.2s ease;
+}
+
+.repo-intel-cta:hover:not(:disabled) {
+  background: linear-gradient(135deg, #88b0ff 0%, #aebaff 100%);
+  box-shadow: 0 6px 20px rgba(122, 162, 247, 0.32);
+}
+
+.repo-intel-cta:hover:not(:disabled) svg {
+  color: var(--bg);
+}
+
+.repo-intel-cta.is-checking,
+.repo-intel-cta:disabled {
   opacity: 0.6;
   cursor: default;
 }
@@ -3106,7 +3234,9 @@ body {
   text-align: center;
 }
 
-.mindmap-prompt {
+.mindmap-prompt,
+.repo-intel-prompt {
+  order: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3119,9 +3249,11 @@ body {
   font-size: 0.8rem;
   line-height: 1.4;
   animation: mindmap-prompt-in 0.22s ease-out;
+  flex-basis: 100%;
 }
 
-.mindmap-prompt svg {
+.mindmap-prompt svg,
+.repo-intel-prompt svg {
   flex-shrink: 0;
   color: var(--accent);
 }
@@ -3261,4 +3393,480 @@ body {
 .mindmap-container-shell .mindmap-search-input {
   color: var(--text);
 }
+
+/* ---------------------------------------------------------------------------
+ * Unified product shell & source exploration
+ *
+ * One layout, one knowledge layer.  The workspace, source exploration, chat and
+ * Repository Intelligence all share the same sidebar, header and visual
+ * language so every capability reads as native to ContextForge.
+ * ------------------------------------------------------------------------- */
+
+/* Brand is now a button (shared navigator) — rest as the anchor it was. */
+.brand.brand-link {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* Sidebar source rows are now tappable entries into the source workspace. */
+.source-item-compact {
+  cursor: pointer;
+}
+.source-item-compact.is-active {
+  border-color: rgba(122, 162, 247, 0.45);
+  background: rgba(122, 162, 247, 0.08);
+}
+.source-item-compact.is-active .source-item-title {
+  color: #eaf1ff;
+}
+
+/* Shared right-hand column (replaces evidence-shell / intel-right). */
+.shell-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.shell-right::-webkit-scrollbar { width: 4px; }
+.shell-right::-webkit-scrollbar-track { background: transparent; }
+.shell-right::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 999px; }
+.shell-right-evidence {
+  gap: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 1201px) {
+  .main-shell,
+  .shell-right {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+/* Source explore layout — the main column owns the header + capability tabs. */
+.explore-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  gap: 0;
+}
+.explore-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* The keyed tab pane fades capability switches in softly instead of snapping. */
+.explore-content > .tab-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.explore-content > .tab-pane > .main-card,
+.explore-content > .tab-pane > .intel-card {
+  flex: 1;
+  min-height: 0;
+}
+
+.explore-loading,
+.explore-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 60vh;
+  color: var(--muted);
+}
+.explore-empty .primary,
+.explore-empty p,
+.explore-loading {
+  text-align: center;
+}
+
+/* Source identity header — shared representation for every source type. */
+.source-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 26px 16px;
+  border-bottom: 1px solid var(--stroke);
+  flex-wrap: wrap;
+}
+.source-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+.source-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.source-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 6px 16px rgba(0, 0, 0, 0.28);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.92);
+}
+.source-identity {
+  min-width: 0;
+}
+.source-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.source-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.source-type-pill {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(122, 162, 247, 0.14);
+  color: #cdd8f5;
+  border: 1px solid rgba(122, 162, 247, 0.3);
+}
+.source-type-pill.is-github { background: rgba(255, 255, 255, 0.08); color: #d3d7df; border-color: rgba(255,255,255,0.15); }
+.source-type-pill.is-youtube { background: rgba(255, 0, 0, 0.12); color: #ffb4b4; border-color: rgba(255, 0, 0, 0.3); }
+.source-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-header-right {
+  flex-shrink: 0;
+}
+
+/* Capability tabs (Overview / Chat / Repository Intelligence / Mind Map). */
+.capability-tabs {
+  border-bottom: 1px solid var(--stroke);
+  padding: 0 22px;
+  flex-shrink: 0;
+}
+.capability-tabs-track {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.capability-tabs-track::-webkit-scrollbar {
+  height: 0;
+  width: 0;
+  display: none;
+}
+.capability-tab {
+  position: relative;
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 550;
+  padding: 12px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.capability-tab:hover {
+  color: #d3e3ff;
+}
+.capability-tab.active {
+  color: #eaf1ff;
+}
+.capability-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* Overview capability. */
+.overview-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-content: start;
+  padding: 22px 26px;
+  overflow-y: auto;
+}
+.overview-panel .panel-head h3 {
+  margin: 0 0 12px;
+}
+.overview-visual {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.overview-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+}
+.overview-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.overview-blurb {
+  margin: 16px 0 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.overview-actions .primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Source details rail. */
+.source-details-panel .panel-head {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--stroke);
+}
+.source-detail-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.source-detail-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.03);
+  min-width: 0;
+}
+.source-detail-tile-span {
+  grid-column: 1 / -1;
+}
+.source-detail-tile dt {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.source-detail-tile dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  overflow: hidden;
+}
+.source-detail-tile dd.source-detail-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.source-detail-url {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.76rem;
+}
+.source-detail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.source-detail-link svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.source-detail-link:hover {
+  color: #a5c0ff;
+}
+.source-detail-link:hover svg {
+  color: var(--accent);
+}
+.source-detail-link-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Embedded Repository Intelligence analysis card (inside the shell). */
+.intel-analyzing.is-embedded {
+  min-height: 0;
+  flex: 1;
+  padding: 24px;
+}
+.intel-analyzing.is-embedded .intel-analyzing-card {
+  width: min(620px, 100%);
+}
+.empty-intel {
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 32px;
+  margin: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+/* Mind map inside the explore shell. */
+.mindmap-shell {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin: 22px 26px;
+  --mindmap-canvas-bg: transparent;
+  --mindmap-root-bg: var(--accent);
+  --mindmap-root-text: #0b0d10;
+  --mindmap-node-text: #d3d7df;
+  --mindmap-selection-stroke: var(--accent);
+  --mindmap-selection-fill: rgba(122, 162, 247, 0.16);
+}
+.mindmap-fullscreen-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: var(--panel-2);
+  border: 1px solid var(--stroke);
+  border-radius: 6px;
+  padding: 6px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.mindmap-fullscreen-btn:hover,
+.mindmap-fullscreen-btn.is-active {
+  opacity: 1;
+}
+.mindmap-fullscreen-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mindmap-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.mindmap-canvas .mindmap-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mindmap-canvas .mindmap-container .mindmap-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.mindmap-canvas > .empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+/* Empty state shown before a mind map is generated. */
+.mindmap-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 24px;
+}
+.mindmap-empty > svg {
+  color: var(--accent);
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+.mindmap-empty-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.mindmap-empty-sub {
+  margin: 0 0 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capability-tab.active::after {
+    display: none;
+  }
+}
+
 

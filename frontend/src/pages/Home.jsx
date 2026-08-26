@@ -1,110 +1,26 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import AppShell from '../components/layout/AppShell';
+import Sidebar from '../components/layout/Sidebar';
 import ChatBox from '../components/ChatBox';
 import SourceViewer from '../components/SourceViewer';
-import { ingestFile, ingestGithub, ingestSource, deleteSource, clearKnowledgeBase, fetchSources } from '../services/api';
+import { ingestFile, ingestGithub, ingestSource, deleteSource, clearKnowledgeBase } from '../services/api';
+import { sourceRepoUrl } from '../lib/sources';
 import { useChat } from '../hooks/useChat';
-
-function SourceIcon({ type }) {
-  const icon = (() => {
-    switch (type) {
-      case 'pdf':
-      case 'docx':
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="2" width="20" height="20" rx="4" fill="#EF4444" />
-            <rect x="2" y="2" width="14" height="7" rx="4" fill="#DC2626" />
-            <text x="12" y="16" textAnchor="middle" fill="white" fontSize="7.5" fontWeight="bold" fontFamily="Arial,sans-serif">PDF</text>
-          </svg>
-        );
-      case 'web':
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="2" y1="12" x2="22" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-          </svg>
-        );
-      case 'github':
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-          </svg>
-        );
-      case 'youtube':
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
-            <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
-          </svg>
-        );
-      default:
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-          </svg>
-        );
-    }
-  })();
-
-  const className = (() => {
-    switch (type) {
-      case 'pdf': return 'source-item-icon is-pdf';
-      case 'web': return 'source-item-icon is-web';
-      case 'github': return 'source-item-icon is-github';
-      case 'youtube': return 'source-item-icon is-youtube';
-      default: return 'source-item-icon';
-    }
-  })();
-
-  return <div className={className}>{icon}</div>;
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return '0 KB';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
-}
-
-function formatSourceMeta(source) {
-  switch (source.type) {
-    case 'pdf':
-    case 'docx':
-      return `PDF • ${formatFileSize(source.size)}`;
-    case 'web':
-      return `Web • ${source.date ? new Date(source.date).toLocaleDateString('en-GB') : ''}`;
-    case 'github':
-      return `GitHub Repo • ${source.chunks || 0} files`;
-    case 'youtube':
-      return `YouTube • ${source.author || 'Video'}`;
-    default:
-      return `${source.type.toUpperCase()} • ${source.chunks || 0} items`;
-  }
-}
-
-const STATUS_META = {
-  indexed: { label: 'Indexed', dot: 'status-dot is-indexed' },
-  processing: { label: 'Processing', dot: 'status-dot is-processing' },
-  failed: { label: 'Failed', dot: 'status-dot is-failed' },
-};
-
-const TYPE_LABEL = {
-  pdf: 'PDF',
-  docx: 'DOCX',
-  web: 'WEB',
-  github: 'GIT',
-  text: 'TXT',
-  youtube: 'YT',
-};
+import { useSources } from '../hooks/useSources';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [sources, setSources] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    sources,
+    loading,
+    addSource,
+    updateSource,
+    removeSource,
+    replaceAll,
+  } = useSources();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAddingRepo, setIsAddingRepo] = useState(false);
@@ -115,35 +31,14 @@ export default function Home() {
   const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
   const confirmResolveRef = useRef(null);
 
+  // Allow the shared sidebar's "Add Source" button on any page to open the
+  // ingest modal by returning to the workspace with ?add=1.
   useEffect(() => {
-    let cancelled = false;
-    async function loadSources() {
-      try {
-        const data = await fetchSources();
-        if (cancelled) return;
-        if (data && data.sources && data.sources.length > 0) {
-          const synced = data.sources.map((s) => ({
-            id: s.source_id,
-            type: s.type || 'unknown',
-            title: s.title || s.source_id.slice(0, 12),
-            status: 'indexed',
-            chunks: s.chunks || 0,
-            url: s.url || '',
-          }));
-          setSources(synced);
-        } else {
-          setSources([]);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Failed to fetch sources from backend:', err);
-          setSources([]);
-        }
-      }
+    if (searchParams.get('add')) {
+      setIsModalOpen(true);
+      setSearchParams({}, { replace: true });
     }
-    loadSources();
-    return () => { cancelled = true; };
-  }, []);
+  }, [searchParams, setSearchParams]);
 
   const {
     input,
@@ -155,11 +50,32 @@ export default function Home() {
     sources: querySources,
     latency,
     confidence,
-    suggestions,
     retryLast,
     showUploadHint,
     resetChat,
   } = useChat();
+
+  // The dominant source of the current query determines whether Repository
+  // Intelligence can be launched from the main chat interface.
+  const { dominantSourceId, dominantRepoUrl } = useMemo(() => {
+    const counts = {};
+    for (const item of querySources) {
+      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1;
+    }
+    let best = null;
+    let bestCount = 0;
+    for (const [id, count] of Object.entries(counts)) {
+      if (count > bestCount) {
+        best = id;
+        bestCount = count;
+      }
+    }
+    const dominant = sources.find((s) => s.id === best) || null;
+    return {
+      dominantSourceId: best,
+      dominantRepoUrl: dominant?.type === 'github' ? sourceRepoUrl(dominant) : undefined,
+    };
+  }, [querySources, sources]);
 
   const pushNotification = useCallback((type, text) => {
     const id = `${type}-${Date.now()}`;
@@ -182,18 +98,6 @@ export default function Home() {
       confirmResolveRef.current(result);
       confirmResolveRef.current = null;
     }
-  }, []);
-
-  const addSource = useCallback((payload) => {
-    setSources((prev) => [payload, ...prev]);
-  }, []);
-
-  const updateSource = useCallback((id, patch) => {
-    setSources((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
-  }, []);
-
-  const removeSource = useCallback((id) => {
-    setSources((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const handleFileUpload = useCallback(
@@ -280,11 +184,7 @@ export default function Home() {
         });
         pushNotification('success', response.message);
         setIsModalOpen(false);
-        if (response.analysis_id) {
-          navigate(`/repository/${response.analysis_id}`);
-        } else {
-          navigate(`/repository?repoUrl=${encodeURIComponent(url)}`);
-        }
+        navigate(`/sources/${encodeURIComponent(response.source_id)}?tab=intelligence`);
       } catch (repoError) {
         updateSource(tempId, { status: 'failed' });
         pushNotification('error', repoError.message || 'GitHub ingest failed');
@@ -298,9 +198,7 @@ export default function Home() {
   const handleTextIngest = useCallback(
     async (text) => {
       const trimmed = text.trim();
-      if (!trimmed) {
-        return;
-      }
+      if (!trimmed) return;
       const tempId = `text-${Date.now()}`;
       addSource({
         id: tempId,
@@ -363,9 +261,7 @@ export default function Home() {
     (event) => {
       event.preventDefault();
       const [file] = event.dataTransfer.files;
-      if (file) {
-        handleFileUpload(file);
-      }
+      if (file) handleFileUpload(file);
     },
     [handleFileUpload],
   );
@@ -373,9 +269,7 @@ export default function Home() {
   const handleFilePicker = useCallback(
     (event) => {
       const [file] = event.target.files;
-      if (file) {
-        handleFileUpload(file);
-      }
+      if (file) handleFileUpload(file);
       event.target.value = '';
     },
     [handleFileUpload],
@@ -385,178 +279,86 @@ export default function Home() {
 
   const handleClearKB = useCallback(async () => {
     const confirmed = await showConfirm('Are you sure you want to clear the entire knowledge base? This cannot be undone.');
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
     try {
       await clearKnowledgeBase();
-      setSources([]);
+      replaceAll([]);
       resetChat();
       pushNotification('success', 'Knowledge base cleared successfully.');
     } catch (err) {
       pushNotification('error', err.message || 'Failed to clear knowledge base.');
     }
-  }, [showConfirm, pushNotification, resetChat]);
+  }, [showConfirm, pushNotification, resetChat, replaceAll]);
 
-  const indexedCount = sources.filter((s) => s.status === 'indexed').length;
-  const processingCount = sources.filter((s) => s.status === 'processing').length;
-  const pdfCount = sources.filter((s) => s.type === 'pdf').length;
-  const webCount = sources.filter((s) => s.type === 'web').length;
-  const githubCount = sources.filter((s) => s.type === 'github').length;
-  const youtubeCount = sources.filter((s) => s.type === 'youtube').length;
+  const handleDeleteSource = useCallback(
+    async (id) => {
+      try {
+        await deleteSource(id);
+      } catch {
+        // Best effort — still remove from UI
+      }
+      removeSource(id);
+    },
+    [removeSource],
+  );
+
+  const handleSelectSource = useCallback(
+    (id) => {
+      navigate(`/sources/${encodeURIComponent(id)}`);
+    },
+    [navigate],
+  );
+
+  const main = (
+    <div className="main-card">
+      <ChatBox
+        messages={messages}
+        input={input}
+        onInputChange={setInput}
+        onSend={sendMessage}
+        isStreaming={isStreaming}
+        error={error}
+        onSuggestion={sendMessage}
+        onRetry={retryLast}
+        uploadHint={showUploadHint}
+        onNewChat={resetChat}
+      />
+    </div>
+  );
+
+  const right = (
+    <SourceViewer
+      sources={querySources}
+      latency={latency}
+      isStreaming={isStreaming}
+      confidence={confidence}
+      showQuickActions
+      repoUrl={dominantRepoUrl}
+      onOpenIntel={() => {
+        if (dominantSourceId) {
+          navigate(`/sources/${encodeURIComponent(dominantSourceId)}?tab=intelligence`);
+        }
+      }}
+    />
+  );
 
   return (
-    <main className="app-shell">
-      <div className="app-layout">
-        <aside className="sidebar-shell">
-          <div className="brand">
-            <div className="brand-mark" aria-hidden="true">
-              <img src="/logos/project_logo.png" alt="ContextForge" />
-            </div>
-            <div className="brand-text">
-              <span className="brand-title">
-                Context<span className="brand-title-accent">Forge</span>
-              </span>
-              <small>Grounded AI Workspace</small>
-            </div>
-          </div>
-
-          <button className="add-knowledge-btn" onClick={() => setIsModalOpen(true)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            <span>Add Source</span>
-          </button>
-
-          <button className="repo-intel-nav" onClick={() => navigate('/repository')}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
-            </svg>
-            <span>Repository Intelligence</span>
-            <span className="repo-intel-arrow">→</span>
-          </button>
-
-          <section className="kb-section">
-            <div className="section-title">Knowledge Base</div>
-            <div className="kb-rows">
-              <div className="kb-row active">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="4" rx="1" /><rect x="5" y="10" width="14" height="4" rx="1" /><rect x="7" y="17" width="10" height="4" rx="1" /></svg>
-                <span>All Documents</span>
-                <span className="kb-count">{sources.length}</span>
-              </div>
-              <div className="kb-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
-                <span>PDFs</span>
-                <span className="kb-count">{pdfCount}</span>
-              </div>
-              <div className="kb-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
-                <span>Web Pages</span>
-                <span className="kb-count">{webCount}</span>
-              </div>
-              <div className="kb-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
-                <span>GitHub Repos</span>
-                <span className="kb-count">{githubCount}</span>
-              </div>
-              <div className="kb-row">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" /><path d="M10 9l6 3-6 3z" fill="#FFFFFF" /></svg>
-                <span>YouTube Videos</span>
-                <span className="kb-count">{youtubeCount}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="sources-section">
-            <div className="section-title">
-              <span>My Sources</span>
-            </div>
-            <div className="source-list">
-              {sources.length === 0 ? (
-                <div className="empty-source">No sources added yet.</div>
-              ) : (
-                    sources.map((source) => {
-                  const status = STATUS_META[source.status] || STATUS_META.processing;
-                  return (
-                    <div className="source-item-compact" key={source.id}>
-                      <SourceIcon type={source.type} />
-                      <div className="source-item-body">
-                        <div className="source-item-title">{source.title}</div>
-                        <div className="source-item-meta">{formatSourceMeta(source)}</div>
-                      </div>
-                      <div className="source-item-status">
-                        <span className={status.dot} title={status.label} />
-                      </div>
-                      <button
-                        className="source-item-delete"
-                        title="Delete"
-                        onClick={async () => {
-                          try {
-                            await deleteSource(source.id);
-                          } catch {
-                            // Best effort — still remove from UI
-                          }
-                          removeSource(source.id);
-                        }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          <div className="sidebar-spacer" />
-
-          <div className="status-card">
-            <div className="status-card-header">Processing Status</div>
-            <div className="status-card-body">
-              <div className="status-card-row">
-                <span className="status-dot is-indexed" />
-                <span>{indexedCount} sources indexed</span>
-              </div>
-              <div className="status-card-row">
-                <span className={`status-dot ${processingCount > 0 ? 'is-processing' : 'is-indexed'}`} />
-                <span>{processingCount > 0 ? `${processingCount} processing` : 'All idle'}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleClearKB}
-              className="mt-2 w-full px-3 py-1.5 rounded-lg text-xs font-medium
-                bg-white text-[#0b1020] 
-                cursor-pointer hover:shadow-[0_4px_12px_rgba(255,255,255,0.3)]
-                transition-all duration-200"
-            >
-              Clear Knowledge Base
-            </button>
-          </div>
-        </aside>
-
-        <section className="main-shell">
-          <div className="main-card">
-            <ChatBox
-              messages={messages}
-              input={input}
-              onInputChange={setInput}
-              onSend={sendMessage}
-              isStreaming={isStreaming}
-              error={error}
-              onSuggestion={sendMessage}
-              onRetry={retryLast}
-              uploadHint={showUploadHint}
-              onNewChat={resetChat}
-            />
-          </div>
-        </section>
-
-        <aside className="evidence-shell">
-          <SourceViewer sources={querySources} latency={latency} isStreaming={isStreaming} confidence={confidence} />
-        </aside>
-      </div>
+    <>
+      <AppShell
+        sidebar={(
+          <Sidebar
+            sources={sources}
+            loading={loading}
+            onAddSource={() => setIsModalOpen(true)}
+            onSelectSource={handleSelectSource}
+            onDeleteSource={handleDeleteSource}
+            onClearKB={handleClearKB}
+          />
+        )}
+        main={main}
+        right={right}
+        rightClass="shell-right-evidence"
+      />
 
       {isModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
@@ -766,6 +568,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </main>
+    </>
   );
 }

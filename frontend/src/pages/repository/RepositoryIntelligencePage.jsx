@@ -1,249 +1,94 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-import RepositoryHeader from './components/RepositoryHeader';
-import RepositoryTabs from './components/RepositoryTabs';
-import RepositoryStats from './components/RepositoryStats';
-import RepositoryHealth from './components/RepositoryHealth';
-import RepositoryActivity from './components/RepositoryActivity';
-import RepositoryAIInput from './components/RepositoryAIInput';
-import RepositoryAnswerPanel from './components/RepositoryAnswerPanel';
+import AppShell from '../../components/layout/AppShell';
+import Sidebar from '../../components/layout/Sidebar';
+import RepositoryIntelligenceView from './RepositoryIntelligenceView';
+import RepositoryInsights from './RepositoryInsights';
 import RepositoryAnalysisLoading from './components/RepositoryAnalysisLoading';
 
-import ArchitectureView from './views/ArchitectureView';
-import DependencyView from './views/DependencyView';
-import DataFlowView from './views/DataFlowView';
-import GitHistoryView from './views/GitHistoryView';
-import OwnershipView from './views/OwnershipView';
-import ChangeImpactView from './views/ChangeImpactView';
-
-import { repositoryAsk } from '../../services/api';
 import { useRepository } from '../../hooks/useRepository';
+import { useSources } from '../../hooks/useSources';
+import { clearKnowledgeBase, deleteSource } from '../../services/api';
 
-const TABS = {
-  'architecture': ArchitectureView,
-  'dependencies': DependencyView,
-  'data-flow': DataFlowView,
-  'git-history': GitHistoryView,
-  'ownership': OwnershipView,
-  'change-impact': ChangeImpactView,
-};
-
-const GRAPH_DIMENSIONS = { width: 1240, height: 860 };
-
+// Deep-link entry point for Repository Intelligence.
+//
+// A GitHub repository is a ContextForge source, and Repository Intelligence is
+// its specialised capability.  This page renders that capability inside the
+// shared product shell (same sidebar, same chrome) so a /repository/{id} link
+// lands in the same workspace instead of a separate application.
 export default function RepositoryIntelligencePage() {
   const { repositoryId } = useParams();
-  const [searchParams] = useSearchParams();
-  const repoUrl = searchParams.get('repoUrl') || undefined;
+  const navigate = useNavigate();
+  const { sources, loading, removeSource, replaceAll } = useSources();
+  const repository = useRepository({ repositoryId });
 
-  const { id, analysis, status, loading, error, reanalyze } = useRepository({
-    repositoryId,
-    repoUrl,
-  });
+  const handleDeleteSource = async (id) => {
+    try { await deleteSource(id); } catch { /* best effort */ }
+    removeSource(id);
+  };
 
-  const [activeTab, setActiveTab] = useState('architecture');
+  const handleSelectSource = (id) => navigate(`/sources/${encodeURIComponent(id)}`);
 
-  // Live AI answer state, lifted here so <RepositoryAnswerPanel/> (rendered at
-  // the top of <intel-viewport>) can stream alongside the repository graph —
-  // both share one continuous scroll container.
-  const [aiQuestion, setAiQuestion] = useState('');
-  const [aiAnswer, setAiAnswer] = useState('');
-  const [aiSources, setAiSources] = useState([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
+  const handleClearKB = async () => {
+    try { await clearKnowledgeBase(); replaceAll([]); } catch { /* best effort */ }
+    navigate('/');
+  };
 
-  // Wire AI answers to graph highlighting: navigate to architecture for
-  // structural questions and highlight the relevant nodes.
-  const handleTabHint = useCallback((text) => {
-    if (!text) return;
-    const s = text.toLowerCase();
-    if (/pipeline|flow|retriev|ingest|query|depend|risk|architect|coupl/.test(s)) {
-      setActiveTab('architecture');
-    } else if (/change|impact|blast|affected/.test(s)) {
-      setActiveTab('change-impact');
-    } else {
-      setActiveTab('architecture');
-    }
-  }, []);
-
-  // Cross-view "View Change Impact" navigation.
-  useEffect(() => {
-    const onChangeImpact = () => setActiveTab('change-impact');
-    window.addEventListener('repo-intel:change-impact', onChangeImpact);
-    return () => window.removeEventListener('repo-intel:change-impact', onChangeImpact);
-  }, []);
-
-  const streamAnswer = useCallback(
-    (text, handlers) => {
-      if (!id) {
-        handlers.onError?.('No analysis available.');
-        return Promise.resolve();
-      }
-      return repositoryAsk(id, text, handlers);
-    },
-    [id],
-  );
-
-  // Kick off a question: reset the answer panel, then stream tokens into it
-  // while it sits inline above the visualization in the shared scroll area.
-  const handleAsk = useCallback(
-    (text, askFn) => {
-      if (!text) return;
-      setAiQuestion(text);
-      setAiAnswer('');
-      setAiSources([]);
-      setAiError('');
-      setAiLoading(true);
-      askFn(text, {
-        onToken: (token) => {
-          // First token marks the start of the streamed answer, so drop the
-          // placeholder and reveal the answer as it arrives.
-          setAiLoading(false);
-          setAiAnswer((prev) => prev + token);
-        },
-        onSources: (next) => setAiSources(next || []),
-        onError: (msg) => setAiError(msg || 'Something went wrong'),
-      })
-        .catch((err) => setAiError(err.message || 'Something went wrong'))
-        .finally(() => setAiLoading(false));
-    },
-    [],
-  );
-
-  const ActiveView = TABS[activeTab] || ArchitectureView;
-
-  if (loading && !analysis) {
-    let repoName = status?.name || '';
-    if (!repoName && repoUrl) {
-      try {
-        repoName = decodeURIComponent(repoUrl).replace('https://github.com/', '');
-      } catch {
-        repoName = repoUrl;
-      }
-    }
-    return (
+  let main;
+  if (repository.loading && !repository.analysis) {
+    main = (
       <RepositoryAnalysisLoading
-        progress={status?.progress || 0}
-        status={status?.status || 'queued'}
-        name={repoName}
+        embedded
+        name={repository.status?.name || 'repository'}
+        progress={repository.status?.progress || 0}
+        status={repository.status?.status || 'queued'}
+      />
+    );
+  } else if (repository.error && !repository.analysis) {
+    main = (
+      <div className="intel-analyzing-card empty-intel">
+        <p className="intel-error">{repository.error}</p>
+        <button className="primary" onClick={() => navigate('/')}>Back to workspace</button>
+      </div>
+    );
+  } else {
+    main = (
+      <RepositoryIntelligenceView
+        analysis={repository.analysis}
+        analysisId={repository.id}
+        reanalyze={repository.reanalyze}
+        loading={repository.loading}
+        error={repository.error}
       />
     );
   }
 
-  if (error) {
-    return (
-      <main className="app-shell intel-shell">
-        <div className="intel-loading intel-analyzing">
-          <div className="intel-analyzing-card">
-            <p className="intel-error">{error}</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const repo = analysis?.repository || {};
-  const stats = repo;
-
   return (
-    <main className="app-shell intel-shell">
-      <div className="app-layout intel-layout intel-enter">
-        {/* Left sidebar — preserved ContextForge chrome */}
-        <aside className="sidebar-shell intel-sidebar">
-          <div className="brand">
-            <div className="brand-mark" aria-hidden="true">
-              <img src="/logos/project_logo.png" alt="ContextForge" />
-            </div>
-            <div className="brand-text">
-              <span className="brand-title">
-                Context<span className="brand-title-accent">Forge</span>
-              </span>
-              <small>Grounded AI Workspace</small>
-            </div>
-          </div>
-
-          <button className="add-knowledge-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            <span>Add Source</span>
-          </button>
-
-          <section className="kb-section">
-            <div className="section-title">Repository Intelligence</div>
-            <div className="kb-rows">
-              <div className="kb-row active">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" /></svg>
-                <span>{repo.name || 'repository'}</span>
-                <span className="kb-count">{repo.modules || 0}</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="sources-section">
-            <div className="section-title"><span>My Sources</span></div>
-            <div className="source-list">
-              <div className="source-item-compact">
-                <div className="source-item-icon is-github">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" /></svg>
-                </div>
-                <div className="source-item-body">
-                  <div className="source-item-title">{repo.name || 'repository'}</div>
-                  <div className="source-item-meta">GitHub Repo • {repo.files || 0} files</div>
-                </div>
-                <div className="source-item-status"><span className="status-dot is-indexed" /></div>
-              </div>
-            </div>
-          </section>
-
-          <div className="sidebar-spacer" />
-
-          <div className="status-card">
-            <div className="status-card-header">Repository Status</div>
-            <div className="status-card-body">
-              <div className="status-card-row"><span className="status-dot is-indexed" /><span>Indexed & analyzed</span></div>
-              <div className="status-card-row"><span className="status-dot is-indexed" /><span>All pipelines idle</span></div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Center workspace */}
-        <section className="main-shell intel-main intel-reveal-1">
-          <div className="intel-card intel-reveal-inner">
-            <RepositoryHeader repo={repo} onSync={reanalyze} />
-            <RepositoryTabs active={activeTab} onChange={setActiveTab} />
-            <div className="intel-viewport">
-              <RepositoryAnswerPanel
-                question={aiQuestion}
-                answer={aiAnswer}
-                sources={aiSources}
-                loading={aiLoading}
-                error={aiError}
-              />
-              <ActiveView
-                analysisId={id}
-                architecture={analysis.architecture}
-                dependencyGraph={analysis.dependencies}
-                gitHistory={analysis.gitHistory || {}}
-                ownership={analysis.ownership || {}}
-                changeImpact={analysis.changeImpact || { nodes: [], blastRadius: { nodes: [], edges: [] }, estimated: {} }}
-                graphDimensions={GRAPH_DIMENSIONS}
-              />
-            </div>
-            <RepositoryAIInput
-              suggestedQuestions={analysis.suggestedQuestions}
-              streamAnswer={streamAnswer}
-              onTabHint={handleTabHint}
-              onAsk={handleAsk}
-            />
-          </div>
+    <AppShell
+      sidebar={(
+        <Sidebar
+          sources={sources}
+          loading={loading}
+          onAddSource={() => navigate('/?add=1')}
+          onSelectSource={handleSelectSource}
+          onDeleteSource={handleDeleteSource}
+          onClearKB={handleClearKB}
+        />
+      )}
+      main={<div className="explore-main">{main}</div>}
+      right={repository.analysis ? (
+        <RepositoryInsights
+          analysis={repository.analysis}
+          onViewHistory={() => window.dispatchEvent(new Event('repo-intel:git-history'))}
+        />
+      ) : (
+        <section className="panel">
+          <div className="panel-head"><h3>Loading</h3></div>
+          <div className="empty" style={{ padding: '20px 0' }}>Analyzing repository…</div>
         </section>
-
-        {/* Right sidebar — repository-level information only */}
-        <aside className="intel-right intel-reveal-2">
-          <RepositoryStats stats={repo} />
-          <RepositoryHealth health={analysis.health || {}} rankedModules={analysis.rankedModules || []} />
-          <RepositoryActivity activity={analysis.activity || []} onViewHistory={() => setActiveTab('git-history')} />
-        </aside>
-      </div>
-    </main>
+      )}
+      layoutClass="explore-layout"
+    />
   );
 }

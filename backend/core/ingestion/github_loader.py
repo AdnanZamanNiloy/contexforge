@@ -43,7 +43,7 @@ class GitHubLoader(BaseLoader):
                 text = content.decode("utf-8", errors="ignore")
                 if not text.strip():
                     continue
-                metadata = {"path": path, "repo": f"{owner}/{repo}", "source_id": source_id}
+                metadata = {"path": path, "repo": f"{owner}/{repo}", "source_id": source_id, "url": f"https://github.com/{owner}/{repo}"}
                 doc_id = f"{source_id}:{path}"
                 documents.append(Document(document_id=doc_id, text=text, metadata=metadata, source_type="github"))
             return documents

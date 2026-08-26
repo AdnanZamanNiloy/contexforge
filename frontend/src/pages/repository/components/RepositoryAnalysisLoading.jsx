@@ -13,7 +13,7 @@ const STAGES = [
   { at: 100, label: 'Finalizing', detail: 'Building the visualization' },
 ];
 
-export default function RepositoryAnalysisLoading({ progress = 0, status = 'queued', name = 'repository' }) {
+export default function RepositoryAnalysisLoading({ progress = 0, status = 'queued', name = 'repository', embedded = false }) {
   const [visible, setVisible] = useState(() => Math.max(0, Math.min(100, Math.round(progress))));
   const [elapsed, setElapsed] = useState(0);
 
@@ -46,9 +46,9 @@ export default function RepositoryAnalysisLoading({ progress = 0, status = 'queu
   const completed = STAGES.filter((s) => visible > s.at);
   const pending = STAGES.filter((s) => visible < s.at);
 
-  return (
-    <main className="app-shell intel-shell">
-      <div className="intel-analyzing" role="status" aria-live="polite">
+  const card = (
+    <>
+      <div className={`intel-analyzing${embedded ? ' is-embedded' : ''}`} role="status" aria-live="polite">
         <div className="intel-analyzing-card">
           <header className="intel-analyzing-head">
             <div className="intel-analyzing-icon" aria-hidden="true">
@@ -121,6 +121,14 @@ export default function RepositoryAnalysisLoading({ progress = 0, status = 'queu
           </div>
         </div>
       </div>
+    </>
+  );
+
+  if (embedded) return card;
+
+  return (
+    <main className="app-shell intel-shell">
+      {card}
     </main>
   );
 }

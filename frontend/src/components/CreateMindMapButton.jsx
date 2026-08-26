@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createMindMap, getMindMap } from '../services/api';
 
-const NO_SOURCE_MESSAGE = 'Add a source to get started, then create a mind map from it.';
+const NO_SOURCE_MESSAGE = 'Select a source to get started, then create a mind map from it.';
 
 export default function CreateMindMapButton({ sourceId }) {
   const navigate = useNavigate();

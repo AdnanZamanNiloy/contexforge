@@ -15,7 +15,7 @@ const DEFAULT_CONFIDENCE = {
   retrieved_chunks: 0,
 };
 
-export function useChat() {
+export function useChat({ sourceId = null } = {}) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -86,8 +86,9 @@ export function useChat() {
 
       try {
         let hasTokens = false;
+        const payload = { question: trimmed, source_id: sourceId || undefined };
         await streamQuery(
-          { question: trimmed },
+          payload,
           {
             signal: controller.signal,
             onToken: (token) => {
@@ -129,7 +130,7 @@ export function useChat() {
       } catch (streamError) {
         stopStream();
         try {
-          const fallback = await queryAnswer({ question: trimmed });
+          const fallback = await queryAnswer({ question: trimmed, source_id: sourceId || undefined });
           updateAssistant(assistantId, {
             text: fallback.answer,
             status: 'done',
@@ -148,7 +149,7 @@ export function useChat() {
         setIsStreaming(false);
       }
     },
-    [appendMessage, stopStream, updateAssistant],
+    [appendMessage, stopStream, updateAssistant, sourceId],
   );
 
   const retryLast = useCallback(() => {

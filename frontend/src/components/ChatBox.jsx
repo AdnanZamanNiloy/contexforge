@@ -83,11 +83,11 @@ export default function ChatBox({
 
   const sendBtnBase =
     'absolute right-2 bottom-2 p-2.5 rounded-xl ' +
-    'bg-white ' +
+    'bg-[linear-gradient(135deg,#7aa2f7,#9aa8ff)] ' +
     'text-[#0b1020] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
     'transition-all duration-200 ' +
-    'hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] ' +
+    'hover:shadow-[0_0_20px_rgba(122,162,247,0.5)] ' +
     'cursor-pointer';
 
   const chipBase =
@@ -149,7 +149,7 @@ export default function ChatBox({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col items-center min-h-[calc(100vh-120px)]"
+        className="flex flex-col items-center flex-1 min-h-0"
       >
         <div className="flex-1 min-h-[8vh]" />
 
@@ -222,9 +222,10 @@ export default function ChatBox({
         <button
           onClick={onNewChat}
           className="px-3 py-1.5 rounded-lg text-xs font-medium
-            bg-white text-[#0b1020] 
+            bg-[rgba(255,255,255,0.08)] text-[#e6e7ea]
+            border border-[rgba(255,255,255,0.12)]
             cursor-pointer
-            hover:shadow-[0_4px_12px_rgba(255,255,255,0.3)]
+            hover:bg-[rgba(255,255,255,0.14)] hover:border-[rgba(255,255,255,0.24)]
             transition-all duration-200 shrink-0"
         >
           New Chat
@@ -286,8 +287,9 @@ export default function ChatBox({
             <button
               onClick={onRetry}
               className="px-3 py-1 rounded-lg text-xs font-medium
-                bg-white text-[#0b1020]
-                hover:shadow-[0_4px_12px_rgba(255,255,255,0.3)] transition-colors cursor-pointer"
+                bg-[rgba(255,255,255,0.08)] text-[#e6e7ea]
+                border border-[rgba(255,255,255,0.12)]
+                hover:bg-[rgba(255,255,255,0.14)] transition-colors cursor-pointer"
             >
               Retry
             </button>
