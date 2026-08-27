@@ -168,9 +168,9 @@ export default function ChatBox({
             transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
             className="text-[#a6abb3] text-base sm:text-lg leading-relaxed max-w-[520px] mx-auto"
           >
-            Turn documents, repositories, and web content into intelligent
-            conversations. Upload your sources and explore ideas faster with
-            AI-powered context understanding.
+            Forge documents, repositories, web pages, and YouTube URLs into one
+            intelligent conversation. Ask across every source at once and get
+            answers grounded in your knowledge.
           </motion.p>
 
           <motion.div

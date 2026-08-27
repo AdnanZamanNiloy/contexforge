@@ -1,6 +1,29 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { queryAnswer, streamQuery } from '../services/api';
+
+const STORAGE_PREFIX = 'contextforge:chat:';
+
+function storageKey(sourceId) {
+  return `${STORAGE_PREFIX}${sourceId ? `source:${sourceId}` : 'general'}`;
+}
+
+function loadState(sourceId) {
+  try {
+    const raw = localStorage.getItem(storageKey(sourceId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(sourceId, state) {
+  try {
+    localStorage.setItem(storageKey(sourceId), JSON.stringify(state));
+  } catch {
+    // ignore storage quota/availability errors
+  }
+}
 
 const SUGGESTIONS = [
   'Explain positional encoding',
@@ -17,18 +40,25 @@ const DEFAULT_CONFIDENCE = {
 
 export function useChat({ sourceId = null } = {}) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => loadState(sourceId)?.messages ?? []);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState('');
-  const [sources, setSources] = useState([]);
+  const [sources, setSources] = useState(() => loadState(sourceId)?.sources ?? []);
   const [latency, setLatency] = useState({});
   // FIX: store server-side confidence metrics
-  const [confidence, setConfidence] = useState(null);
+  const [confidence, setConfidence] = useState(
+    () => loadState(sourceId)?.confidence ?? null,
+  );
   const [showUploadHint, setShowUploadHint] = useState(false);
   const abortRef = useRef(null);
   const lastQuestionRef = useRef('');
 
   const suggestions = useMemo(() => SUGGESTIONS, []);
+
+  // Persist chat state so history survives page refresh.
+  useEffect(() => {
+    saveState(sourceId, { messages, sources, confidence });
+  }, [sourceId, messages, sources, confidence]);
 
   const appendMessage = useCallback((message) => {
     setMessages((prev) => [...prev, message]);
@@ -168,7 +198,12 @@ export function useChat({ sourceId = null } = {}) {
     setShowUploadHint(false);
     setInput('');
     lastQuestionRef.current = '';
-  }, [stopStream]);
+    try {
+      localStorage.removeItem(storageKey(sourceId));
+    } catch {
+      // ignore storage errors
+    }
+  }, [sourceId, stopStream]);
 
   return {
     input,

@@ -24,6 +24,14 @@ _CALIBRATION_SHIFT = 2.0
 # results, confidence never drops below this (avoids the "always 0%" problem).
 _MIN_CONFIDENCE_FLOOR = 0.15
 
+# Per-source coverage guarantee.  When a question is answered over several
+# loaded sources, the pure relevance-sorted top-k tends to be flooded by the
+# single most similar source, so the answer silently ignores the others.  We
+# reserve a slot for every distinct source present in the candidates (up to
+# ``_MAX_CHUNKS_PER_SOURCE`` per source) so multi-source questions actually
+# get grounded in all of them.
+_MAX_CHUNKS_PER_SOURCE = 4
+
 
 def _sigmoid(x: float) -> float:
     """Logit → probability via the logistic function."""
@@ -45,6 +53,84 @@ def _calibrate(raw_logit: float) -> float:
     """
     calibrated = (raw_logit + _CALIBRATION_SHIFT) / _CALIBRATION_TEMPERATURE
     return _sigmoid(calibrated)
+
+
+def _diversify(
+    scored: List[Tuple[RetrievedChunk, float]],
+    top_k: int,
+) -> List[Tuple[RetrievedChunk, float]]:
+    """Select up to ``top_k`` chunks while keeping per-source coverage.
+
+    A purely relevance-sorted top-k lets the single most similar source crowd
+    out every other loaded source, so a question spanning 3-4+ sources gets
+    answered from only one of them.  This spreads the slots across sources:
+
+    1. Every distinct source is guaranteed at least one chunk (its current
+       best), so nothing is silently dropped.
+    2. Remaining slots (up to ``_MAX_CHUNKS_PER_SOURCE`` per source) are filled
+       greedily: at each step we take the highest-scoring *available* chunk of
+       whichever source currently offers the strongest next candidate.
+
+    Chunks with no ``source_id`` are grouped as one anonymous source so they
+    still get a fair share.  If there is only a single source, the relevance
+    order is preserved unchanged.
+
+    Args:
+        scored:    Candidate ``(RetrievedChunk, prob)`` pairs, sorted best-first.
+        top_k:     Maximum number of chunks to return.
+
+    Returns:
+        Up to ``top_k`` pairs, ranked best-first.
+    """
+    if not scored or top_k <= 0:
+        return scored[:top_k]
+
+    # Only one source (or everything fits): relevance order is the answer.
+    distinct_sources = {item[0].chunk.source_id or "__anonymous__" for item in scored}
+    if len(distinct_sources) <= 1 or len(scored) <= top_k:
+        return scored[:top_k]
+
+    # Group each source's candidates, best-first within each group.
+    by_source: Dict[str, List[Tuple[RetrievedChunk, float]]] = {}
+    for item in scored:
+        sid = item[0].chunk.source_id or "__anonymous__"
+        by_source.setdefault(sid, []).append(item)
+
+    # Order sources by their strongest candidate so seeding respects relevance.
+    source_order = sorted(
+        by_source,
+        key=lambda sid: by_source[sid][0][1],
+        reverse=True,
+    )
+
+    # Round 1: seed one slot per source (its best chunk).  This guarantees every
+    # source present in the candidates is represented in the final selection.
+    chosen: List[Tuple[RetrievedChunk, float]] = []
+    for sid in source_order:
+        chosen.append(by_source[sid][0])
+        if len(chosen) >= top_k:
+            return chosen
+
+    # Round 2: fill remaining slots greedily by relevance, honouring the cap.
+    cursors: Dict[str, int] = {sid: 1 for sid in by_source}
+    while len(chosen) < top_k:
+        best_sid = None
+        best_score = None
+        for sid, data in by_source.items():
+            idx = cursors[sid]
+            if idx >= len(data) or idx >= _MAX_CHUNKS_PER_SOURCE:
+                continue
+            if best_score is None or data[idx][1] > best_score:
+                best_score = data[idx][1]
+                best_sid = sid
+        if best_sid is None:
+            break
+        chosen.append(by_source[best_sid][cursors[best_sid]])
+        cursors[best_sid] += 1
+
+    # Return best-first so downstream rank assignment (1 = strongest) is correct.
+    chosen.sort(key=lambda pair: pair[1], reverse=True)
+    return chosen
 
 
 class Reranker:
@@ -104,7 +190,7 @@ class Reranker:
             reverse=True,
         )
 
-        trimmed = scored[:top_k]
+        trimmed = _diversify(scored, top_k)
 
         results = [
             RerankedChunk(chunk=item.chunk, score=prob, rank=rank)
