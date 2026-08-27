@@ -26,7 +26,7 @@ class GitHubLoader(BaseLoader):
         if not isinstance(source, str):
             raise TypeError("GitHubLoader expects a repo URL string")
         owner, repo = self._parse_repo(source)
-        # FIX — honour the caller-supplied branch; fall back to the repo default.
+        # Honour the caller-supplied branch; fall back to the repo default.
         requested_branch = (metadata or {}).get("branch")
         async with httpx.AsyncClient(timeout=30.0) as client:
             repo_data = await self._fetch_repo(client, owner, repo)

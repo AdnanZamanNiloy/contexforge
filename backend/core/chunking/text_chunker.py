@@ -7,7 +7,7 @@ import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config.settings import settings
-from core.types import Chunk, Document
+from core.types import Chunk, Document, validate_documents
 from observability.tracer import observe
 
 __all__ = ["TextChunker", "default_chunker", "get_token_len"]
@@ -26,19 +26,6 @@ def get_token_len(text: str) -> int:
 
 
 _SEPARATORS = ["\n\n", "\n", ". ", "? ", "! ", "; ", " ", ""]
-
-
-def _validate_documents(documents: list[Document]) -> None:
-
-    if not isinstance(documents, list):
-        raise TypeError(f"TextChunker expected a list of Document objects, got {type(documents).__name__}")
-    if not documents:
-        raise ValueError("TextChunker received an empty document list")
-    for idx, doc in enumerate(documents):
-        if not isinstance(doc, Document):
-            raise TypeError(f"TextChunker expected Document at index {idx}, got {type(doc).__name__}")
-        if not isinstance(doc.text, str) or not doc.text.strip():
-            raise ValueError(f"TextChunker received empty text for document '{doc.document_id}'")
 
 
 class TextChunker:
@@ -77,7 +64,7 @@ class TextChunker:
     @observe(name="chunk_text")
     def chunk_documents(self, documents: list[Document]) -> list[Chunk]:
 
-        _validate_documents(documents)
+        validate_documents(documents, component="TextChunker")
         chunks: list[Chunk] = []
         for doc in documents:
             doc_chunks = self._chunk_document(doc)
@@ -97,7 +84,7 @@ class TextChunker:
                     chunk_id=f"{doc.document_id}:{index}",
                     text=text,
                     metadata=metadata,
-                    # FIX #9 — prefer metadata["source_id"] (the source UUID) so
+                    # Prefer metadata["source_id"] (the source UUID) so
                     # sources whose document_id differs (e.g. GitHub files named
                     # "{uuid}:path") can be deleted by source_id.  All loaders set
                     # metadata["source_id"] = the ingestion source UUID.

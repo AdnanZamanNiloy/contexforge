@@ -5,7 +5,7 @@ import logging
 import re
 from collections import Counter
 
-from core.types import Document
+from core.types import Document, validate_documents
 
 __all__ = ["MetadataExtractor"]
 
@@ -13,18 +13,6 @@ logger = logging.getLogger(__name__)
 
 # Maximum characters passed to spaCy to avoid memory spikes on large documents.
 _SPACY_MAX_CHARS = 50_000
-
-
-def _validate_documents(documents: list[Document]) -> None:
-    if not isinstance(documents, list):
-        raise TypeError(f"MetadataExtractor expected a list of Document objects, got {type(documents).__name__}")
-    if not documents:
-        raise ValueError("MetadataExtractor received an empty document list")
-    for idx, doc in enumerate(documents):
-        if not isinstance(doc, Document):
-            raise TypeError(f"MetadataExtractor expected Document at index {idx}, got {type(doc).__name__}")
-        if not isinstance(doc.text, str) or not doc.text.strip():
-            raise ValueError(f"MetadataExtractor received empty text for document '{doc.document_id}'")
 
 
 class MetadataExtractor:
@@ -80,7 +68,7 @@ class MetadataExtractor:
         return await asyncio.to_thread(self._extract_sync, documents)
 
     def _extract_sync(self, documents: list[Document]) -> list[Document]:
-        _validate_documents(documents)
+        validate_documents(documents, component="MetadataExtractor")
         self._ensure_nlp_loaded()
 
         enriched: list[Document] = []

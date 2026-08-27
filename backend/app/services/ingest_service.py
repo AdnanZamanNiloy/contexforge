@@ -64,7 +64,7 @@ class IngestService:
             ValueError:  If no loader is registered for ``source_type``.
             RuntimeError: If loading or indexing fails.
         """
-        # FIX #1 — KeyError → ValueError with a helpful message
+        # KeyError → ValueError with a helpful message
         loader = self._resolve_loader(request.source_type)
 
         # GitHub repos use a deterministic, idempotent source id so re-connecting
@@ -109,7 +109,7 @@ class IngestService:
             ValueError:   If no loader is registered for ``source_type``.
             RuntimeError: If loading or indexing fails.
         """
-        # FIX #1 — consistent loader resolution with clear error
+        # Consistent loader resolution with clear error
         loader = self._resolve_loader(source_type)
 
         source_id = str(uuid.uuid4())
@@ -122,7 +122,7 @@ class IngestService:
         )
 
         try:
-            # FIX #2 — pass (content, source_id, filename) explicitly so file
+            # Pass (content, source_id, filename) explicitly so file
             # loaders have the filename for metadata without guessing
             documents = await loader.load(content, source_id, filename=filename)
         except Exception as exc:

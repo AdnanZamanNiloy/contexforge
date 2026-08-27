@@ -11,6 +11,7 @@ __all__ = [
     "GenerationResult",
     "RerankedChunk",
     "RetrievedChunk",
+    "validate_documents",
 ]
 
 
@@ -34,6 +35,24 @@ class Document:
 
         if isinstance(self.metadata, dict):
             object.__setattr__(self, "metadata", _freeze_metadata(self.metadata))
+
+
+def validate_documents(documents: list[Document], *, component: str) -> None:
+    """Validate a document collection before it is processed.
+
+    Ensures ``documents`` is a non-empty list of ``Document`` objects whose text
+    is a non-blank string. Raises ``TypeError`` for the wrong container or
+    element type and ``ValueError`` for an empty or underspecified collection.
+    """
+    if not isinstance(documents, list):
+        raise TypeError(f"{component} expected a list of Document objects, got {type(documents).__name__}")
+    if not documents:
+        raise ValueError(f"{component} received an empty document list")
+    for idx, doc in enumerate(documents):
+        if not isinstance(doc, Document):
+            raise TypeError(f"{component} expected Document at index {idx}, got {type(doc).__name__}")
+        if not isinstance(doc.text, str) or not doc.text.strip():
+            raise ValueError(f"{component} received empty text for document '{doc.document_id}'")
 
 
 @dataclass(frozen=True)
@@ -76,7 +95,7 @@ class RerankedChunk:
             raise ValueError(f"RerankedChunk.rank must be >= 1, got {self.rank}")
 
 
-# FIX: new dataclass carrying all four confidence fields computed server-side
+# New dataclass carrying all four confidence fields computed server-side
 @dataclass(frozen=True)
 class ConfidenceMetrics:
     """Normalised confidence and coverage computed by the reranker / orchestrator.
@@ -99,7 +118,7 @@ class GenerationResult:
     answer: str
     sources: tuple[RerankedChunk, ...]
     latency_ms: MappingProxyType[str, float] = field(default_factory=dict)
-    # FIX: attach server-side ConfidenceMetrics so the frontend never re-derives
+    # Attach server-side ConfidenceMetrics so the frontend never re-derives
     confidence: ConfidenceMetrics | None = None
 
     def __post_init__(self) -> None:

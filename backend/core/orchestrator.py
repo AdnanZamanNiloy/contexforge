@@ -19,7 +19,7 @@ from core.retrieval.reranker import Reranker
 from core.storage.bm25_index import BM25Index
 from core.storage.faiss_store import FaissStore
 
-# FIX: import ConfidenceMetrics alongside existing types
+# Import ConfidenceMetrics alongside existing types
 from core.types import (
     Chunk,
     ConfidenceMetrics,
@@ -422,7 +422,7 @@ class Orchestrator:
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
         source_id: str | None = None,
-        # FIX: return type now includes mean_confidence from the reranker
+        # Return type now includes mean_confidence from the reranker
     ) -> tuple[list[RerankedChunk], dict[str, float], float]:
         """Expand query, embed, retrieve, and rerank.
 
@@ -478,7 +478,7 @@ class Orchestrator:
         # the answer is grounded only in that repository.  The exclusion set is
         # the store's full source list minus the target source_id.
         exclude_source_ids = self._source_exclude_set(source_id)
-        # FIX: use the (possibly HyDE-expanded) query text for the BM25 + dense
+        # Use the (possibly HyDE-expanded) query text for the BM25 + dense
         # legs too, so expansion is consistent across the whole pipeline.
         retrieved = await self._hybrid.retrieve(
             hyde_question,
@@ -491,9 +491,9 @@ class Orchestrator:
         # Reranking -----------------------------------------------------
         t = time.perf_counter()
 
-        # FIX: wrap reranker call so a failure degrades gracefully
+        # Wrap reranker call so a failure degrades gracefully
         try:
-            # FIX: reranker now returns (chunks, mean_confidence).  Use the
+            # Reranker now returns (chunks, mean_confidence).  Use the
             # HyDE-expanded query so scoring matches what was retrieved.
             reranked, mean_confidence = await self._reranker.rerank(
                 hyde_question,
@@ -711,7 +711,7 @@ class Orchestrator:
     ) -> GenerationResult:
         """Full RAG pipeline: retrieve → generate → return with sources and confidence."""
 
-        # FIX: unpack the new 3-tuple from retrieve_context
+        # Unpack the new 3-tuple from retrieve_context
         reranked, timings, mean_confidence = await self.retrieve_context(
             question,
             top_k_retrieval=top_k_retrieval,
@@ -719,7 +719,7 @@ class Orchestrator:
             use_hyde=use_hyde,
             source_id=source_id,
         )
-        # FIX: time the LLM generation so it shows up in the latency breakdown
+        # Time the LLM generation so it shows up in the latency breakdown
         # (previously the biggest cost was invisible to the client).
         t = time.perf_counter()
         answer_text = await self.generate_answer(
@@ -728,7 +728,7 @@ class Orchestrator:
         )
         timings["generate_ms"] = (time.perf_counter() - t) * 1000
         timings["total_ms"] = sum(v for v in timings.values() if isinstance(v, (int, float)))
-        # FIX: build ConfidenceMetrics and attach to GenerationResult
+        # Build ConfidenceMetrics and attach to GenerationResult
         confidence = self._build_confidence(reranked, mean_confidence)
         return GenerationResult(
             answer=answer_text,

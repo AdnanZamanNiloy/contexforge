@@ -74,7 +74,7 @@ def get_settings() -> Settings:
 
 @lru_cache(maxsize=1)
 def get_embedder() -> VoyageEmbedder:
-    # FIX #5 — use get_settings() everywhere instead of constructing Settings()
+    # Use get_settings() everywhere instead of constructing Settings()
     settings = get_settings()
     return VoyageEmbedder(cache_path=settings.CACHE_PATH)
 
@@ -99,7 +99,7 @@ def get_prompt_builder() -> PromptBuilder:
     return PromptBuilder()
 
 
-# FIX #3 — chunkers cached so they're not rebuilt on every orchestrator access
+# Chunkers cached so they're not rebuilt on every orchestrator access
 @lru_cache(maxsize=1)
 def get_text_chunker() -> TextChunker:
     return TextChunker()
@@ -173,7 +173,7 @@ def get_orchestrator() -> Orchestrator:
         reranker=get_reranker(),
         prompt_builder=get_prompt_builder(),
         hyde=get_hyde(),
-        # FIX #3 — cached instances, not inline constructors
+        # Cached instances, not inline constructors
         text_chunker=get_text_chunker(),
         code_chunker=get_code_chunker(),
         deduplicator=get_deduplicator(),
@@ -187,7 +187,7 @@ def get_orchestrator() -> Orchestrator:
 
 @lru_cache(maxsize=1)
 def get_loaders() -> dict[str, BaseLoader]:
-    # FIX #1 — typed as Dict[str, BaseLoader] for safety
+    # Typed as Dict[str, BaseLoader] for safety
     return {
         "pdf": PDFLoader(),
         "docx": DocxLoader(),
@@ -260,7 +260,7 @@ def get_mindmap_service() -> MindMapService:
 
 
 # ---------------------------------------------------------------------------
-# FIX #4 — graceful shutdown: close all resources that hold connections
+# Graceful shutdown: close all resources that hold connections
 # Called from the lifespan context manager in main.py
 # ---------------------------------------------------------------------------
 

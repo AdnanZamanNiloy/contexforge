@@ -86,7 +86,7 @@ class QueryService:
         """
         logger.info("stream_answer: question=%r source_id=%s", request.question, request.source_id)
 
-        # FIX: unpack the new 3-tuple from retrieve_context
+        # Unpack the new 3-tuple from retrieve_context
         reranked, timings, mean_confidence = await self._orchestrator.retrieve_context(
             request.question,
             top_k_retrieval=request.top_k_retrieval,
@@ -95,7 +95,7 @@ class QueryService:
             source_id=request.source_id,
         )
 
-        # FIX: time the LLM stream so generation latency is visible in the
+        # Time the LLM stream so generation latency is visible in the
         # breakdown (time-to-first-token + total generation time).
         gen_start = time.perf_counter()
         first_token_ms: float | None = None
@@ -115,20 +115,20 @@ class QueryService:
         # Cache sources so get_last_sources() can return them after streaming.
         self._last_sources = list(reranked)
 
-        # FIX: build ConfidenceMetrics and attach to the done payload
+        # Build ConfidenceMetrics and attach to the done payload
         confidence_metrics = self._orchestrator._build_confidence(reranked, mean_confidence)
 
-        # FIX: surface a total now that generate_ms is populated (log only; the
+        # Surface a total now that generate_ms is populated (log only; the
         # stream already emitted the timing dict above).
         total = sum(v for v in timings.values() if isinstance(v, (int, float)))
         timings.setdefault("total_ms", total)
 
         yield {
             "type": "done",
-            # FIX #5 — full source payload with score + rank
+            # Full source payload with score + rank
             "sources": [_source_payload(chunk) for chunk in reranked],
             "latency_ms": timings,
-            # FIX: confidence payload for route to emit as [CONFIDENCE] event
+            # Confidence payload for route to emit as [CONFIDENCE] event
             "confidence": {
                 "answer_confidence": confidence_metrics.answer_confidence,
                 "source_coverage": confidence_metrics.source_coverage,

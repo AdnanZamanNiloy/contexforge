@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 __all__ = ["ClearResponse", "DeleteResponse", "IngestRequest", "IngestResponse", "SourcesResponse"]
 
-# FIX #4 — simple URL prefix check; full RFC validation done by the loader
+# Simple URL prefix check; full RFC validation done by the loader
 _URL_SCHEMES = ("http://", "https://")
 _GITHUB_PREFIX = "https://github.com/"
 
@@ -31,13 +31,13 @@ class IngestRequest(BaseModel):
         description="URL, GitHub repo URL, or raw text depending on source_type.",
         examples=["https://example.com/doc", "https://github.com/owner/repo"],
     )
-    # FIX #5 — Any values so int/bool metadata from loaders is not rejected
+    # Any values so int/bool metadata from loaders is not rejected
     metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional key-value metadata attached to every ingested chunk.",
     )
 
-    # FIX #4 — validate source format against source_type at schema level
+    # Validate source format against source_type at schema level
     @model_validator(mode="after")
     def validate_source_for_type(self) -> IngestRequest:
         src = self.source.strip()
@@ -89,7 +89,7 @@ class IngestResponse(BaseModel):
         description="Human-readable ingestion summary.",
     )
 
-    # FIX #6 — auto-generate message if not supplied
+    # Auto-generate message if not supplied
     @model_validator(mode="before")
     @classmethod
     def set_default_message(cls, values: dict) -> dict:

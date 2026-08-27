@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = Field(default=50)
     TOP_K_RETRIEVAL: int = Field(default=20)
     TOP_K_RERANK: int = Field(default=5)
-    # FIX: HyDE adds a full LLM generation before retrieval on every query,
+    # HyDE adds a full LLM generation before retrieval on every query,
     # doubling time-to-first-token. Off by default for fast retrieval; can be
     # re-enabled per request via `use_hyde: true`.
     USE_HYDE: bool = Field(default=False)

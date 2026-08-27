@@ -6,24 +6,11 @@ import re
 import unicodedata
 from collections import Counter
 
-from core.types import Document
+from core.types import Document, validate_documents
 
 __all__ = ["TextCleaner"]
 
 logger = logging.getLogger(__name__)
-
-
-def _validate_documents(documents: list[Document]) -> None:
-
-    if not isinstance(documents, list):
-        raise TypeError(f"TextCleaner expected a list of Document objects, got {type(documents).__name__}")
-    if not documents:
-        raise ValueError("TextCleaner received an empty document list")
-    for idx, doc in enumerate(documents):
-        if not isinstance(doc, Document):
-            raise TypeError(f"TextCleaner expected Document at index {idx}, got {type(doc).__name__}")
-        if not isinstance(doc.text, str) or not doc.text.strip():
-            raise ValueError(f"TextCleaner received empty or non-string text for document '{doc.document_id}'")
 
 
 class TextCleaner:
@@ -45,7 +32,7 @@ class TextCleaner:
         return await asyncio.to_thread(self._clean_sync, documents)
 
     def _clean_sync(self, documents: list[Document]) -> list[Document]:
-        _validate_documents(documents)
+        validate_documents(documents, component="TextCleaner")
         cleaned: list[Document] = []
         for doc in documents:
             cleaned_text = self._clean_text(doc.text)

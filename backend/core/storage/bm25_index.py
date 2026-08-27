@@ -219,7 +219,7 @@ class BM25Index:
         # Also delete the DB file so nothing persists across restarts
         self.close()
 
-        # FIX #8 — `close()` nulls the connection but leaves _initialized=True;
+        # `close()` nulls the connection but leaves _initialized=True;
         # clear the flag so the next operation re-initialises a fresh DB instead
         # of crashing on a None connection.
         self._initialized = False

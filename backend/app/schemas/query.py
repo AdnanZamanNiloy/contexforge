@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 __all__ = ["ConfidenceMetrics", "QueryRequest", "QueryResponse", "SourceSummary"]
 
 
-# FIX: new Pydantic model so the frontend receives clean server-side confidence
+# New Pydantic model so the frontend receives clean server-side confidence
 class ConfidenceMetrics(BaseModel):
     """Server-side confidence and coverage computed by the orchestrator.
 
@@ -68,7 +68,7 @@ class QueryRequest(BaseModel):
             "(e.g. a GitHub repository). This scopes the answer to that source."
         ),
     )
-    # FIX #2 — upper bounds prevent absurd values reaching FAISS / BM25
+    # Upper bounds prevent absurd values reaching FAISS / BM25
     top_k_retrieval: int | None = Field(
         default=None,
         ge=1,
@@ -86,7 +86,7 @@ class QueryRequest(BaseModel):
         description="Override server-side HyDE flag for this request.",
     )
 
-    # FIX #3 — reject whitespace-only questions that pass min_length=1
+    # Reject whitespace-only questions that pass min_length=1
     @field_validator("question")
     @classmethod
     def question_must_not_be_blank(cls, v: str) -> str:
@@ -130,7 +130,7 @@ class QueryResponse(BaseModel):
         default_factory=dict,
         description=("Per-stage latency breakdown. Keys: hyde_ms, embed_ms, retrieve_ms, rerank_ms."),
     )
-    # FIX: attach server-side ConfidenceMetrics — the frontend should not re-derive
+    # Attach server-side ConfidenceMetrics — the frontend should not re-derive
     confidence: ConfidenceMetrics | None = Field(
         default=None,
         description="Server-side confidence and coverage metrics.",

@@ -6,24 +6,11 @@ import logging
 import threading
 import unicodedata
 
-from core.types import Document
+from core.types import Document, validate_documents
 
 __all__ = ["Deduplicator"]
 
 logger = logging.getLogger(__name__)
-
-
-def _validate_documents(documents: list[Document]) -> None:
-
-    if not isinstance(documents, list):
-        raise TypeError(f"Deduplicator expected a list of Document objects, got {type(documents).__name__}")
-    if not documents:
-        raise ValueError("Deduplicator received an empty document list")
-    for idx, doc in enumerate(documents):
-        if not isinstance(doc, Document):
-            raise TypeError(f"Deduplicator expected Document at index {idx}, got {type(doc).__name__}")
-        if not isinstance(doc.text, str) or not doc.text.strip():
-            raise ValueError(f"Deduplicator received empty or non-string text for document '{doc.document_id}'")
 
 
 class Deduplicator:
@@ -41,7 +28,7 @@ class Deduplicator:
 
     def _deduplicate_sync(self, documents: list[Document]) -> list[Document]:
 
-        _validate_documents(documents)
+        validate_documents(documents, component="Deduplicator")
         unique: list[Document] = []
 
         for doc in documents:

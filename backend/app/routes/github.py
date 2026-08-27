@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/github", tags=["github"])
 
-# FIX #4 — only accept canonical GitHub repo URLs
+# Only accept canonical GitHub repo URLs
 # Matches: https://github.com/owner/repo  (with or without trailing slash / .git)
 _GITHUB_URL_RE = re.compile(
     r"^https://github\.com/[\w.\-]+/[\w.\-]+(\.git)?/?$",
@@ -44,7 +44,7 @@ _GITHUB_URL_RE = re.compile(
     summary="Ingest a public GitHub repository",
 )
 async def ingest_github(
-    # FIX #3 — dedicated schema instead of abusing IngestRequest with a hardcoded source_type
+    # Dedicated schema instead of abusing IngestRequest with a hardcoded source_type
     request: GithubIngestRequest,
     service: IngestService = Depends(get_ingest_service),
 ) -> IngestResponse:
@@ -63,7 +63,7 @@ async def ingest_github(
         422: If ``repo_url`` is not a valid GitHub repository URL.
         502: If cloning or ingestion fails.
     """
-    # FIX #1/#4 — validate URL shape before it reaches the loader
+    # Validate URL shape before it reaches the loader
     if not _GITHUB_URL_RE.match(request.repo_url):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -75,7 +75,7 @@ async def ingest_github(
 
     logger.info("ingest_github: repo_url=%s branch=%s", request.repo_url, request.branch)
 
-    # FIX #2 — map service errors to clean HTTP responses.
+    # Map service errors to clean HTTP responses.
     # The RAG ingest is best-effort: a failure here (e.g. the embedding
     # service being rate-limited) must not block the Repository Intelligence
     # analysis, which is the primary deliverable for GitHub sources.
@@ -83,7 +83,7 @@ async def ingest_github(
     chunks_indexed = 0
     rag_message = ""
     try:
-        # FIX: the service expects an IngestRequest (source_type + source).
+        # The service expects an IngestRequest (source_type + source).
         # Re-map the dedicated schema to it, keeping the dedicated validation
         # above (which rejects non-canonical GitHub URLs before this point).
         ingest_request = IngestRequest(

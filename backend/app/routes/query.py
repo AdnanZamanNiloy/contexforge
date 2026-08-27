@@ -73,7 +73,7 @@ async def query(
         result.latency_ms,
         result.confidence,
     )
-    # FIX: include confidence in the response
+    # Include confidence in the response
     return QueryResponse(
         answer=result.answer,
         sources=[_chunk_summary(c) for c in result.sources],
@@ -152,7 +152,7 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
             elif payload.get("type") == "done":
                 sources = payload.get("sources", [])
                 latency_ms = payload.get("latency_ms", {})
-                # FIX: emit confidence event before [DONE]
+                # Emit confidence event before [DONE]
                 confidence = payload.get("confidence")
                 yield f"data: [SOURCES] {json.dumps(sources)}\n\n"
                 yield f"data: [LATENCY] {json.dumps(latency_ms)}\n\n"
@@ -176,7 +176,7 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
         yield f"data: [ERROR] {exc}\n\n"
 
     except Exception as exc:
-        # FIX #7 — mid-stream failure emits a structured error event
+        # Mid-stream failure emits a structured error event
         logger.error("stream_query failed mid-stream: %s", exc)
         yield "data: [ERROR] Generation failed — please retry.\n\n"
 

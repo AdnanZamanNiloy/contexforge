@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# FIX #7/#8 — lifespan replaces deprecated @app.on_event("startup/shutdown")
+# Lifespan replaces deprecated @app.on_event("startup/shutdown")
 # ---------------------------------------------------------------------------
 
 
@@ -96,7 +96,7 @@ app = FastAPI(
         "cross-encoder reranking, HyDE query expansion, and SSE streaming."
     ),
     version="1.0.0",
-    lifespan=lifespan,  # FIX #7 — replaces @app.on_event
+    lifespan=lifespan,  # Replaces @app.on_event
 )
 
 
@@ -104,7 +104,7 @@ app = FastAPI(
 # Middleware
 # ---------------------------------------------------------------------------
 
-# FIX #6 — explicit origins; credentials=True only makes sense with non-wildcard
+# Explicit origins; credentials=True only makes sense with non-wildcard
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_allowed_origins(),
@@ -126,7 +126,7 @@ app.include_router(mindmap_router)
 
 
 # ---------------------------------------------------------------------------
-# FIX #9 — health check for Docker / k8s liveness probes
+# Health check for Docker / k8s liveness probes
 # ---------------------------------------------------------------------------
 
 
