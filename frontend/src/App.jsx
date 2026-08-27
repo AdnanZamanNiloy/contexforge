@@ -1,11 +1,11 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
-import Home from './pages/Home';
-import MindMapPage from './pages/MindMapPage';
-import SourceExplorePage from './pages/SourceExplorePage';
-import RepositoryIntelligencePage from './pages/repository/RepositoryIntelligencePage';
+import { Routes, Route, useLocation } from 'react-router-dom'
+import Home from './pages/Home'
+import MindMapPage from './pages/MindMapPage'
+import SourceExplorePage from './pages/SourceExplorePage'
+import RepositoryIntelligencePage from './pages/repository/RepositoryIntelligencePage'
 
 export default function App() {
-  const location = useLocation();
+  const location = useLocation()
   // Keying the wrapper on the current pathname forces the route subtree to
   // remount on navigation, so the page-transition animation (fade + slide) plays
   // when switching between the workspace, source exploration and Repository
@@ -21,5 +21,5 @@ export default function App() {
         <Route path="/repository/:repositoryId" element={<RepositoryIntelligencePage />} />
       </Routes>
     </div>
-  );
+  )
 }

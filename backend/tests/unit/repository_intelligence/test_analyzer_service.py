@@ -1,5 +1,6 @@
 """End-to-end unit test for the Repository Intelligence analyzer + service,
 driven by a real local git fixture (no network)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -93,6 +94,7 @@ async def test_failed_run_records_error(tmp_path: Path, monkeypatch):
 
     async def failing_clone(self, *args, **kwargs):
         from app.repository_intelligence.git import GitRepoError
+
         raise GitRepoError("network unavailable")
 
     monkeypatch.setattr(GitRepository, "clone", failing_clone)

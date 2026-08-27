@@ -4,12 +4,12 @@ ingest_service.py — Application service for document ingestion workflows.
 Bridges the FastAPI route layer and the Orchestrator.  Resolves loaders,
 assigns source IDs, and delegates all pipeline logic to Orchestrator.ingest().
 """
+
 from __future__ import annotations
 
 import logging
 import re
 import uuid
-from typing import Dict
 
 from app.schemas.ingest import IngestRequest
 from core.ingestion.base_loader import BaseLoader
@@ -31,6 +31,7 @@ def _github_source_id(url: str) -> str:
         raise ValueError("Invalid GitHub repository URL")
     return f"repo:{match.group(1)}/{match.group(2).replace('.git', '')}"
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +46,7 @@ class IngestService:
     def __init__(
         self,
         orchestrator: Orchestrator,
-        loaders: Dict[str, BaseLoader],
+        loaders: dict[str, BaseLoader],
     ) -> None:
         self._orchestrator = orchestrator
         self._loaders = loaders
@@ -71,23 +72,21 @@ class IngestService:
         source_id = _github_source_id(request.source) if request.source_type == "github" else str(uuid.uuid4())
         logger.info(
             "ingest_source: source_type=%s source=%r source_id=%s",
-            request.source_type, request.source, source_id,
+            request.source_type,
+            request.source,
+            source_id,
         )
 
         try:
             documents = await loader.load(request.source, source_id, metadata=request.metadata)
         except Exception as exc:
-            logger.error(
-                "ingest_source: loader failed for source_id=%s: %s", source_id, exc
-            )
+            logger.error("ingest_source: loader failed for source_id=%s: %s", source_id, exc)
             raise RuntimeError(f"Failed to load source '{request.source}': {exc}") from exc
 
         use_code_chunker = request.source_type == "github"
         chunks_indexed = await self._orchestrator.ingest(documents, use_code_chunker)
 
-        logger.info(
-            "ingest_source complete: source_id=%s chunks=%d", source_id, chunks_indexed
-        )
+        logger.info("ingest_source complete: source_id=%s chunks=%d", source_id, chunks_indexed)
         return source_id, chunks_indexed
 
     async def ingest_file(
@@ -116,7 +115,10 @@ class IngestService:
         source_id = str(uuid.uuid4())
         logger.info(
             "ingest_file: source_type=%s filename=%r size=%d source_id=%s",
-            source_type, filename, len(content), source_id,
+            source_type,
+            filename,
+            len(content),
+            source_id,
         )
 
         try:
@@ -126,7 +128,9 @@ class IngestService:
         except Exception as exc:
             logger.error(
                 "ingest_file: loader failed for source_id=%s filename=%r: %s",
-                source_id, filename, exc,
+                source_id,
+                filename,
+                exc,
             )
             raise RuntimeError(f"Failed to load file '{filename}': {exc}") from exc
 
@@ -134,7 +138,9 @@ class IngestService:
 
         logger.info(
             "ingest_file complete: source_id=%s filename=%r chunks=%d",
-            source_id, filename, chunks_indexed,
+            source_id,
+            filename,
+            chunks_indexed,
         )
         return source_id, chunks_indexed
 
@@ -157,7 +163,8 @@ class IngestService:
         chunks_removed = await self._orchestrator.delete_source(source_id)
         logger.info(
             "delete_source complete: source_id=%s chunks_removed=%d",
-            source_id, chunks_removed,
+            source_id,
+            chunks_removed,
         )
         return chunks_removed
 
@@ -190,8 +197,5 @@ class IngestService:
         loader = self._loaders.get(source_type)
         if loader is None:
             available = ", ".join(sorted(self._loaders.keys()))
-            raise ValueError(
-                f"No loader registered for source_type='{source_type}'. "
-                f"Available: {available}"
-            )
+            raise ValueError(f"No loader registered for source_type='{source_type}'. Available: {available}")
         return loader

@@ -306,8 +306,7 @@ contextforge/
 │   │   ├── main.py                  # FastAPI entry point, lifespan, CORS, routers
 │   │   ├── dependencies.py          # Singleton services (orchestrator, ingest, query)
 │   │   ├── config/
-│   │   │   ├── settings.py          # All app configuration (pydantic-settings)
-│   │   │   └── settings_example.py  # Empty template (use env vars instead)
+│   │   │   └── settings.py          # All app configuration (pydantic-settings)
 │   │   ├── routes/                  # API route handlers
 │   │   │   ├── ingest.py            # POST /ingest/source, /ingest/file, DELETE, GET /ingest/sources
 │   │   │   ├── github.py            # POST /github/ingest
@@ -344,8 +343,11 @@ contextforge/
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
-├── docs/                            # Architecture and pipeline notes
-├── pyproject.toml
+├── docs/                            # Architecture, pipeline and evaluation notes
+├── pyproject.toml                   # Project metadata + ruff config
+├── Makefile                         # Dev workflow (install, lint, test, build)
+├── .github/workflows/ci.yml         # CI: lint, test and build on push/PR
+├── backend/.env.example             # Documented env-var template (no secrets)
 └── README.md
 ```
 
@@ -428,19 +430,30 @@ GET     /mindmap/{source_id}                     Fetch a previously generated mi
 
 ## Development
 
-### Running Tests
+The `Makefile` wraps the whole workflow (see `make help`). Everything below can
+also be run through it.
 
-The suite uses `pytest` (install it in the backend venv with `pip install pytest`).
+### Linting & Formatting
+
+Backend uses [Ruff](https://docs.astral.sh/ruff/); frontend uses ESLint +
+Prettier.
 
 ```bash
-# Backend unit tests
-cd backend && python -m pytest tests/unit -v
+make install      # create the venv + install backend/frontend deps
+make lint         # ruff (backend) + eslint/prettier (frontend)
+make format       # auto-fix formatting in both
+```
 
-# Integration tests
-cd backend && python -m pytest tests/integration -v
+### Running Tests
 
-# All tests
+Backend uses `pytest`, frontend uses `vitest`.
+
+```bash
+# Backend
 cd backend && python -m pytest tests/ -v
+
+# Frontend
+cd frontend && npm test
 ```
 
 ### Building the Frontend

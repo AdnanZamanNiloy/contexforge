@@ -1,15 +1,21 @@
 function Donut({ score = 0 }) {
-  const r = 34;
-  const c = 2 * Math.PI * r;
-  const off = c - (c * score) / 100;
+  const r = 34
+  const c = 2 * Math.PI * r
+  const off = c - (c * score) / 100
   return (
     <div className="health-donut">
       <svg viewBox="0 0 80 80" width="80" height="80">
         <circle cx="40" cy="40" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
         <circle
-          cx="40" cy="40" r={r} fill="none"
-          stroke="url(#healthGrad)" strokeWidth="8" strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={off}
+          cx="40"
+          cy="40"
+          r={r}
+          fill="none"
+          stroke="url(#healthGrad)"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={off}
           transform="rotate(-90 40 40)"
         />
         <defs>
@@ -24,10 +30,10 @@ function Donut({ score = 0 }) {
         <span>/ 100</span>
       </div>
     </div>
-  );
+  )
 }
 
-const MAX_RANK = 100;
+const MAX_RANK = 100
 
 export default function RepositoryHealth({ health = {}, rankedModules = [] }) {
   return (
@@ -42,7 +48,9 @@ export default function RepositoryHealth({ health = {}, rankedModules = [] }) {
                 <span>{d.label}</span>
                 <b className={d.tone}>{d.value}</b>
               </div>
-              <div className="health-dim-bar"><i className={d.tone} style={{ width: `${d.value}%` }} /></div>
+              <div className="health-dim-bar">
+                <i className={d.tone} style={{ width: `${d.value}%` }} />
+              </div>
             </div>
           ))}
         </div>
@@ -53,11 +61,13 @@ export default function RepositoryHealth({ health = {}, rankedModules = [] }) {
         {(rankedModules || []).map((m) => (
           <div className="ranked-row" key={m.name}>
             <code className="ranked-name">{m.name}</code>
-            <div className="ranked-bar"><i style={{ width: `${(m.value / MAX_RANK) * 100}%` }} /></div>
+            <div className="ranked-bar">
+              <i style={{ width: `${(m.value / MAX_RANK) * 100}%` }} />
+            </div>
             <span className="ranked-val">{m.value}</span>
           </div>
         ))}
       </div>
     </section>
-  );
+  )
 }

@@ -1,26 +1,21 @@
-export default function UploadPanel({
-  sources,
-  onUpload,
-  onIngestUrl,
-  isUploading,
-}) {
+export default function UploadPanel({ sources, onUpload, onIngestUrl, isUploading }) {
   const handleFileChange = (event) => {
-    const [file] = event.target.files;
+    const [file] = event.target.files
     if (file) {
-      onUpload(file);
-      event.target.value = '';
+      onUpload(file)
+      event.target.value = ''
     }
-  };
+  }
 
   const handleUrlSubmit = (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const url = form.elements.url?.value || '';
+    event.preventDefault()
+    const form = event.currentTarget
+    const url = form.elements.url?.value || ''
     if (url.trim()) {
-      onIngestUrl(url.trim());
-      form.reset();
+      onIngestUrl(url.trim())
+      form.reset()
     }
-  };
+  }
 
   return (
     <section className="panel">
@@ -60,5 +55,5 @@ export default function UploadPanel({
         )}
       </div>
     </section>
-  );
+  )
 }

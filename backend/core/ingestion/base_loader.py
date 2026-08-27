@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from core.types import Document
 
@@ -14,7 +13,7 @@ class BaseLoader(ABC):
         self,
         source: str | bytes,
         source_id: str,
-        filename: Optional[str] = None,
-        metadata: Optional[dict] = None,
-    ) -> List[Document]:
+        filename: str | None = None,
+        metadata: dict | None = None,
+    ) -> list[Document]:
         raise NotImplementedError

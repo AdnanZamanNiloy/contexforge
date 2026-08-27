@@ -1,6 +1,6 @@
 import pytest
 
-from core.retrieval.reranker import Reranker, _MAX_CHUNKS_PER_SOURCE, _diversify
+from core.retrieval.reranker import _MAX_CHUNKS_PER_SOURCE, Reranker, _diversify
 from core.types import Chunk, RetrievedChunk
 
 
@@ -38,9 +38,7 @@ def _chunk(cid: str, sid: str) -> RetrievedChunk:
 def test_diversify_keeps_every_source_when_one_dominates() -> None:
     """A dominant source cannot crowd a second source out of the top-k."""
     # 6 chunks from "doc-a" score highest, 1 chunk from "doc-b" scores lowest.
-    scored = [
-        (_chunk(f"a{i}", "doc-a"), 0.9 - 0.1 * i) for i in range(6)
-    ] + [(_chunk("b1", "doc-b"), 0.05)]
+    scored = [(_chunk(f"a{i}", "doc-a"), 0.9 - 0.1 * i) for i in range(6)] + [(_chunk("b1", "doc-b"), 0.05)]
     top_k = 5
 
     result = _diversify(scored, top_k)
@@ -64,9 +62,9 @@ def test_diversify_preserves_relevance_order_for_single_source() -> None:
 
 def test_diversify_caps_any_one_source() -> None:
     """No single source exceeds the per-source cap in a mixed pool."""
-    scored = [
-        (_chunk(f"a{i}", "doc-a"), 0.95 - 0.01 * i) for i in range(20)
-    ] + [(_chunk(f"b{i}", "doc-b"), 0.4 - 0.01 * i) for i in range(10)]
+    scored = [(_chunk(f"a{i}", "doc-a"), 0.95 - 0.01 * i) for i in range(20)] + [
+        (_chunk(f"b{i}", "doc-b"), 0.4 - 0.01 * i) for i in range(10)
+    ]
     result = _diversify(scored, top_k=8)
 
     src_a = sum(1 for item in result if item[0].chunk.source_id == "doc-a")

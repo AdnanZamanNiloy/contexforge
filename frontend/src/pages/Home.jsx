@@ -1,44 +1,43 @@
-import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
-import AppShell from '../components/layout/AppShell';
-import Sidebar from '../components/layout/Sidebar';
-import ChatBox from '../components/ChatBox';
-import SourceViewer from '../components/SourceViewer';
-import { ingestFile, ingestGithub, ingestSource, deleteSource, clearKnowledgeBase } from '../services/api';
-import { sourceRepoUrl } from '../lib/sources';
-import { useChat } from '../hooks/useChat';
-import { useSources } from '../hooks/useSources';
+import AppShell from '../components/layout/AppShell'
+import Sidebar from '../components/layout/Sidebar'
+import ChatBox from '../components/ChatBox'
+import SourceViewer from '../components/SourceViewer'
+import {
+  ingestFile,
+  ingestGithub,
+  ingestSource,
+  deleteSource,
+  clearKnowledgeBase,
+} from '../services/api'
+import { sourceRepoUrl } from '../lib/sources'
+import { useChat } from '../hooks/useChat'
+import { useSources } from '../hooks/useSources'
 
 export default function Home() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    sources,
-    loading,
-    addSource,
-    updateSource,
-    removeSource,
-    replaceAll,
-  } = useSources();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isAddingRepo, setIsAddingRepo] = useState(false);
-  const [isAddingUrl, setIsAddingUrl] = useState(false);
-  const [isAddingText, setIsAddingText] = useState(false);
-  const [isAddingYoutube, setIsAddingYoutube] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null });
-  const confirmResolveRef = useRef(null);
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { sources, loading, addSource, updateSource, removeSource, replaceAll } = useSources()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isAddingRepo, setIsAddingRepo] = useState(false)
+  const [isAddingUrl, setIsAddingUrl] = useState(false)
+  const [isAddingText, setIsAddingText] = useState(false)
+  const [isAddingYoutube, setIsAddingYoutube] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null })
+  const confirmResolveRef = useRef(null)
 
   // Allow the shared sidebar's "Add Source" button on any page to open the
   // ingest modal by returning to the workspace with ?add=1.
   useEffect(() => {
     if (searchParams.get('add')) {
-      setIsModalOpen(true);
-      setSearchParams({}, { replace: true });
+      setIsModalOpen(true)
+      setSearchParams({}, { replace: true })
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams])
 
   const {
     input,
@@ -53,57 +52,57 @@ export default function Home() {
     retryLast,
     showUploadHint,
     resetChat,
-  } = useChat();
+  } = useChat()
 
   // The dominant source of the current query determines whether Repository
   // Intelligence can be launched from the main chat interface.
   const { dominantSourceId, dominantRepoUrl } = useMemo(() => {
-    const counts = {};
+    const counts = {}
     for (const item of querySources) {
-      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1;
+      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1
     }
-    let best = null;
-    let bestCount = 0;
+    let best = null
+    let bestCount = 0
     for (const [id, count] of Object.entries(counts)) {
       if (count > bestCount) {
-        best = id;
-        bestCount = count;
+        best = id
+        bestCount = count
       }
     }
-    const dominant = sources.find((s) => s.id === best) || null;
+    const dominant = sources.find((s) => s.id === best) || null
     return {
       dominantSourceId: best,
       dominantRepoUrl: dominant?.type === 'github' ? sourceRepoUrl(dominant) : undefined,
-    };
-  }, [querySources, sources]);
+    }
+  }, [querySources, sources])
 
   const pushNotification = useCallback((type, text) => {
-    const id = `${type}-${Date.now()}`;
-    setNotifications((prev) => [...prev, { id, type, text }]);
+    const id = `${type}-${Date.now()}`
+    setNotifications((prev) => [...prev, { id, type, text }])
     setTimeout(() => {
-      setNotifications((prev) => prev.filter((item) => item.id !== id));
-    }, 4000);
-  }, []);
+      setNotifications((prev) => prev.filter((item) => item.id !== id))
+    }, 4000)
+  }, [])
 
   const showConfirm = useCallback((message) => {
     return new Promise((resolve) => {
-      confirmResolveRef.current = resolve;
-      setConfirmState({ open: true, message, onConfirm: resolve });
-    });
-  }, []);
+      confirmResolveRef.current = resolve
+      setConfirmState({ open: true, message, onConfirm: resolve })
+    })
+  }, [])
 
   const handleConfirm = useCallback((result) => {
-    setConfirmState({ open: false, message: '', onConfirm: null });
+    setConfirmState({ open: false, message: '', onConfirm: null })
     if (confirmResolveRef.current) {
-      confirmResolveRef.current(result);
-      confirmResolveRef.current = null;
+      confirmResolveRef.current(result)
+      confirmResolveRef.current = null
     }
-  }, []);
+  }, [])
 
   const handleFileUpload = useCallback(
     async (file) => {
-      const sourceType = file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'docx';
-      const tempId = `local-${Date.now()}`;
+      const sourceType = file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'docx'
+      const tempId = `local-${Date.now()}`
       addSource({
         id: tempId,
         type: sourceType,
@@ -111,30 +110,30 @@ export default function Home() {
         status: 'processing',
         chunks: 0,
         size: file.size,
-      });
-      setIsUploading(true);
+      })
+      setIsUploading(true)
       try {
-        const response = await ingestFile({ source_type: sourceType, file });
+        const response = await ingestFile({ source_type: sourceType, file })
         updateSource(tempId, {
           id: response.source_id,
           status: 'indexed',
           chunks: response.chunks_indexed,
           meta: response.message,
-        });
-        pushNotification('success', response.message);
+        })
+        pushNotification('success', response.message)
       } catch (uploadError) {
-        updateSource(tempId, { status: 'failed' });
-        pushNotification('error', uploadError.message || 'Upload failed');
+        updateSource(tempId, { status: 'failed' })
+        pushNotification('error', uploadError.message || 'Upload failed')
       } finally {
-        setIsUploading(false);
+        setIsUploading(false)
       }
     },
     [addSource, pushNotification, updateSource],
-  );
+  )
 
   const handleUrlIngest = useCallback(
     async (url) => {
-      const tempId = `web-${Date.now()}`;
+      const tempId = `web-${Date.now()}`
       addSource({
         id: tempId,
         type: 'web',
@@ -142,172 +141,174 @@ export default function Home() {
         status: 'processing',
         chunks: 0,
         date: new Date().toISOString(),
-      });
-      setIsAddingUrl(true);
+      })
+      setIsAddingUrl(true)
       try {
-        const response = await ingestSource({ source_type: 'web', source: url });
+        const response = await ingestSource({ source_type: 'web', source: url })
         updateSource(tempId, {
           id: response.source_id,
           status: 'indexed',
           chunks: response.chunks_indexed,
           meta: response.message,
-        });
-        pushNotification('success', response.message);
+        })
+        pushNotification('success', response.message)
       } catch (ingestError) {
-        updateSource(tempId, { status: 'failed' });
-        pushNotification('error', ingestError.message || 'Ingest failed');
+        updateSource(tempId, { status: 'failed' })
+        pushNotification('error', ingestError.message || 'Ingest failed')
       } finally {
-        setIsAddingUrl(false);
+        setIsAddingUrl(false)
       }
     },
     [addSource, pushNotification, updateSource],
-  );
+  )
 
   const handleRepoIngest = useCallback(
     async (url) => {
-      const tempId = `repo-${Date.now()}`;
+      const tempId = `repo-${Date.now()}`
       addSource({
         id: tempId,
         type: 'github',
         title: url.replace('https://github.com/', ''),
         status: 'processing',
         chunks: 0,
-      });
-      setIsAddingRepo(true);
+      })
+      setIsAddingRepo(true)
       try {
-        const response = await ingestGithub({ repo_url: url });
+        const response = await ingestGithub({ repo_url: url })
         updateSource(tempId, {
           id: response.source_id,
           status: 'indexed',
           chunks: response.chunks_indexed,
           meta: response.message,
-        });
-        pushNotification('success', response.message);
-        setIsModalOpen(false);
-        navigate(`/sources/${encodeURIComponent(response.source_id)}?tab=intelligence`);
+        })
+        pushNotification('success', response.message)
+        setIsModalOpen(false)
+        navigate(`/sources/${encodeURIComponent(response.source_id)}?tab=intelligence`)
       } catch (repoError) {
-        updateSource(tempId, { status: 'failed' });
-        pushNotification('error', repoError.message || 'GitHub ingest failed');
+        updateSource(tempId, { status: 'failed' })
+        pushNotification('error', repoError.message || 'GitHub ingest failed')
       } finally {
-        setIsAddingRepo(false);
+        setIsAddingRepo(false)
       }
     },
     [addSource, pushNotification, updateSource, navigate],
-  );
+  )
 
   const handleTextIngest = useCallback(
     async (text) => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      const tempId = `text-${Date.now()}`;
+      const trimmed = text.trim()
+      if (!trimmed) return
+      const tempId = `text-${Date.now()}`
       addSource({
         id: tempId,
         type: 'text',
         title: 'Notes',
         status: 'processing',
         chunks: 0,
-      });
-      setIsAddingText(true);
+      })
+      setIsAddingText(true)
       try {
-        const response = await ingestSource({ source_type: 'text', source: trimmed });
+        const response = await ingestSource({ source_type: 'text', source: trimmed })
         updateSource(tempId, {
           id: response.source_id,
           status: 'indexed',
           chunks: response.chunks_indexed,
           meta: response.message,
-        });
-        pushNotification('success', response.message);
+        })
+        pushNotification('success', response.message)
       } catch (textError) {
-        updateSource(tempId, { status: 'failed' });
-        pushNotification('error', textError.message || 'Text ingest failed');
+        updateSource(tempId, { status: 'failed' })
+        pushNotification('error', textError.message || 'Text ingest failed')
       } finally {
-        setIsAddingText(false);
+        setIsAddingText(false)
       }
     },
     [addSource, pushNotification, updateSource],
-  );
+  )
 
   const handleYoutubeIngest = useCallback(
     async (url) => {
-      const tempId = `youtube-${Date.now()}`;
+      const tempId = `youtube-${Date.now()}`
       addSource({
         id: tempId,
         type: 'youtube',
         title: url.replace(/^https?:\/\//, ''),
         status: 'processing',
         chunks: 0,
-      });
-      setIsAddingYoutube(true);
+      })
+      setIsAddingYoutube(true)
       try {
-        const response = await ingestSource({ source_type: 'youtube', source: url });
+        const response = await ingestSource({ source_type: 'youtube', source: url })
         updateSource(tempId, {
           id: response.source_id,
           status: 'indexed',
           chunks: response.chunks_indexed,
           meta: response.message,
-        });
-        pushNotification('success', response.message);
+        })
+        pushNotification('success', response.message)
       } catch (ingestError) {
-        updateSource(tempId, { status: 'failed' });
-        pushNotification('error', ingestError.message || 'YouTube ingest failed');
+        updateSource(tempId, { status: 'failed' })
+        pushNotification('error', ingestError.message || 'YouTube ingest failed')
       } finally {
-        setIsAddingYoutube(false);
+        setIsAddingYoutube(false)
       }
     },
     [addSource, pushNotification, updateSource],
-  );
+  )
 
   const handleFileDrop = useCallback(
     (event) => {
-      event.preventDefault();
-      const [file] = event.dataTransfer.files;
-      if (file) handleFileUpload(file);
+      event.preventDefault()
+      const [file] = event.dataTransfer.files
+      if (file) handleFileUpload(file)
     },
     [handleFileUpload],
-  );
+  )
 
   const handleFilePicker = useCallback(
     (event) => {
-      const [file] = event.target.files;
-      if (file) handleFileUpload(file);
-      event.target.value = '';
+      const [file] = event.target.files
+      if (file) handleFileUpload(file)
+      event.target.value = ''
     },
     [handleFileUpload],
-  );
+  )
 
-  const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText || isAddingYoutube;
+  const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText || isAddingYoutube
 
   const handleClearKB = useCallback(async () => {
-    const confirmed = await showConfirm('Are you sure you want to clear the entire knowledge base? This cannot be undone.');
-    if (!confirmed) return;
+    const confirmed = await showConfirm(
+      'Are you sure you want to clear the entire knowledge base? This cannot be undone.',
+    )
+    if (!confirmed) return
     try {
-      await clearKnowledgeBase();
-      replaceAll([]);
-      resetChat();
-      pushNotification('success', 'Knowledge base cleared successfully.');
+      await clearKnowledgeBase()
+      replaceAll([])
+      resetChat()
+      pushNotification('success', 'Knowledge base cleared successfully.')
     } catch (err) {
-      pushNotification('error', err.message || 'Failed to clear knowledge base.');
+      pushNotification('error', err.message || 'Failed to clear knowledge base.')
     }
-  }, [showConfirm, pushNotification, resetChat, replaceAll]);
+  }, [showConfirm, pushNotification, resetChat, replaceAll])
 
   const handleDeleteSource = useCallback(
     async (id) => {
       try {
-        await deleteSource(id);
+        await deleteSource(id)
       } catch {
         // Best effort — still remove from UI
       }
-      removeSource(id);
+      removeSource(id)
     },
     [removeSource],
-  );
+  )
 
   const handleSelectSource = useCallback(
     (id) => {
-      navigate(`/sources/${encodeURIComponent(id)}`);
+      navigate(`/sources/${encodeURIComponent(id)}`)
     },
     [navigate],
-  );
+  )
 
   const main = (
     <div className="main-card">
@@ -324,7 +325,7 @@ export default function Home() {
         onNewChat={resetChat}
       />
     </div>
-  );
+  )
 
   const right = (
     <SourceViewer
@@ -336,16 +337,16 @@ export default function Home() {
       repoUrl={dominantRepoUrl}
       onOpenIntel={() => {
         if (dominantSourceId) {
-          navigate(`/sources/${encodeURIComponent(dominantSourceId)}?tab=intelligence`);
+          navigate(`/sources/${encodeURIComponent(dominantSourceId)}?tab=intelligence`)
         }
       }}
     />
-  );
+  )
 
   return (
     <>
       <AppShell
-        sidebar={(
+        sidebar={
           <Sidebar
             sources={sources}
             loading={loading}
@@ -354,7 +355,7 @@ export default function Home() {
             onDeleteSource={handleDeleteSource}
             onClearKB={handleClearKB}
           />
-        )}
+        }
         main={main}
         right={right}
         rightClass="shell-right-evidence"
@@ -374,15 +375,29 @@ export default function Home() {
             </div>
 
             <div className="modal-grid">
-              <div className="option-card" onDragOver={(event) => event.preventDefault()} onDrop={handleFileDrop}>
-                  <div className="option-head">
-                    <div className="option-icon">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <rect x="2" y="2" width="20" height="20" rx="4" fill="#EF4444" />
-                        <rect x="2" y="2" width="13" height="7" rx="4" fill="#DC2626" />
-                        <text x="12" y="16" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold" fontFamily="Arial,sans-serif">PDF</text>
-                      </svg>
-                    </div>
+              <div
+                className="option-card"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={handleFileDrop}
+              >
+                <div className="option-head">
+                  <div className="option-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="2" width="20" height="20" rx="4" fill="#EF4444" />
+                      <rect x="2" y="2" width="13" height="7" rx="4" fill="#DC2626" />
+                      <text
+                        x="12"
+                        y="16"
+                        textAnchor="middle"
+                        fill="white"
+                        fontSize="7"
+                        fontWeight="bold"
+                        fontFamily="Arial,sans-serif"
+                      >
+                        PDF
+                      </text>
+                    </svg>
+                  </div>
                   <div>
                     <h3>Upload PDF/DOCX</h3>
                     <p>Drag & drop or browse files.</p>
@@ -407,14 +422,23 @@ export default function Home() {
               </div>
 
               <div className="option-card">
-                  <div className="option-head">
-                    <div className="option-icon">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="2" y1="12" x2="22" y2="12" />
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                      </svg>
-                    </div>
+                <div className="option-head">
+                  <div className="option-icon">
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="2" y1="12" x2="22" y2="12" />
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                  </div>
                   <div>
                     <h3>Paste Website URL</h3>
                     <p>Ingest a public webpage.</p>
@@ -423,11 +447,11 @@ export default function Home() {
                 <form
                   className="inline-form"
                   onSubmit={(event) => {
-                    event.preventDefault();
-                    const url = event.currentTarget.elements.url?.value || '';
+                    event.preventDefault()
+                    const url = event.currentTarget.elements.url?.value || ''
                     if (url.trim()) {
-                      handleUrlIngest(url.trim());
-                      event.currentTarget.reset();
+                      handleUrlIngest(url.trim())
+                      event.currentTarget.reset()
                     }
                   }}
                 >
@@ -439,13 +463,13 @@ export default function Home() {
               </div>
 
               <div className="option-card">
-                  <div className="option-head">
-                    <div className="option-icon">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
-                        <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
-                      </svg>
-                    </div>
+                <div className="option-head">
+                  <div className="option-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
+                      <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
+                    </svg>
+                  </div>
                   <div>
                     <h3>YouTube Video</h3>
                     <p>Paste a YouTube video URL to index it.</p>
@@ -454,15 +478,19 @@ export default function Home() {
                 <form
                   className="inline-form"
                   onSubmit={(event) => {
-                    event.preventDefault();
-                    const url = event.currentTarget.elements.url?.value || '';
+                    event.preventDefault()
+                    const url = event.currentTarget.elements.url?.value || ''
                     if (url.trim()) {
-                      handleYoutubeIngest(url.trim());
-                      event.currentTarget.reset();
+                      handleYoutubeIngest(url.trim())
+                      event.currentTarget.reset()
                     }
                   }}
                 >
-                  <input name="url" placeholder="https://www.youtube.com/watch?v=..." className="text-input" />
+                  <input
+                    name="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="text-input"
+                  />
                   <button className="primary" type="submit" disabled={isAddingYoutube}>
                     {isAddingYoutube ? 'Ingesting...' : 'Ingest Video'}
                   </button>
@@ -470,12 +498,12 @@ export default function Home() {
               </div>
 
               <div className="option-card">
-                  <div className="option-head">
-                    <div className="option-icon">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-                      </svg>
-                    </div>
+                <div className="option-head">
+                  <div className="option-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+                    </svg>
+                  </div>
                   <div>
                     <h3>GitHub Repository</h3>
                     <p>Index a public repo.</p>
@@ -484,15 +512,19 @@ export default function Home() {
                 <form
                   className="inline-form"
                   onSubmit={(event) => {
-                    event.preventDefault();
-                    const url = event.currentTarget.elements.repo?.value || '';
+                    event.preventDefault()
+                    const url = event.currentTarget.elements.repo?.value || ''
                     if (url.trim()) {
-                      handleRepoIngest(url.trim());
-                      event.currentTarget.reset();
+                      handleRepoIngest(url.trim())
+                      event.currentTarget.reset()
                     }
                   }}
                 >
-                  <input name="repo" placeholder="https://github.com/org/repo" className="text-input" />
+                  <input
+                    name="repo"
+                    placeholder="https://github.com/org/repo"
+                    className="text-input"
+                  />
                   <button className="primary" type="submit" disabled={isAddingRepo}>
                     {isAddingRepo ? 'Indexing...' : 'Index Repository'}
                   </button>
@@ -500,16 +532,25 @@ export default function Home() {
               </div>
 
               <div className="option-card">
-                  <div className="option-head">
-                    <div className="option-icon">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                        <line x1="10" y1="9" x2="8" y2="9" />
-                      </svg>
-                    </div>
+                <div className="option-head">
+                  <div className="option-icon">
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <line x1="10" y1="9" x2="8" y2="9" />
+                    </svg>
+                  </div>
                   <div>
                     <h3>Plain Text / Notes</h3>
                     <p>Store raw notes quickly.</p>
@@ -518,10 +559,10 @@ export default function Home() {
                 <form
                   className="stack-form"
                   onSubmit={(event) => {
-                    event.preventDefault();
-                    const text = event.currentTarget.elements.notes?.value || '';
-                    handleTextIngest(text);
-                    event.currentTarget.reset();
+                    event.preventDefault()
+                    const text = event.currentTarget.elements.notes?.value || ''
+                    handleTextIngest(text)
+                    event.currentTarget.reset()
                   }}
                 >
                   <textarea
@@ -538,7 +579,9 @@ export default function Home() {
             </div>
 
             {isProcessing ? (
-              <div className="processing-banner">Ingestion running — new chunks will appear in the source list.</div>
+              <div className="processing-banner">
+                Ingestion running — new chunks will appear in the source list.
+              </div>
             ) : null}
           </div>
         </div>
@@ -569,5 +612,5 @@ export default function Home() {
         </div>
       )}
     </>
-  );
+  )
 }

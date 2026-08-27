@@ -59,7 +59,8 @@ async def test_focus_boost_moderate() -> None:
     """A clearly-dominant source (75% focus) maps to the Strong tier."""
     orch = Orchestrator.__new__(Orchestrator)
     reranked = [
-        _reranked("src", i) for i in range(1, 4)  # 3 chunks
+        _reranked("src", i)
+        for i in range(1, 4)  # 3 chunks
     ] + [_reranked("other", i) for i in range(1, 2)]  # 1 chunk → 0.75 focus
     confidence = await orch._apply_confidence("tell me about source", reranked, base=0.20)
     assert confidence == 0.65

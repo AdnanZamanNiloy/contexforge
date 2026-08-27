@@ -1,4 +1,5 @@
 """Shared fixtures for the Repository Intelligence test suites."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -31,30 +32,36 @@ def _init_repo(path: Path, files: dict[str, str], author: str = "daniel-w") -> P
 @pytest.fixture
 def sample_repo(tmp_path: Path) -> Path:
     """A small multi-directory Python repository with a test file."""
-    return _init_repo(tmp_path / "sample", {
-        "app/app.py": "def main():\n    return 'hi'\n",
-        "app/services/query_service.py": (
-            "from core.retrieval.hybrid_retriever import fuse\n"
-            "class QueryService:\n"
-            "    def query(self):\n"
-            "        return fuse()\n"
-        ),
-        "core/__init__.py": "",
-        "core/retrieval/hybrid_retriever.py": "def fuse():\n    return 1\n",
-        "tests/test_query.py": (
-            "from app.services.query_service import QueryService\n"
-            "def test_query():\n"
-            "    assert QueryService().query() == 1\n"
-        ),
-    })
+    return _init_repo(
+        tmp_path / "sample",
+        {
+            "app/app.py": "def main():\n    return 'hi'\n",
+            "app/services/query_service.py": (
+                "from core.retrieval.hybrid_retriever import fuse\n"
+                "class QueryService:\n"
+                "    def query(self):\n"
+                "        return fuse()\n"
+            ),
+            "core/__init__.py": "",
+            "core/retrieval/hybrid_retriever.py": "def fuse():\n    return 1\n",
+            "tests/test_query.py": (
+                "from app.services.query_service import QueryService\n"
+                "def test_query():\n"
+                "    assert QueryService().query() == 1\n"
+            ),
+        },
+    )
 
 
 @pytest.fixture
 def single_commit_repo(tmp_path: Path) -> Path:
     """A repository with exactly one commit for history assertions."""
-    return _init_repo(tmp_path / "single", {
-        "core/foo.py": "def bar():\n    return 42\n",
-    })
+    return _init_repo(
+        tmp_path / "single",
+        {
+            "core/foo.py": "def bar():\n    return 42\n",
+        },
+    )
 
 
 @pytest.fixture
@@ -64,29 +71,32 @@ def flow_repo(tmp_path: Path) -> Path:
     Used to assert the Data Flow view detects a directional, graph-shaped
     execution flow (route -> service -> storage/llm) with real node metadata.
     """
-    return _init_repo(tmp_path / "flowrepo", {
-        "app/routes/query.py": (
-            "from app.services.query_service import QueryService\n"
-            "router = Router()\n"
-            "@router.get('/query')\n"
-            "def query(name: str):\n"
-            "    return QueryService().search(name)\n"
-        ),
-        "app/__init__.py": "",
-        "app/services/__init__.py": "",
-        "app/services/query_service.py": (
-            "import requests\n"
-            "from core.storage import query_index\n"
-            "from core.llm import generate\n"
-            "class QueryService:\n"
-            "    def search(self, q):\n"
-            "        query_index(q)\n"
-            "        return generate(q)\n"
-        ),
-        "core/__init__.py": "",
-        "core/storage.py": "def query_index(q: str):\n    return q\n",
-        "core/llm.py": "def generate(q: str):\n    return q\n",
-    })
+    return _init_repo(
+        tmp_path / "flowrepo",
+        {
+            "app/routes/query.py": (
+                "from app.services.query_service import QueryService\n"
+                "router = Router()\n"
+                "@router.get('/query')\n"
+                "def query(name: str):\n"
+                "    return QueryService().search(name)\n"
+            ),
+            "app/__init__.py": "",
+            "app/services/__init__.py": "",
+            "app/services/query_service.py": (
+                "import requests\n"
+                "from core.storage import query_index\n"
+                "from core.llm import generate\n"
+                "class QueryService:\n"
+                "    def search(self, q):\n"
+                "        query_index(q)\n"
+                "        return generate(q)\n"
+            ),
+            "core/__init__.py": "",
+            "core/storage.py": "def query_index(q: str):\n    return q\n",
+            "core/llm.py": "def generate(q: str):\n    return q\n",
+        },
+    )
 
 
 @pytest.fixture
@@ -99,6 +109,7 @@ def git_repo(sample_repo: Path) -> GitRepository:
 def analysis_dir(tmp_path: Path, monkeypatch) -> Path:
     """Point Repository Intelligence storage/clone dir at a temp directory."""
     from app.config.settings import settings
+
     target = tmp_path / "repo_analysis"
     monkeypatch.setattr(settings, "REPO_ANALYSIS_DIR", target)
     return target

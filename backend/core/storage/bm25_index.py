@@ -6,7 +6,6 @@ import logging
 import re
 import sqlite3
 from pathlib import Path
-from typing import List
 
 from app.config.settings import settings
 from core.types import Chunk, RetrievedChunk
@@ -22,6 +21,7 @@ _FTS5_SPECIAL = re.compile(r"[^\w\s]+")
 def _safe_unlink_db(path: str) -> None:
     """Best-effort file removal for SQLite DB files."""
     import os
+
     try:
         os.unlink(path)
     except OSError:
@@ -38,7 +38,6 @@ def _sanitise_query(query: str) -> str:
 
 
 class BM25Index:
-
     def __init__(self, db_path: Path | None = None) -> None:
         self._db_path: Path = Path(db_path or settings.BM25_DB_PATH)
         self._conn: sqlite3.Connection | None = None
@@ -50,7 +49,7 @@ class BM25Index:
     # ------------------------------------------------------------------ #
 
     @observe(name="bm25_add")
-    async def add(self, chunks: List[Chunk]) -> None:
+    async def add(self, chunks: list[Chunk]) -> None:
         if not isinstance(chunks, list) or not chunks:
             logger.debug("bm25_add called with empty chunk list — nothing to do.")
             return
@@ -59,7 +58,7 @@ class BM25Index:
         await asyncio.to_thread(self._add_sync, chunks)
 
     @observe(name="bm25_search")
-    async def search(self, query: str, top_k: int, exclude_source_ids: set[str] | None = None) -> List[RetrievedChunk]:
+    async def search(self, query: str, top_k: int, exclude_source_ids: set[str] | None = None) -> list[RetrievedChunk]:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("BM25Index.search received an empty query")
         if top_k <= 0:
@@ -103,7 +102,9 @@ class BM25Index:
             verify_count = await asyncio.to_thread(self._count_sync)
             logger.info(
                 "delete_by_source_id: source_id=%s deleted=%d remaining=%d",
-                source_id, count, verify_count,
+                source_id,
+                count,
+                verify_count,
             )
             return count
 
@@ -173,28 +174,23 @@ class BM25Index:
 
     def _delete_by_source_id_sync(self, source_id: str) -> int:
         """Synchronous DELETE + VACUUM against SQLite FTS5."""
-        cursor = self._conn.execute(
-            "SELECT COUNT(*) FROM chunks WHERE source_id = ?", (source_id,)
-        )
+        cursor = self._conn.execute("SELECT COUNT(*) FROM chunks WHERE source_id = ?", (source_id,))
         count = cursor.fetchone()[0]
 
         if count == 0:
-            logger.info(
-                "delete_by_source_id: no chunks found for source_id=%s.", source_id
-            )
+            logger.info("delete_by_source_id: no chunks found for source_id=%s.", source_id)
             return 0
 
         with self._conn:
-            self._conn.execute(
-                "DELETE FROM chunks WHERE source_id = ?", (source_id,)
-            )
+            self._conn.execute("DELETE FROM chunks WHERE source_id = ?", (source_id,))
         # VACUUM must run outside the transaction; SQLite rejects it from
         # within a transaction ("cannot VACUUM from within a transaction").
         self._conn.execute("VACUUM")
 
         logger.info(
             "delete_by_source_id: deleted %d chunk(s) for source_id=%s, VACUUM complete.",
-            count, source_id,
+            count,
+            source_id,
         )
         return count
 
@@ -239,7 +235,7 @@ class BM25Index:
         cursor = self._conn.execute("SELECT COUNT(*) FROM chunks")
         return cursor.fetchone()[0]
 
-    def _add_sync(self, chunks: List[Chunk]) -> None:
+    def _add_sync(self, chunks: list[Chunk]) -> None:
         rows = [
             (
                 chunk.chunk_id,
@@ -254,8 +250,7 @@ class BM25Index:
             existing_ids = {
                 row[0]
                 for row in self._conn.execute(
-                    f"SELECT chunk_id FROM chunks WHERE chunk_id IN "
-                    f"({','.join('?' * len(rows))})",
+                    f"SELECT chunk_id FROM chunks WHERE chunk_id IN ({','.join('?' * len(rows))})",
                     [r[0] for r in rows],
                 ).fetchall()
             }
@@ -273,13 +268,10 @@ class BM25Index:
             len(rows) - len(new_rows),
         )
 
-    def _search_sync(self, query: str, top_k: int, exclude_source_ids: set[str] | None = None) -> List[RetrievedChunk]:
+    def _search_sync(self, query: str, top_k: int, exclude_source_ids: set[str] | None = None) -> list[RetrievedChunk]:
         safe_query = _sanitise_query(query)
         if not safe_query:
-            logger.warning(
-                "BM25 query '%s' reduced to empty string after sanitisation — "
-                "returning no results.", query
-            )
+            logger.warning("BM25 query '%s' reduced to empty string after sanitisation — returning no results.", query)
             return []
 
         cursor = self._conn.execute(
@@ -293,7 +285,7 @@ class BM25Index:
             (safe_query, top_k),
         )
 
-        results: List[RetrievedChunk] = []
+        results: list[RetrievedChunk] = []
         for chunk_id, text, metadata_raw, source_id, score in cursor.fetchall():
             # Scoped retrieval: drop chunks from sources we are told to exclude.
             if exclude_source_ids and source_id and source_id in exclude_source_ids:
@@ -301,9 +293,7 @@ class BM25Index:
             try:
                 metadata = json.loads(metadata_raw) if metadata_raw else {}
             except json.JSONDecodeError:
-                logger.warning(
-                    "Corrupt metadata for chunk '%s' — using empty dict.", chunk_id
-                )
+                logger.warning("Corrupt metadata for chunk '%s' — using empty dict.", chunk_id)
                 metadata = {}
 
             chunk = Chunk(
@@ -314,9 +304,7 @@ class BM25Index:
             )
             results.append(RetrievedChunk(chunk=chunk, score=float(-score)))
 
-        logger.debug(
-            "BM25 search for '%s' returned %d result(s).", query, len(results)
-        )
+        logger.debug("BM25 search for '%s' returned %d result(s).", query, len(results))
         return results
 
     async def _ensure_initialized(self) -> None:

@@ -1,13 +1,14 @@
 """
 schemas/ingest.py — Request and response schemas for ingestion endpoints.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-__all__ = ["IngestRequest", "IngestResponse", "DeleteResponse", "ClearResponse", "SourcesResponse"]
+__all__ = ["ClearResponse", "DeleteResponse", "IngestRequest", "IngestResponse", "SourcesResponse"]
 
 # FIX #4 — simple URL prefix check; full RFC validation done by the loader
 _URL_SCHEMES = ("http://", "https://")
@@ -38,34 +39,23 @@ class IngestRequest(BaseModel):
 
     # FIX #4 — validate source format against source_type at schema level
     @model_validator(mode="after")
-    def validate_source_for_type(self) -> "IngestRequest":
+    def validate_source_for_type(self) -> IngestRequest:
         src = self.source.strip()
         st = self.source_type
 
-        if st in {"web"}:
-            if not any(src.startswith(scheme) for scheme in _URL_SCHEMES):
-                raise ValueError(
-                    f"source_type='web' requires an http/https URL, got: '{src}'"
-                )
+        if st in {"web"} and not any(src.startswith(scheme) for scheme in _URL_SCHEMES):
+            raise ValueError(f"source_type='web' requires an http/https URL, got: '{src}'")
 
-        if st == "youtube":
+        if st == "youtube" and not any(src.startswith(scheme) for scheme in _URL_SCHEMES):
             # Defer to the loader's own URL parser for a precise error message;
             # here we only require an http(s) URL so the request is well-formed.
-            if not any(src.startswith(scheme) for scheme in _URL_SCHEMES):
-                raise ValueError(
-                    f"source_type='youtube' requires an http/https URL, got: '{src}'"
-                )
+            raise ValueError(f"source_type='youtube' requires an http/https URL, got: '{src}'")
 
-        if st == "github":
-            if not src.startswith(_GITHUB_PREFIX):
-                raise ValueError(
-                    f"source_type='github' requires a URL starting with "
-                    f"'{_GITHUB_PREFIX}', got: '{src}'"
-                )
+        if st == "github" and not src.startswith(_GITHUB_PREFIX):
+            raise ValueError(f"source_type='github' requires a URL starting with '{_GITHUB_PREFIX}', got: '{src}'")
 
-        if st == "text":
-            if not src.strip():
-                raise ValueError("source_type='text' requires non-blank text content")
+        if st == "text" and not src.strip():
+            raise ValueError("source_type='text' requires non-blank text content")
 
         return self
 
@@ -106,10 +96,7 @@ class IngestResponse(BaseModel):
         if "message" not in values or not values.get("message"):
             n = values.get("chunks_indexed", 0)
             sid = values.get("source_id", "")
-            values["message"] = (
-                f"Successfully indexed {n} chunk{'s' if n != 1 else ''} "
-                f"from source '{sid}'."
-            )
+            values["message"] = f"Successfully indexed {n} chunk{'s' if n != 1 else ''} from source '{sid}'."
         return values
 
     model_config = {"frozen": True}
@@ -136,10 +123,7 @@ class DeleteResponse(BaseModel):
         if "message" not in values or not values.get("message"):
             n = values.get("chunks_deleted", 0)
             sid = values.get("source_id", "")
-            values["message"] = (
-                f"Successfully deleted {n} chunk{'s' if n != 1 else ''} "
-                f"for source '{sid}'."
-            )
+            values["message"] = f"Successfully deleted {n} chunk{'s' if n != 1 else ''} for source '{sid}'."
         return values
 
     model_config = {"frozen": True}

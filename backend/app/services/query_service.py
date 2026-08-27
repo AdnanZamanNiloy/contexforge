@@ -7,11 +7,13 @@ structured Python objects; SSE formatting is the route layer's responsibility.
 Fix #6 — this service no longer emits `data: ...\\n\\n` SSE strings.
           It yields plain dicts that the route wraps in SSE framing.
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from app.schemas.query import QueryRequest
 from core.orchestrator import Orchestrator
@@ -58,7 +60,9 @@ class QueryService:
         )
         logger.info(
             "answer complete: sources=%d latency=%s confidence=%s",
-            len(result.sources), result.latency_ms, result.confidence,
+            len(result.sources),
+            result.latency_ms,
+            result.confidence,
         )
         return result
 
@@ -112,7 +116,7 @@ class QueryService:
         self._last_sources = list(reranked)
 
         # FIX: build ConfidenceMetrics and attach to the done payload
-        confidence_metrics =             self._orchestrator._build_confidence(reranked, mean_confidence)
+        confidence_metrics = self._orchestrator._build_confidence(reranked, mean_confidence)
 
         # FIX: surface a total now that generate_ms is populated (log only; the
         # stream already emitted the timing dict above).
@@ -134,7 +138,9 @@ class QueryService:
         }
         logger.info(
             "stream_answer complete: sources=%d latency=%s confidence=%s",
-            len(reranked), timings, confidence_metrics,
+            len(reranked),
+            timings,
+            confidence_metrics,
         )
 
     async def get_last_sources(self, request: QueryRequest) -> list[dict[str, Any]]:
@@ -151,6 +157,7 @@ class QueryService:
 # ---------------------------------------------------------------------------
 # Module-level helper
 # ---------------------------------------------------------------------------
+
 
 def _source_payload(chunk: RerankedChunk) -> dict[str, Any]:
     """Serialise a :class:`RerankedChunk` to a JSON-safe dict.

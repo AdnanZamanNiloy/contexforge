@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from app.dependencies import get_mindmap_service
 from app.mindmap.schemas import GenerateRequest, MindMapResponse
 from app.mindmap.service import MindMapError, MindMapService
+from fastapi import APIRouter, Depends, HTTPException, status
 
 __all__ = ["router"]
 
@@ -26,7 +25,6 @@ router = APIRouter(prefix="/mindmap", tags=["mind-map"])
 
 
 def _get_service():
-    from app.dependencies import get_mindmap_service
     return get_mindmap_service()
 
 

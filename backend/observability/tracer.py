@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from app.config.settings import settings
-
 
 logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
@@ -18,6 +18,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 def observe(name: str | None = None) -> Callable[[F], F]:
     if _observe is None:
+
         def decorator(func: F) -> F:
             return func
 

@@ -5,6 +5,7 @@ directions) up to *depth* hops and report the reachable surface: affected
 files, modules, APIs, tests and dependencies.  The risk level is derived
 from how large and distributed the blast radius is.
 """
+
 from __future__ import annotations
 
 from collections import deque
@@ -62,14 +63,20 @@ def compute_change_impact(
 
     files = [n for n in affected_nodes if n.get("kind") == "file"]
     modules = [n for n in affected_nodes if n.get("kind") in {"module", "area"}]
-    apis = [n for n in affected_nodes
-            if n.get("kind") in {"route", "service"}
-            or any(marker in (n.get("path", "")) for marker in ("routes/", "services/"))
-            or n.get("path", "").endswith(".py")]
-    tests = [n for n in affected_nodes
-             if any(marker in n.get("path", "") for marker in _TEST_MARKERS)
-             or n.get("path", "").startswith("tests/")
-             or n.get("path", "").startswith("test_")]
+    apis = [
+        n
+        for n in affected_nodes
+        if n.get("kind") in {"route", "service"}
+        or any(marker in (n.get("path", "")) for marker in ("routes/", "services/"))
+        or n.get("path", "").endswith(".py")
+    ]
+    tests = [
+        n
+        for n in affected_nodes
+        if any(marker in n.get("path", "") for marker in _TEST_MARKERS)
+        or n.get("path", "").startswith("tests/")
+        or n.get("path", "").startswith("test_")
+    ]
     deps_total = sum(n.get("deps", 0) for n in affected_nodes)
 
     est = {
@@ -84,18 +91,20 @@ def compute_change_impact(
     risk = _severity(breadth, est["affected_dependencies"])
     nodes_out = []
     for n in affected_nodes:
-        nodes_out.append({
-            "id": n["id"],
-            "label": n.get("path") or n.get("label", ""),
-            "kind": n.get("kind", "file"),
-            "files": n.get("files", 0),
-            "modules": 1 if n.get("kind") in {"module", "area"} else 0,
-            "apis": 1 if n.get("kind") in {"route", "service"} else 0,
-            "tests": 1 if any(marker in n.get("path", "") for marker in _TEST_MARKERS) else 0,
-            "deps": n.get("deps", 0),
-            "risk": n.get("risk", "Low"),
-            "direct": n["id"] in direct_ids,
-        })
+        nodes_out.append(
+            {
+                "id": n["id"],
+                "label": n.get("path") or n.get("label", ""),
+                "kind": n.get("kind", "file"),
+                "files": n.get("files", 0),
+                "modules": 1 if n.get("kind") in {"module", "area"} else 0,
+                "apis": 1 if n.get("kind") in {"route", "service"} else 0,
+                "tests": 1 if any(marker in n.get("path", "") for marker in _TEST_MARKERS) else 0,
+                "deps": n.get("deps", 0),
+                "risk": n.get("risk", "Low"),
+                "direct": n["id"] in direct_ids,
+            }
+        )
 
     edges_out = sorted(reached_edges.values(), key=lambda e: (e["source"], e["target"]))
 

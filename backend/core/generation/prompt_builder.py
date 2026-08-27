@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
 
 from langchain_core.prompts import PromptTemplate
 
@@ -17,11 +16,7 @@ PROMPT_VERSION = "v2.0.0"
 MAX_CHUNKS = 20
 
 _ANSWER_TEMPLATE = PromptTemplate(
-    template=(
-        "Below is the retrieved context relevant to the user's question.\n\n"
-        "{context}\n\n"
-        "Question: {question}\n"
-    ),
+    template=("Below is the retrieved context relevant to the user's question.\n\n{context}\n\nQuestion: {question}\n"),
     input_variables=["context", "question"],
 )
 
@@ -30,16 +25,15 @@ _GENERAL_TEMPLATE = PromptTemplate(
     input_variables=["question"],
 )
 
+
 @dataclass(frozen=True)
 class BuiltPrompt:
-    
     user_prompt: str
     system_prompt: str
     prompt_version: str = PROMPT_VERSION
 
 
 class PromptBuilder:
-
     def __init__(
         self,
         *,
@@ -49,16 +43,14 @@ class PromptBuilder:
         self._max_chunks = max_chunks
         self._template = template
 
-
     @observe(name="build_prompt")
-    def build(self, question: str, chunks: List[Chunk]) -> BuiltPrompt:
+    def build(self, question: str, chunks: list[Chunk]) -> BuiltPrompt:
         self._validate(question, chunks)
 
         effective_chunks = self._deduplicate(chunks)[: self._max_chunks]
         if len(effective_chunks) < len(chunks):
             logger.warning(
-                "prompt_builder: truncated chunk list from %d → %d "
-                "(max_chunks=%d, duplicates removed)",
+                "prompt_builder: truncated chunk list from %d → %d (max_chunks=%d, duplicates removed)",
                 len(chunks),
                 len(effective_chunks),
                 self._max_chunks,
@@ -91,19 +83,18 @@ class PromptBuilder:
             system_prompt=settings.ANSWER_SYSTEM_PROMPT,
         )
 
-
     @staticmethod
-    def _validate(question: str, chunks: Optional[List[Chunk]]) -> None:
+    def _validate(question: str, chunks: list[Chunk] | None) -> None:
         if not question or not question.strip():
             raise ValueError("PromptBuilder.build: 'question' must not be empty.")
         if chunks is None:
             raise ValueError("PromptBuilder.build: 'chunks' must not be None.")
 
     @staticmethod
-    def _deduplicate(chunks: List[Chunk]) -> List[Chunk]:
-  
+    def _deduplicate(chunks: list[Chunk]) -> list[Chunk]:
+
         seen: set[str] = set()
-        unique: List[Chunk] = []
+        unique: list[Chunk] = []
         for chunk in chunks:
             if chunk.chunk_id not in seen:
                 seen.add(chunk.chunk_id)
@@ -111,7 +102,7 @@ class PromptBuilder:
         return unique
 
     @staticmethod
-    def _format_context(chunks: List[Chunk]) -> str:
+    def _format_context(chunks: list[Chunk]) -> str:
 
         if not chunks:
             return "(no context available)"

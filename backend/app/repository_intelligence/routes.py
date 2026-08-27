@@ -4,6 +4,7 @@ Prefix: ``/repository``.  Analysis is requested with ``POST /analyze`` and
 runs in the background; every other endpoint reads a persisted analysis by
 its id.  All errors are mapped to clean HTTP responses (no raw stack traces).
 """
+
 from __future__ import annotations
 
 import logging
@@ -16,6 +17,7 @@ from app.routes.query import _sse_generator as _query_sse_generator
 from app.schemas.query import QueryRequest
 from app.services.query_service import QueryService
 
+from .chat import ensure_repo_indexed
 from .schemas import (
     AnalysisStatus,
     AnalyzeRequest,
@@ -30,7 +32,6 @@ from .schemas import (
     RiskExplanations,
 )
 from .service import RepositoryIntelligenceError, RepositoryIntelligenceService
-from .chat import ensure_repo_indexed
 
 __all__ = ["router"]
 
@@ -41,6 +42,7 @@ router = APIRouter(prefix="/repository", tags=["repository-intelligence"])
 
 def _get_service():
     from app.dependencies import get_repository_intelligence_service
+
     return get_repository_intelligence_service()
 
 
@@ -66,9 +68,7 @@ async def analyze(
 ):
     """Start an in-background analysis of a public GitHub repository."""
     try:
-        return await service.start_analysis(
-            request.repo_url, branch=request.branch, force=request.force
-        )
+        return await service.start_analysis(request.repo_url, branch=request.branch, force=request.force)
     except RepositoryIntelligenceError as exc:
         raise _handle(exc) from exc
 
@@ -300,9 +300,7 @@ async def ask(
     # leaks content from other sources.
     try:
         scope = await service.get_chat_scope(analysis_id)
-        source_id = await ensure_repo_indexed(
-            query_service._orchestrator, scope["repo_url"], scope["branch"]
-        )
+        source_id = await ensure_repo_indexed(query_service._orchestrator, scope["repo_url"], scope["branch"])
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning("repository ask: could not prepare repo context: %s", exc)
         source_id = None

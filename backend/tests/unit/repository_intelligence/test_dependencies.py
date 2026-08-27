@@ -1,4 +1,5 @@
 """Unit tests for dependency / edge analysis."""
+
 from __future__ import annotations
 
 from app.repository_intelligence import dependencies
@@ -7,7 +8,9 @@ from app.repository_intelligence import dependencies
 class TestDegree:
     def test_enrich_counts_non_containment_edges(self):
         nodes = [
-            {"id": "a"}, {"id": "b"}, {"id": "c"},
+            {"id": "a"},
+            {"id": "b"},
+            {"id": "c"},
         ]
         edges = [
             {"source": "a", "target": "b", "kind": "imports"},
@@ -27,7 +30,6 @@ class TestCalls:
             {"id": "consumer", "kind": "file", "path": "consumer.py"},
             {"id": "lib", "kind": "file", "path": "lib.py"},
         ]
-        text = {0: False}
         files_by_rel = {
             "consumer.py": "import lib\nlib.run()\n",
             "lib.py": "def run():\n    return 1\n",

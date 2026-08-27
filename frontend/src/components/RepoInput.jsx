@@ -1,13 +1,13 @@
 export default function RepoInput({ onIngest, isLoading, repos }) {
   const handleSubmit = (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const url = form.elements.repo?.value || '';
+    event.preventDefault()
+    const form = event.currentTarget
+    const url = form.elements.repo?.value || ''
     if (url.trim()) {
-      onIngest(url.trim());
-      form.reset();
+      onIngest(url.trim())
+      form.reset()
     }
-  };
+  }
 
   return (
     <section className="panel">
@@ -31,5 +31,5 @@ export default function RepoInput({ onIngest, isLoading, repos }) {
         ))}
       </div>
     </section>
-  );
+  )
 }

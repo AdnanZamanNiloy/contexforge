@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class HydeQueryExpander:
-
     def __init__(self, llm: LLM) -> None:
         self._llm = llm
 
@@ -30,20 +29,22 @@ class HydeQueryExpander:
 
             if not hypothesis or not hypothesis.strip():
                 logger.warning(
-                    "HyDE: LLM returned an empty response for question %r — "
-                    "falling back to original question.", question
+                    "HyDE: LLM returned an empty response for question %r — falling back to original question.",
+                    question,
                 )
                 return question
 
             logger.debug(
                 "HyDE expanded %d-char question to %d-char hypothesis.",
-                len(question), len(hypothesis),
+                len(question),
+                len(hypothesis),
             )
             return hypothesis
 
         except Exception as exc:
             logger.warning(
                 "HyDE generation failed (%s: %s) — falling back to original question.",
-                type(exc).__name__, exc,
+                type(exc).__name__,
+                exc,
             )
             return question

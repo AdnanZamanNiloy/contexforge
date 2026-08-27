@@ -1,15 +1,15 @@
 """
 routes/query.py — Query endpoints for the ContextForge RAG API.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-
-import httpx
 
 from app.dependencies import get_query_service
 from app.schemas.query import ConfidenceMetrics, QueryRequest, QueryResponse
@@ -47,10 +47,10 @@ async def query(
     try:
         result = await service.answer(request)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except RuntimeError as exc:
         logger.error("query failed: %s", exc)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     except httpx.HTTPStatusError as exc:
         # LLM provider throttling / quota exhaustion (transient).  Report a
         # retryable 503 with a clear message instead of a bare 500 that the
@@ -59,13 +59,13 @@ async def query(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The AI provider is currently at its rate limit — please wait a moment and try again.",
-        )
-    except Exception as exc:
+        ) from exc
+    except Exception:
         logger.exception("query failed: unexpected error")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to generate an answer. Please try again.",
-        )
+        ) from None
 
     logger.info(
         "query complete: sources=%d latency=%s confidence=%s",
@@ -135,6 +135,7 @@ async def stream_query(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 async def _sse_generator(request: QueryRequest, service: QueryService):
     """Async generator that yields SSE-formatted strings.
 
@@ -177,7 +178,7 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
     except Exception as exc:
         # FIX #7 — mid-stream failure emits a structured error event
         logger.error("stream_query failed mid-stream: %s", exc)
-        yield f"data: [ERROR] Generation failed — please retry.\n\n"
+        yield "data: [ERROR] Generation failed — please retry.\n\n"
 
 
 def _chunk_summary(chunk) -> dict:

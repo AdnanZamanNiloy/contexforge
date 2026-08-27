@@ -1,145 +1,145 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 // RAG queries run HyDE expansion + retrieval + rerank + LLM generation, which
 // routinely takes 8-20s and can exceed 30s under load.  A short timeout aborts a
 // legitimate request, which the browser reports as "NetworkError when attempting
 // to fetch resource".
-const DEFAULT_TIMEOUT_MS = 120000;
+const DEFAULT_TIMEOUT_MS = 120000
 
 function buildUrl(path) {
   if (!path.startsWith('/')) {
-    return `${API_BASE}/${path}`;
+    return `${API_BASE}/${path}`
   }
-  return `${API_BASE}${path}`;
+  return `${API_BASE}${path}`
 }
 
 async function request(path, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
-  };
+  }
 
   try {
     const response = await fetch(buildUrl(path), {
       ...options,
       headers,
       signal: controller.signal,
-    });
+    })
 
     if (!response.ok) {
-      let detail = 'Request failed';
+      let detail = 'Request failed'
       try {
-        const data = await response.json();
-        detail = data.detail || data.message || JSON.stringify(data);
+        const data = await response.json()
+        detail = data.detail || data.message || JSON.stringify(data)
       } catch {
-        detail = await response.text();
+        detail = await response.text()
       }
-      throw new Error(detail);
+      throw new Error(detail)
     }
 
     if (response.status === 204) {
-      return null;
+      return null
     }
 
-    return response.json();
+    return response.json()
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timeoutId)
   }
 }
 
 export async function pingApi() {
-  return request('/health', { method: 'GET' });
+  return request('/health', { method: 'GET' })
 }
 
 export async function ingestSource(payload) {
   return request('/ingest/source', {
     method: 'POST',
     body: JSON.stringify(payload),
-  });
+  })
 }
 
 export async function ingestGithub(payload) {
   return request('/github/ingest', {
     method: 'POST',
     body: JSON.stringify(payload),
-  });
+  })
 }
 
 export async function ingestFile({ source_type, file }) {
-  const formData = new FormData();
-  formData.append('upload', file);
+  const formData = new FormData()
+  formData.append('upload', file)
 
   const response = await fetch(buildUrl(`/ingest/file?source_type=${source_type}`), {
     method: 'POST',
     body: formData,
-  });
+  })
 
   if (!response.ok) {
-    let detail = 'Upload failed';
+    let detail
     try {
-      const data = await response.json();
-      detail = data.detail || data.message || JSON.stringify(data);
+      const data = await response.json()
+      detail = data.detail || data.message || JSON.stringify(data)
     } catch {
-      detail = await response.text();
+      detail = await response.text()
     }
-    throw new Error(detail);
+    throw new Error(detail)
   }
 
-  return response.json();
+  return response.json()
 }
 
 export async function deleteSource(sourceId) {
   return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
     method: 'DELETE',
-  });
+  })
 }
 
 export async function clearKnowledgeBase() {
   return request('/ingest/clear', {
     method: 'DELETE',
-  });
+  })
 }
 
 export async function fetchSources() {
   return request('/ingest/sources', {
     method: 'GET',
-  });
+  })
 }
 
 export async function queryAnswer(payload) {
   return request('/query', {
     method: 'POST',
     body: JSON.stringify(payload),
-  });
+  })
 }
 
-const STREAM_IDLE_TIMEOUT_MS = 120000;
+const STREAM_IDLE_TIMEOUT_MS = 120000
 
 export async function streamQuery(payload, handlers = {}, path = '/query/stream') {
-  const controller = new AbortController();
-  const externalSignal = handlers.signal;
-  const onExternalAbort = () => controller.abort();
+  const controller = new AbortController()
+  const externalSignal = handlers.signal
+  const onExternalAbort = () => controller.abort()
   if (externalSignal) {
     if (externalSignal.aborted) {
-      controller.abort();
+      controller.abort()
     } else {
-      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true })
     }
   }
 
-  let idleTimer = null;
-  let timedOut = false;
+  let idleTimer = null
+  let timedOut = false
   const resetIdle = () => {
     if (idleTimer) {
-      clearTimeout(idleTimer);
+      clearTimeout(idleTimer)
     }
     idleTimer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, STREAM_IDLE_TIMEOUT_MS);
-  };
+      timedOut = true
+      controller.abort()
+    }, STREAM_IDLE_TIMEOUT_MS)
+  }
 
   try {
     const response = await fetch(buildUrl(path), {
@@ -149,110 +149,110 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
-    });
+    })
 
-    resetIdle();
+    resetIdle()
 
     if (!response.ok || !response.body) {
-      throw new Error('Streaming request failed to start');
+      throw new Error('Streaming request failed to start')
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
 
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await reader.read()
       if (done) {
-        break;
+        break
       }
 
-      resetIdle();
+      resetIdle()
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
 
       for (const line of lines) {
-        const cleaned = line.replace(/\r$/, '');
+        const cleaned = line.replace(/\r$/, '')
         if (!cleaned.startsWith('data:')) {
-          continue;
+          continue
         }
-        let data = cleaned.slice(5);
+        let data = cleaned.slice(5)
         if (data.startsWith(' ')) {
-          data = data.slice(1);
+          data = data.slice(1)
         }
         if (!data) {
-          continue;
+          continue
         }
 
         if (data.startsWith('[SOURCES]')) {
-          const json = data.replace('[SOURCES]', '').trim();
+          const json = data.replace('[SOURCES]', '').trim()
           if (handlers.onSources) {
             try {
-              handlers.onSources(JSON.parse(json));
+              handlers.onSources(JSON.parse(json))
             } catch {
-              handlers.onSources([]);
+              handlers.onSources([])
             }
           }
-          continue;
+          continue
         }
 
         if (data.startsWith('[LATENCY]')) {
-          const json = data.replace('[LATENCY]', '').trim();
+          const json = data.replace('[LATENCY]', '').trim()
           if (handlers.onLatency) {
             try {
-              handlers.onLatency(JSON.parse(json));
+              handlers.onLatency(JSON.parse(json))
             } catch {
-              handlers.onLatency({});
+              handlers.onLatency({})
             }
           }
-          continue;
+          continue
         }
 
         if (data.startsWith('[CONFIDENCE]')) {
-          const json = data.replace('[CONFIDENCE]', '').trim();
+          const json = data.replace('[CONFIDENCE]', '').trim()
           if (handlers.onConfidence) {
             try {
-              handlers.onConfidence(JSON.parse(json));
+              handlers.onConfidence(JSON.parse(json))
             } catch {
-              handlers.onConfidence(null);
+              handlers.onConfidence(null)
             }
           }
-          continue;
+          continue
         }
 
         if (data.startsWith('[ERROR]')) {
-          const message = data.replace('[ERROR]', '').trim();
+          const message = data.replace('[ERROR]', '').trim()
           if (handlers.onError) {
-            handlers.onError(message || 'Streaming error');
+            handlers.onError(message || 'Streaming error')
           }
-          continue;
+          continue
         }
 
         if (data.startsWith('[DONE]')) {
           if (handlers.onDone) {
-            handlers.onDone();
+            handlers.onDone()
           }
-          continue;
+          continue
         }
 
         if (handlers.onToken) {
-          handlers.onToken(data);
+          handlers.onToken(data)
         }
       }
     }
   } catch (error) {
     if (timedOut) {
-      throw new Error('Backend stopped responding — please try again.');
+      throw new Error('Backend stopped responding — please try again.', { cause: error })
     }
-    throw error;
+    throw error
   } finally {
     if (idleTimer) {
-      clearTimeout(idleTimer);
+      clearTimeout(idleTimer)
     }
     if (externalSignal) {
-      externalSignal.removeEventListener('abort', onExternalAbort);
+      externalSignal.removeEventListener('abort', onExternalAbort)
     }
   }
 }
@@ -262,35 +262,35 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
 export async function repositoryLatest(repoUrl) {
   return request(`/repository/latest?repo_url=${encodeURIComponent(repoUrl)}`, {
     method: 'GET',
-  });
+  })
 }
 
 export async function repositoryStatus(analysisId) {
-  return request(`/repository/${analysisId}/status`, { method: 'GET' });
+  return request(`/repository/${analysisId}/status`, { method: 'GET' })
 }
 
 export async function repositoryGet(analysisId) {
-  return request(`/repository/${analysisId}`, { method: 'GET' });
+  return request(`/repository/${analysisId}`, { method: 'GET' })
 }
 
 export async function getRepositoryDependencies(analysisId, { selected, depth = 3 } = {}) {
-  const params = new URLSearchParams();
-  if (selected) params.set('selected', selected);
-  params.set('depth', String(depth));
-  const qs = params.toString();
-  return request(`/repository/${analysisId}/dependencies?${qs}`, { method: 'GET' });
+  const params = new URLSearchParams()
+  if (selected) params.set('selected', selected)
+  params.set('depth', String(depth))
+  const qs = params.toString()
+  return request(`/repository/${analysisId}/dependencies?${qs}`, { method: 'GET' })
 }
 
 export async function repositoryDataFlow(analysisId) {
-  return request(`/repository/${analysisId}/data-flow`, { method: 'GET' });
+  return request(`/repository/${analysisId}/data-flow`, { method: 'GET' })
 }
 
 export async function reanalyzeRepository(analysisId) {
-  return request(`/repository/${analysisId}/reanalyze`, { method: 'POST' });
+  return request(`/repository/${analysisId}/reanalyze`, { method: 'POST' })
 }
 
 export function repositoryAsk(analysisId, question, handlers = {}) {
-  return streamQuery({ question }, handlers, `/repository/${analysisId}/ask`);
+  return streamQuery({ question }, handlers, `/repository/${analysisId}/ask`)
 }
 
 // --- Mind Map ---------------------------------------------------------------
@@ -299,25 +299,25 @@ export async function createMindMap(sourceId) {
   return request('/mindmap/generate', {
     method: 'POST',
     body: JSON.stringify({ source_id: sourceId }),
-  });
+  })
 }
 
 export async function getMindMap(sourceId) {
   const response = await fetch(buildUrl(`/mindmap/${encodeURIComponent(sourceId)}`), {
     method: 'GET',
-  });
+  })
   if (response.status === 404) {
-    return null;
+    return null
   }
   if (!response.ok) {
-    let detail = 'Failed to load mind map';
+    let detail = 'Failed to load mind map'
     try {
-      const data = await response.json();
-      detail = data.detail || data.message || detail;
+      const data = await response.json()
+      detail = data.detail || data.message || detail
     } catch {
-      detail = await response.text();
+      detail = await response.text()
     }
-    throw new Error(detail);
+    throw new Error(detail)
   }
-  return response.json();
+  return response.json()
 }

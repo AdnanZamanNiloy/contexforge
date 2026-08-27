@@ -7,7 +7,7 @@ export default function RepositoryStats({ stats = {} }) {
     { label: 'Branches', value: stats.branches },
     { label: 'Pull Requests', value: stats.pullRequests },
     { label: 'Issues', value: stats.issues },
-  ];
+  ]
 
   return (
     <section className="sidebar-section">
@@ -21,5 +21,5 @@ export default function RepositoryStats({ stats = {} }) {
         ))}
       </div>
     </section>
-  );
+  )
 }

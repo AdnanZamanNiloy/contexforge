@@ -4,11 +4,12 @@ main.py — FastAPI application entry point for ContextForge.
 Startup and shutdown are managed by a lifespan context manager (the
 modern FastAPI pattern that replaces the deprecated @app.on_event hooks).
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 # FIX #7/#8 — lifespan replaces deprecated @app.on_event("startup/shutdown")
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Configure logging on startup; release resources on shutdown."""
@@ -47,6 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if getattr(_settings, "CLEAR_ON_START", False):
             logger.info("CLEAR_ON_START=true — wiping knowledge base on startup.")
             from app.dependencies import get_orchestrator
+
             orch = get_orchestrator()
             result = await orch.clear_all()
             logger.info(
@@ -66,6 +69,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 # ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------
+
 
 def _get_allowed_origins() -> list[str]:
     """Return CORS allowed origins from settings.
@@ -105,7 +109,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],   # only what the API actually uses
+    allow_methods=["GET", "POST", "DELETE"],  # only what the API actually uses
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -124,6 +128,7 @@ app.include_router(mindmap_router)
 # ---------------------------------------------------------------------------
 # FIX #9 — health check for Docker / k8s liveness probes
 # ---------------------------------------------------------------------------
+
 
 @app.get("/health", tags=["meta"], summary="Liveness check")
 async def health() -> JSONResponse:

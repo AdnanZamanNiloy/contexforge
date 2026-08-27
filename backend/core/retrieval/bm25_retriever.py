@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from core.interfaces.retriever import Retriever
 from core.storage.bm25_index import BM25Index
@@ -14,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class BM25Retriever(Retriever):
-
     def __init__(self, index: BM25Index) -> None:
         self._index = index
 
@@ -22,10 +20,10 @@ class BM25Retriever(Retriever):
     async def retrieve(
         self,
         query: str,
-        query_vector: List[float],  
+        query_vector: list[float],
         top_k: int,
         exclude_source_ids: set[str] | None = None,
-    ) -> List[RetrievedChunk]:
+    ) -> list[RetrievedChunk]:
 
         results = await self._index.search(query, top_k, exclude_source_ids)
         logger.debug("BM25Retriever: query=%r returned %d result(s).", query, len(results))

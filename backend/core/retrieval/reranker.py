@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-from typing import List, Tuple
 
 from app.config.settings import settings
 from core.types import RerankedChunk, RetrievedChunk
@@ -56,9 +55,9 @@ def _calibrate(raw_logit: float) -> float:
 
 
 def _diversify(
-    scored: List[Tuple[RetrievedChunk, float]],
+    scored: list[tuple[RetrievedChunk, float]],
     top_k: int,
-) -> List[Tuple[RetrievedChunk, float]]:
+) -> list[tuple[RetrievedChunk, float]]:
     """Select up to ``top_k`` chunks while keeping per-source coverage.
 
     A purely relevance-sorted top-k lets the single most similar source crowd
@@ -91,7 +90,7 @@ def _diversify(
         return scored[:top_k]
 
     # Group each source's candidates, best-first within each group.
-    by_source: Dict[str, List[Tuple[RetrievedChunk, float]]] = {}
+    by_source: dict[str, list[tuple[RetrievedChunk, float]]] = {}
     for item in scored:
         sid = item[0].chunk.source_id or "__anonymous__"
         by_source.setdefault(sid, []).append(item)
@@ -105,14 +104,14 @@ def _diversify(
 
     # Round 1: seed one slot per source (its best chunk).  This guarantees every
     # source present in the candidates is represented in the final selection.
-    chosen: List[Tuple[RetrievedChunk, float]] = []
+    chosen: list[tuple[RetrievedChunk, float]] = []
     for sid in source_order:
         chosen.append(by_source[sid][0])
         if len(chosen) >= top_k:
             return chosen
 
     # Round 2: fill remaining slots greedily by relevance, honouring the cap.
-    cursors: Dict[str, int] = {sid: 1 for sid in by_source}
+    cursors: dict[str, int] = dict.fromkeys(by_source, 1)
     while len(chosen) < top_k:
         best_sid = None
         best_score = None
@@ -134,7 +133,6 @@ def _diversify(
 
 
 class Reranker:
-
     def __init__(self) -> None:
         self._model = None
         self._load_lock = asyncio.Lock()
@@ -143,9 +141,9 @@ class Reranker:
     async def rerank(
         self,
         query: str,
-        candidates: List[RetrievedChunk],
+        candidates: list[RetrievedChunk],
         top_k: int,
-    ) -> Tuple[List[RerankedChunk], float]:
+    ) -> tuple[list[RerankedChunk], float]:
         """Rerank candidates with a cross-encoder, returning (chunks, confidence).
 
         Each raw logit is calibrated via temperature-scaled sigmoid into a
@@ -185,7 +183,7 @@ class Reranker:
         probs = [_calibrate(float(s)) for s in raw_scores]
 
         scored = sorted(
-            zip(candidates, probs),
+            zip(candidates, probs, strict=False),
             key=lambda pair: pair[1],
             reverse=True,
         )
@@ -193,23 +191,17 @@ class Reranker:
         trimmed = _diversify(scored, top_k)
 
         results = [
-            RerankedChunk(chunk=item.chunk, score=prob, rank=rank)
-            for rank, (item, prob) in enumerate(trimmed, start=1)
+            RerankedChunk(chunk=item.chunk, score=prob, rank=rank) for rank, (item, prob) in enumerate(trimmed, start=1)
         ]
 
         # Confidence = best calibrated score among the top-k results, with a
         # floor to avoid 0% on valid results.  Using the best source rather
         # than the mean stops tangential chunks from diluting a strong match.
-        raw_best = (
-            max(prob for _, prob in trimmed)
-            if trimmed
-            else 0.0
-        )
+        raw_best = max(prob for _, prob in trimmed) if trimmed else 0.0
         confidence = max(raw_best, _MIN_CONFIDENCE_FLOOR) if trimmed else 0.0
 
         logger.debug(
-            "Reranker: %d candidates → top %d selected; "
-            "best=%.4f worst=%.4f conf=%.4f",
+            "Reranker: %d candidates → top %d selected; best=%.4f worst=%.4f conf=%.4f",
             len(candidates),
             len(results),
             results[0].score if results else 0.0,
@@ -229,8 +221,7 @@ class Reranker:
             from sentence_transformers import CrossEncoder
         except ImportError as exc:
             raise RuntimeError(
-                "Reranker requires sentence-transformers. "
-                "Run: pip install sentence-transformers"
+                "Reranker requires sentence-transformers. Run: pip install sentence-transformers"
             ) from exc
 
         logger.debug("Loading CrossEncoder model: %s", settings.RERANK_MODEL)

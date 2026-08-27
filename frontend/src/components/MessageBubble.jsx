@@ -1,5 +1,5 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function MarkdownRenderer({ content }) {
   return (
@@ -7,15 +7,17 @@ function MarkdownRenderer({ content }) {
       remarkPlugins={[remarkGfm]}
       components={{
         // Keep links from capturing the chat scroll; open in a new tab.
-        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+        a: ({ node: _node, ...props }) => (
+          <a {...props} target="_blank" rel="noopener noreferrer" />
+        ),
       }}
     >
       {content}
     </ReactMarkdown>
-  );
+  )
 }
 
-export default function MessageBubble({ role, title, text, sources = [], status }) {
+export default function MessageBubble({ role, text, sources = [], status }) {
   if (role === 'user') {
     return (
       <div className="flex justify-end">
@@ -24,20 +26,16 @@ export default function MessageBubble({ role, title, text, sources = [], status 
             bg-[rgba(255,255,255,0.06)]
             border border-[rgba(255,255,255,0.08)]"
         >
-          <p className="text-base text-white leading-relaxed m-0 whitespace-pre-line">
-            {text}
-          </p>
+          <p className="text-base text-white leading-relaxed m-0 whitespace-pre-line">{text}</p>
         </div>
       </div>
-    );
+    )
   }
 
-  const isStreamingEmpty = status === 'streaming' && !text;
+  const isStreamingEmpty = status === 'streaming' && !text
 
   return (
-    <div
-      className="rounded-2xl p-4"
-    >
+    <div className="rounded-2xl p-4">
       {isStreamingEmpty ? (
         <span className="inline-flex items-center gap-0.5 text-[#a6abb3]">
           <span className="animate-pulse duration-1000">Thinking</span>
@@ -67,5 +65,5 @@ export default function MessageBubble({ role, title, text, sources = [], status 
         </div>
       ) : null}
     </div>
-  );
+  )
 }

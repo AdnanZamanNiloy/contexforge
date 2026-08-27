@@ -1,9 +1,9 @@
 """Unit tests for transparent risk scoring."""
+
 from __future__ import annotations
 
 import pytest
 
-from app.repository_intelligence import risk
 from app.repository_intelligence.risk import (
     RISK_EXPLANATIONS,
     apply_risk_to_nodes,
@@ -19,9 +19,9 @@ from app.repository_intelligence.risk import (
 class TestScoring:
     def test_compute_node_signals_normalises(self):
         sig = compute_node_signals(
-            {"deps": 10, "dependents": 10, "loc": 250, "coverage": 0.0,
-             "ownership_risk": 1.0},
-            churn=5, max_churn=10,
+            {"deps": 10, "dependents": 10, "loc": 250, "coverage": 0.0, "ownership_risk": 1.0},
+            churn=5,
+            max_churn=10,
         )
         assert sig["fanout"] == pytest.approx(1.0)
         assert sig["churn"] == pytest.approx(0.5)
@@ -30,14 +30,22 @@ class TestScoring:
         assert sig["ownership"] == pytest.approx(1.0)
 
     def test_risk_score_is_weighted_sum(self):
-        sig = {"fanout": 1.0, "churn": 0.0, "complexity": 0.0,
-               "coverage": 0.0, "ownership": 0.0}
+        sig = {"fanout": 1.0, "churn": 0.0, "complexity": 0.0, "coverage": 0.0, "ownership": 0.0}
         assert risk_score(sig) == pytest.approx(30.0, abs=0.01)
 
-    @pytest.mark.parametrize("score,expected", [
-        (10, "Low"), (45, "Medium"), (65, "High"), (90, "Critical"),
-        (79, "High"), (80, "Critical"), (60, "High"), (40, "Medium"),
-    ])
+    @pytest.mark.parametrize(
+        "score,expected",
+        [
+            (10, "Low"),
+            (45, "Medium"),
+            (65, "High"),
+            (90, "Critical"),
+            (79, "High"),
+            (80, "Critical"),
+            (60, "High"),
+            (40, "Medium"),
+        ],
+    )
     def test_score_to_risk_thresholds(self, score, expected):
         assert score_to_risk(score) == expected
 
@@ -47,8 +55,16 @@ class TestScoring:
 
     def test_apply_risk_to_nodes_attaches_reason(self):
         nodes = [
-            {"id": "a", "kind": "file", "path": "a.py", "loc": 10,
-             "deps": 0, "dependents": 0, "coverage": 1.0, "ownership_risk": 0.0},
+            {
+                "id": "a",
+                "kind": "file",
+                "path": "a.py",
+                "loc": 10,
+                "deps": 0,
+                "dependents": 0,
+                "coverage": 1.0,
+                "ownership_risk": 0.0,
+            },
         ]
         out = apply_risk_to_nodes(nodes, churn_by_rel={"a.py": 0})
         assert out[0]["risk"] in {"Low", "Medium", "High", "Critical"}
@@ -73,8 +89,7 @@ class TestCoverage:
 
 class TestOwnershipConcentration:
     def test_single_author_high_concentration(self):
-        assert ownership_concentration(
-            [{"count": 9}, {"count": 1}], "x.py") > 0.9
+        assert ownership_concentration([{"count": 9}, {"count": 1}], "x.py") > 0.9
 
     def test_empty_returns_zero(self):
         assert ownership_concentration([], "x.py") == 0.0

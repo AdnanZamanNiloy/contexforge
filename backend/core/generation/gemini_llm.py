@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -19,33 +19,32 @@ logger = logging.getLogger(__name__)
 # only burns time. Fail fast so FallbackLLM advances to the next provider.
 _RETRYABLE_STATUS = {500, 502, 503, 504}
 _MAX_RETRIES = 3
-_RETRY_BASE_DELAY = 1.0   
-_RETRY_MAX_DELAY  = 16.0 
+_RETRY_BASE_DELAY = 1.0
+_RETRY_MAX_DELAY = 16.0
 
 _GENERATE_TIMEOUT = httpx.Timeout(timeout=60.0)
-_STREAM_TIMEOUT   = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=5.0)
+_STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=5.0)
 
 
 class GeminiLLM(BaseLLM):
-
     def __init__(
         self,
         model: str | None = None,
         *,
         temperature: float = 0.2,
         max_tokens: int | None = None,
-        http_client: httpx.AsyncClient | None = None,) -> None:
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
         super().__init__(model or settings.GEMINI_MODEL)
         self._temperature = temperature
-        self._max_tokens  = max_tokens
-        
+        self._max_tokens = max_tokens
+
         self._client = http_client or httpx.AsyncClient(
             headers={"x-goog-api-key": settings.GOOGLE_API_KEY},
             timeout=_GENERATE_TIMEOUT,
         )
 
-    
-    async def __aenter__(self) -> "GeminiLLM":
+    async def __aenter__(self) -> GeminiLLM:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -54,12 +53,12 @@ class GeminiLLM(BaseLLM):
     async def aclose(self) -> None:
         await self._client.aclose()
 
-
     @observe(name="gemini_generate")
     async def _generate_impl(
         self,
         prompt: str,
-        system_prompt: str | None,) -> str:
+        system_prompt: str | None,
+    ) -> str:
 
         payload = self._build_payload(prompt, system_prompt)
         data = await self._post_with_retry(
@@ -73,7 +72,8 @@ class GeminiLLM(BaseLLM):
     async def _stream_impl(
         self,
         prompt: str,
-        system_prompt: str | None,) -> AsyncIterator[str]:
+        system_prompt: str | None,
+    ) -> AsyncIterator[str]:
 
         request_payload = self._build_payload(prompt, system_prompt)
         url = self._endpoint("streamGenerateContent") + "?alt=sse"
@@ -112,14 +112,13 @@ class GeminiLLM(BaseLLM):
                 if text:
                     yield text
 
-
-
     async def _post_with_retry(
         self,
         url: str,
         payload: dict,
-        timeout: httpx.Timeout, ) -> dict:
-       
+        timeout: httpx.Timeout,
+    ) -> dict:
+
         delay = _RETRY_BASE_DELAY
         last_exc: Exception | None = None
 
@@ -134,30 +133,38 @@ class GeminiLLM(BaseLLM):
                 if status not in _RETRYABLE_STATUS or attempt == _MAX_RETRIES:
                     logger.error(
                         "gemini_generate: HTTP %d on attempt %d/%d — %s",
-                        status, attempt, _MAX_RETRIES, exc.response.text,
+                        status,
+                        attempt,
+                        _MAX_RETRIES,
+                        exc.response.text,
                     )
                     raise
                 wait = min(delay, _RETRY_MAX_DELAY)
                 logger.warning(
                     "gemini_generate: HTTP %d — retrying in %.1fs (attempt %d/%d)",
-                    status, wait, attempt, _MAX_RETRIES,
+                    status,
+                    wait,
+                    attempt,
+                    _MAX_RETRIES,
                 )
                 await asyncio.sleep(wait)
                 delay *= 2
                 last_exc = exc
 
             except httpx.TransportError as exc:
-               
                 if attempt == _MAX_RETRIES:
                     logger.error(
                         "gemini_generate: transport error on attempt %d/%d: %s",
-                        attempt, _MAX_RETRIES, exc,
+                        attempt,
+                        _MAX_RETRIES,
+                        exc,
                     )
                     raise
                 wait = min(delay, _RETRY_MAX_DELAY)
                 logger.warning(
                     "gemini_generate: transport error — retrying in %.1fs (%s)",
-                    wait, exc,
+                    wait,
+                    exc,
                 )
                 await asyncio.sleep(wait)
                 delay *= 2
@@ -165,13 +172,9 @@ class GeminiLLM(BaseLLM):
 
         raise RuntimeError("Retry loop exited without returning") from last_exc
 
-
     def _endpoint(self, method: str) -> str:
         """Build the Gemini REST endpoint URL (no API key in the URL)."""
-        return (
-            f"https://generativelanguage.googleapis.com/v1beta/"
-            f"models/{self._model}:{method}"
-        )
+        return f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:{method}"
 
     def _build_payload(self, prompt: str, system_prompt: str | None) -> dict:
         """Construct the Gemini ``generateContent`` request body."""
@@ -193,13 +196,12 @@ class GeminiLLM(BaseLLM):
             logger.warning("gemini[%s]: response contained no candidates", context)
             return ""
 
-        candidate  = candidates[0]
-        finish     = candidate.get("finishReason", "")
+        candidate = candidates[0]
+        finish = candidate.get("finishReason", "")
 
         if finish and finish not in {"STOP", ""}:
             logger.warning(
-                "gemini[%s]: non-STOP finish_reason=%s — content may be incomplete "
-                "or blocked. safetyRatings=%s",
+                "gemini[%s]: non-STOP finish_reason=%s — content may be incomplete or blocked. safetyRatings=%s",
                 context,
                 finish,
                 candidate.get("safetyRatings", []),

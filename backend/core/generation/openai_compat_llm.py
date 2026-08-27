@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -49,9 +49,7 @@ class OpenAICompatLLM(BaseLLM):
     ) -> None:
         super().__init__(model or "unset-model")
         if not api_key:
-            raise ValueError(
-                f"{type(self).__name__} requires a non-empty API key."
-            )
+            raise ValueError(f"{type(self).__name__} requires a non-empty API key.")
         self._api_url = api_url
         self._temperature = temperature
         self._max_tokens = max_tokens
@@ -60,7 +58,7 @@ class OpenAICompatLLM(BaseLLM):
             timeout=_GENERATE_TIMEOUT,
         )
 
-    async def __aenter__(self) -> "OpenAICompatLLM":
+    async def __aenter__(self) -> OpenAICompatLLM:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -115,7 +113,8 @@ class OpenAICompatLLM(BaseLLM):
                 except json.JSONDecodeError:
                     logger.warning(
                         "%s.stream: skipped non-JSON SSE line: %.120s",
-                        type(self).__name__, raw,
+                        type(self).__name__,
+                        raw,
                     )
                     continue
 
@@ -124,7 +123,8 @@ class OpenAICompatLLM(BaseLLM):
                 if finish and finish not in _CLEAN_FINISH_REASONS:
                     logger.warning(
                         "%s.stream: non-clean finish_reason=%s",
-                        type(self).__name__, finish,
+                        type(self).__name__,
+                        finish,
                     )
 
                 delta = choice.get("delta", {}).get("content")
@@ -137,9 +137,7 @@ class OpenAICompatLLM(BaseLLM):
 
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                response = await self._client.post(
-                    self._api_url, json=payload, timeout=_GENERATE_TIMEOUT
-                )
+                response = await self._client.post(self._api_url, json=payload, timeout=_GENERATE_TIMEOUT)
                 response.raise_for_status()
                 return response.json()
 
@@ -148,14 +146,21 @@ class OpenAICompatLLM(BaseLLM):
                 if status not in _RETRYABLE_STATUS or attempt == _MAX_RETRIES:
                     logger.error(
                         "%s: HTTP %d on attempt %d/%d — %s",
-                        type(self).__name__, status, attempt, _MAX_RETRIES,
+                        type(self).__name__,
+                        status,
+                        attempt,
+                        _MAX_RETRIES,
                         exc.response.text,
                     )
                     raise
                 wait = min(delay, _RETRY_MAX_DELAY) * max(1.0, status / 429.0)
                 logger.warning(
                     "%s: HTTP %d — retrying in %.1fs (attempt %d/%d)",
-                    type(self).__name__, status, wait, attempt, _MAX_RETRIES,
+                    type(self).__name__,
+                    status,
+                    wait,
+                    attempt,
+                    _MAX_RETRIES,
                 )
                 await asyncio.sleep(wait)
                 delay *= 2
@@ -165,13 +170,18 @@ class OpenAICompatLLM(BaseLLM):
                 if attempt == _MAX_RETRIES:
                     logger.error(
                         "%s: transport error on attempt %d/%d: %s",
-                        type(self).__name__, attempt, _MAX_RETRIES, exc,
+                        type(self).__name__,
+                        attempt,
+                        _MAX_RETRIES,
+                        exc,
                     )
                     raise
                 wait = min(delay, _RETRY_MAX_DELAY)
                 logger.warning(
                     "%s: transport error — retrying in %.1fs (%s)",
-                    type(self).__name__, wait, exc,
+                    type(self).__name__,
+                    wait,
+                    exc,
                 )
                 await asyncio.sleep(wait)
                 delay *= 2
@@ -212,8 +222,9 @@ class OpenAICompatLLM(BaseLLM):
         finish = choice.get("finish_reason", "")
         if finish and finish not in _CLEAN_FINISH_REASONS:
             logger.warning(
-                "openai_compat[%s]: non-clean finish_reason=%s — content may be "
-                "truncated or filtered", context, finish,
+                "openai_compat[%s]: non-clean finish_reason=%s — content may be truncated or filtered",
+                context,
+                finish,
             )
 
         content = choice.get("message", {}).get("content")

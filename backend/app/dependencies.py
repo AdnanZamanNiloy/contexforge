@@ -5,11 +5,11 @@ All singleton factories use @lru_cache so each component is constructed
 exactly once per process.  Shutdown cleanup is handled by the lifespan
 context manager in main.py via close_all().
 """
+
 from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import Dict
 
 from app.config.settings import Settings
 from app.mindmap.service import MindMapService
@@ -47,10 +47,10 @@ from core.storage.bm25_index import BM25Index
 from core.storage.faiss_store import FaissStore
 
 __all__ = [
-    "get_settings",
+    "close_all",
     "get_ingest_service",
     "get_query_service",
-    "close_all",
+    "get_settings",
 ]
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Settings — single source of truth for all factories
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
@@ -69,6 +70,7 @@ def get_settings() -> Settings:
 # ---------------------------------------------------------------------------
 # Infrastructure singletons
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def get_embedder() -> VoyageEmbedder:
@@ -117,6 +119,7 @@ def get_deduplicator() -> Deduplicator:
 # LLM — FIX #2: model strings sourced from settings, not hardcoded defaults
 # ---------------------------------------------------------------------------
 
+
 @lru_cache(maxsize=1)
 def get_llm() -> FallbackLLM:
     settings = get_settings()
@@ -140,6 +143,7 @@ def get_llm() -> FallbackLLM:
 # Retrieval
 # ---------------------------------------------------------------------------
 
+
 @lru_cache(maxsize=1)
 def get_hyde() -> HydeQueryExpander:
     return HydeQueryExpander(llm=get_llm())
@@ -156,6 +160,7 @@ def get_hybrid_retriever() -> HybridRetriever:
 # ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def get_orchestrator() -> Orchestrator:
@@ -179,15 +184,16 @@ def get_orchestrator() -> Orchestrator:
 # Loaders
 # ---------------------------------------------------------------------------
 
+
 @lru_cache(maxsize=1)
-def get_loaders() -> Dict[str, BaseLoader]:
+def get_loaders() -> dict[str, BaseLoader]:
     # FIX #1 — typed as Dict[str, BaseLoader] for safety
     return {
-        "pdf":     PDFLoader(),
-        "docx":    DocxLoader(),
-        "web":     WebLoader(),
-        "github":  GitHubLoader(),
-        "text":    TextLoader(),
+        "pdf": PDFLoader(),
+        "docx": DocxLoader(),
+        "web": WebLoader(),
+        "github": GitHubLoader(),
+        "text": TextLoader(),
         "youtube": YouTubeLoader(),
     }
 
@@ -195,6 +201,7 @@ def get_loaders() -> Dict[str, BaseLoader]:
 # ---------------------------------------------------------------------------
 # Application services (injected into routes via FastAPI Depends)
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def get_ingest_service() -> IngestService:
@@ -212,6 +219,7 @@ def get_query_service() -> QueryService:
 # ---------------------------------------------------------------------------
 # Repository Intelligence — route -> service -> analyzer -> storage
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def get_repository_store() -> RepositoryStore:
@@ -235,6 +243,7 @@ def get_repository_intelligence_service() -> RepositoryIntelligenceService:
 # Mind Map — generated from a source's chunks via the existing LLM chain
 # ---------------------------------------------------------------------------
 
+
 @lru_cache(maxsize=1)
 def get_mindmap_store() -> MindMapStore:
     return MindMapStore()
@@ -254,6 +263,7 @@ def get_mindmap_service() -> MindMapService:
 # FIX #4 — graceful shutdown: close all resources that hold connections
 # Called from the lifespan context manager in main.py
 # ---------------------------------------------------------------------------
+
 
 async def close_all() -> None:
     """Release all resources acquired by singleton factories.

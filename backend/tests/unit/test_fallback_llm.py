@@ -25,9 +25,7 @@ class _FakeLLM(LLM):
 
 @pytest.mark.asyncio
 async def test_fallback_falls_through_to_next_provider() -> None:
-    chain = FallbackLLM(
-        providers=[_FakeLLM("a", fail=True), _FakeLLM("b"), _FakeLLM("c")]
-    )
+    chain = FallbackLLM(providers=[_FakeLLM("a", fail=True), _FakeLLM("b"), _FakeLLM("c")])
     assert await chain.generate("hi") == "answer-from-b"
 
 

@@ -5,10 +5,11 @@ Repository Intelligence page.  Field names match the shapes the frontend
 already consumes (see ``frontend/src/data/repoIntelligence.js``) so the API
 can replace the mock data without a frontend rewrite.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -32,47 +33,59 @@ _CAMEL = {
 }
 
 __all__ = [
-    "RiskLevel",
-    "NodeKind",
-    "RelationshipSource",
-    "Repository",
-    "RepositoryNode",
-    "RepositoryEdge",
-    "HealthDimension",
-    "RepositoryHealth",
-    "RankedModule",
     "ActivityItem",
-    "SuggestedQuestions",
-    "DependencyGraph",
-    "FlowNode",
-    "FlowEdge",
-    "DataFlow",
-    "GitBranch",
-    "TimelineBucket",
-    "FileChurn",
-    "CommitItem",
-    "GitHistory",
-    "OwnershipContributor",
-    "ModuleOwner",
-    "OwnershipConcentration",
-    "Ownership",
-    "ImpactEstimated",
-    "ImpactNode",
-    "BlastRadius",
-    "ChangeImpact",
-    "RiskExplanations",
-    "ModuleDetails",
     "AnalysisStatus",
     "AnalysisSummary",
-    "AnalyzeResponse",
     "AnalyzeRequest",
+    "AnalyzeResponse",
+    "BlastRadius",
+    "ChangeImpact",
+    "CommitItem",
+    "DataFlow",
+    "DependencyGraph",
+    "FileChurn",
+    "FlowEdge",
+    "FlowNode",
+    "GitBranch",
+    "GitHistory",
+    "HealthDimension",
+    "ImpactEstimated",
+    "ImpactNode",
+    "ModuleDetails",
+    "ModuleOwner",
+    "NodeKind",
+    "Ownership",
+    "OwnershipConcentration",
+    "OwnershipContributor",
+    "RankedModule",
+    "RelationshipSource",
+    "Repository",
     "RepositoryAnalysis",
+    "RepositoryEdge",
+    "RepositoryHealth",
+    "RepositoryNode",
+    "RiskExplanations",
+    "RiskLevel",
+    "SuggestedQuestions",
+    "TimelineBucket",
 ]
 
 RiskLevel = Literal["Low", "Medium", "High", "Critical"]
 NodeKind = Literal[
-    "repo", "area", "directory", "module", "file", "func", "route",
-    "service", "core", "llm", "storage", "transport", "output", "input",
+    "repo",
+    "area",
+    "directory",
+    "module",
+    "file",
+    "func",
+    "route",
+    "service",
+    "core",
+    "llm",
+    "storage",
+    "transport",
+    "output",
+    "input",
 ]
 RelationshipSource = Literal["ast", "import_statement", "configuration", "convention"]
 

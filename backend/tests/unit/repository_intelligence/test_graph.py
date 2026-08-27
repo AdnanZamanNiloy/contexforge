@@ -1,4 +1,5 @@
 """Unit tests for the code-graph builder."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,6 +24,7 @@ class TestDiscoverFiles:
 
     def test_respects_max_files(self, tmp_path: Path, monkeypatch):
         from app.config.settings import settings
+
         monkeypatch.setattr(settings, "REPO_MAX_FILES", 2)
         for i in range(5):
             (tmp_path / f"src_{i}.py").write_text("x", encoding="utf-8")
@@ -54,8 +56,7 @@ class TestBuildGraph:
         imports = [e for e in result["edges"] if e["kind"] == "imports"]
         assert any(e["source"] == "app" for e in contains)
         assert any(
-            e["source"] == "app/services/query_service.py"
-            and e["target"] == "core/retrieval/hybrid_retriever.py"
+            e["source"] == "app/services/query_service.py" and e["target"] == "core/retrieval/hybrid_retriever.py"
             for e in imports
         )
         assert all(e["relationship_source"] == "ast" for e in imports)
@@ -69,9 +70,6 @@ class TestBuildGraph:
 
     def test_resolves_namespace_over_longest_prefix(self, sample_repo: Path):
         result = graph.build_graph(sample_repo)
-        ns = {
-            n["path"][:-3].replace("/", "."): n["id"]
-            for n in result["nodes"] if n["kind"] == "file"
-        }
+        ns = {n["path"][:-3].replace("/", "."): n["id"] for n in result["nodes"] if n["kind"] == "file"}
         target = graph.resolve_import_target("core.retrieval.hybrid_retriever", ns)
         assert target == "core/retrieval/hybrid_retriever.py"

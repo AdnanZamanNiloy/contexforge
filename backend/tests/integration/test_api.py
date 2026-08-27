@@ -1,10 +1,11 @@
 import json
 
-import pytest
 import httpx
+import pytest
 
 from app.dependencies import get_ingest_service, get_query_service
 from app.main import app
+from core.types import Chunk, GenerationResult, RerankedChunk
 
 
 class FakeIngestService:
@@ -16,9 +17,6 @@ class FakeIngestService:
 
     async def delete_source(self, source_id):
         return 5
-
-
-from core.types import Chunk, GenerationResult, RerankedChunk
 
 
 class FakeQueryService:
@@ -41,7 +39,7 @@ class FakeQueryService:
         )
 
     async def stream_answer(self, request):
-        yield "data: {\"type\": \"token\", \"token\": \"hi\"}\n\n"
+        yield 'data: {"type": "token", "token": "hi"}\n\n'
         payload = {"type": "done", "sources": [], "latency_ms": {"total": 1.0}}
         yield f"data: {json.dumps(payload)}\n\n"
 
@@ -105,9 +103,7 @@ async def test_github_ingest_survives_rag_failure(monkeypatch):
         async def start_analysis(self, repo_url, branch=None):
             return {"analysis_id": "ri-123"}
 
-    monkeypatch.setattr(
-        deps, "get_repository_intelligence_service", lambda: FakeRIntelligence()
-    )
+    monkeypatch.setattr(deps, "get_repository_intelligence_service", lambda: FakeRIntelligence())
     app.dependency_overrides[get_ingest_service] = lambda: FailingIngestService()
 
     transport = httpx.ASGITransport(app=app)

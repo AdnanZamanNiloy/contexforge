@@ -1,6 +1,7 @@
 """
 schemas/query.py — Request and response schemas for query endpoints.
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -127,10 +128,7 @@ class QueryResponse(BaseModel):
     )
     latency_ms: dict[str, float] = Field(
         default_factory=dict,
-        description=(
-            "Per-stage latency breakdown. "
-            "Keys: hyde_ms, embed_ms, retrieve_ms, rerank_ms."
-        ),
+        description=("Per-stage latency breakdown. Keys: hyde_ms, embed_ms, retrieve_ms, rerank_ms."),
     )
     # FIX: attach server-side ConfidenceMetrics — the frontend should not re-derive
     confidence: ConfidenceMetrics | None = Field(

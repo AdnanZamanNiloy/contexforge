@@ -1,9 +1,10 @@
 """
 schemas/github.py — Request schema for GitHub repository ingestion.
 """
+
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 __all__ = ["GithubIngestRequest"]
 

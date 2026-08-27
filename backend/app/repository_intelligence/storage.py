@@ -9,13 +9,14 @@ Each operation opens its own connection (``check_same_thread=False``) and
 relies on WAL to coordinate concurrent reads/writes, so background analysis
 tasks never share one connection across threads.
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -101,9 +102,7 @@ class RepositoryStore:
         edges: list[dict[str, Any]],
         summary_json: str,
     ) -> None:
-        await asyncio.to_thread(
-            self._save_analysis_sync, analysis_id, nodes, edges, summary_json
-        )
+        await asyncio.to_thread(self._save_analysis_sync, analysis_id, nodes, edges, summary_json)
 
     # ------------------------------------------------------------------ #
     # Read access
@@ -112,19 +111,13 @@ class RepositoryStore:
     async def get_run(self, analysis_id: str) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._get_run_sync, analysis_id)
 
-    async def get_latest_run(
-        self, owner: str, name: str, exclude_run_id: str | None = None
-    ) -> dict[str, Any] | None:
-        return await asyncio.to_thread(
-            self._get_latest_run_sync, owner, name, exclude_run_id
-        )
+    async def get_latest_run(self, owner: str, name: str, exclude_run_id: str | None = None) -> dict[str, Any] | None:
+        return await asyncio.to_thread(self._get_latest_run_sync, owner, name, exclude_run_id)
 
     async def get_run_overview(self, analysis_id: str) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._get_run_overview_sync, analysis_id)
 
-    async def list_runs(
-        self, owner: str, name: str, limit: int = 20
-    ) -> list[dict[str, Any]]:
+    async def list_runs(self, owner: str, name: str, limit: int = 20) -> list[dict[str, Any]]:
         return await asyncio.to_thread(self._list_runs_sync, owner, name, limit)
 
     async def get_nodes(self, analysis_id: str) -> list[dict[str, Any]]:
@@ -162,20 +155,26 @@ class RepositoryStore:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        payload["id"], payload["owner"], payload["name"],
-                        payload["full_name"], payload["repo_url"], payload["branch"],
-                        payload.get("commit", ""), payload.get("status", "queued"),
-                        payload.get("progress", 0), payload.get("error"),
+                        payload["id"],
+                        payload["owner"],
+                        payload["name"],
+                        payload["full_name"],
+                        payload["repo_url"],
+                        payload["branch"],
+                        payload.get("commit", ""),
+                        payload.get("status", "queued"),
+                        payload.get("progress", 0),
+                        payload.get("error"),
                         int(payload.get("incremental", False)),
-                        _dt(payload.get("created_at")), payload.get("finished_at"),
+                        _dt(payload.get("created_at")),
+                        payload.get("finished_at"),
                     ),
                 )
         finally:
             conn.close()
 
     def _update_run_sync(self, analysis_id: str, fields: dict[str, Any]) -> None:
-        allowed = {"status", "progress", "error", "commit_sha", "finished_at",
-                   "incremental", "summary_json"}
+        allowed = {"status", "progress", "error", "commit_sha", "finished_at", "incremental", "summary_json"}
         sets = [k for k in fields if k in allowed]
         if not sets:
             return
@@ -197,10 +196,7 @@ class RepositoryStore:
                         values[sets.index("progress")] = max(current["progress"], new_progress)
             values.append(analysis_id)
             with conn:
-                conn.execute(
-                    f"UPDATE analysis_runs SET {', '.join(k + ' = ?' for k in sets)} "
-                    "WHERE id = ?", values
-                )
+                conn.execute(f"UPDATE analysis_runs SET {', '.join(k + ' = ?' for k in sets)} WHERE id = ?", values)
         finally:
             conn.close()
 
@@ -214,12 +210,8 @@ class RepositoryStore:
         conn = self._connect()
         try:
             with conn:
-                conn.execute(
-                    "DELETE FROM analysis_nodes WHERE analysis_id = ?", (analysis_id,)
-                )
-                conn.execute(
-                    "DELETE FROM analysis_edges WHERE analysis_id = ?", (analysis_id,)
-                )
+                conn.execute("DELETE FROM analysis_nodes WHERE analysis_id = ?", (analysis_id,))
+                conn.execute("DELETE FROM analysis_edges WHERE analysis_id = ?", (analysis_id,))
                 conn.executemany(
                     """
                     INSERT INTO analysis_nodes
@@ -229,12 +221,20 @@ class RepositoryStore:
                     """,
                     [
                         (
-                            analysis_id, n["id"], n.get("label", ""),
-                            n.get("kind", "file"), n.get("path", ""),
-                            n.get("files", 0), n.get("loc", 0), n.get("deps", 0),
-                            n.get("dependents", 0), n.get("risk", "Low"),
-                            n.get("risk_score", 0.0), n.get("coverage", 0.0),
-                            n.get("x"), n.get("y"),
+                            analysis_id,
+                            n["id"],
+                            n.get("label", ""),
+                            n.get("kind", "file"),
+                            n.get("path", ""),
+                            n.get("files", 0),
+                            n.get("loc", 0),
+                            n.get("deps", 0),
+                            n.get("dependents", 0),
+                            n.get("risk", "Low"),
+                            n.get("risk_score", 0.0),
+                            n.get("coverage", 0.0),
+                            n.get("x"),
+                            n.get("y"),
                             json.dumps(n.get("meta", {}), separators=(",", ":")),
                             json.dumps(n.get("signals", {}), separators=(",", ":")),
                         )
@@ -248,8 +248,14 @@ class RepositoryStore:
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     [
-                        (analysis_id, e["source"], e["target"], e.get("kind", "imports"),
-                         e.get("relationship_source", "ast"), e.get("confidence", 1.0))
+                        (
+                            analysis_id,
+                            e["source"],
+                            e["target"],
+                            e.get("kind", "imports"),
+                            e.get("relationship_source", "ast"),
+                            e.get("confidence", 1.0),
+                        )
                         for e in edges
                     ],
                 )
@@ -259,8 +265,7 @@ class RepositoryStore:
                     summary_json = ?, finished_at = ?, commit_sha = ?
                     WHERE id = ?
                     """,
-                    (summary_json, _dt(datetime.now(timezone.utc)),
-                     _last_commit(nodes), analysis_id),
+                    (summary_json, _dt(datetime.now(UTC)), _last_commit(nodes), analysis_id),
                 )
         finally:
             conn.close()
@@ -268,16 +273,12 @@ class RepositoryStore:
     def _get_run_sync(self, analysis_id: str) -> dict[str, Any] | None:
         conn = self._connect()
         try:
-            row = conn.execute(
-                "SELECT * FROM analysis_runs WHERE id = ?", (analysis_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM analysis_runs WHERE id = ?", (analysis_id,)).fetchone()
             return dict(row) if row else None
         finally:
             conn.close()
 
-    def _get_latest_run_sync(
-        self, owner: str, name: str, exclude_run_id: str | None = None
-    ) -> dict[str, Any] | None:
+    def _get_latest_run_sync(self, owner: str, name: str, exclude_run_id: str | None = None) -> dict[str, Any] | None:
         conn = self._connect()
         try:
             query = """SELECT * FROM analysis_runs
@@ -313,9 +314,7 @@ class RepositoryStore:
         finally:
             conn.close()
 
-    def _list_runs_sync(
-        self, owner: str, name: str, limit: int
-    ) -> list[dict[str, Any]]:
+    def _list_runs_sync(self, owner: str, name: str, limit: int) -> list[dict[str, Any]]:
         conn = self._connect()
         try:
             rows = conn.execute(
@@ -364,7 +363,7 @@ class RepositoryStore:
 
 def _dt(value: Any) -> str:
     if value is None:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
     if isinstance(value, datetime):
         return value.isoformat()
     return str(value)

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from core.retrieval.rrf_fusion import RRFFusion

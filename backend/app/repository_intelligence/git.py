@@ -8,6 +8,7 @@ is removed in ``close()``.
 History is extracted with bounded ``git log`` invocations so analysis stays
 reasonable on CPU-only hardware.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -17,7 +18,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -125,9 +126,7 @@ class GitRepository:
 
     @observe(name="repo_git_head")
     async def head_commit(self) -> str:
-        out = await self._run(
-            ["git", "rev-parse", "HEAD"], cwd=self.workdir, quiet=True
-        )
+        out = await self._run(["git", "rev-parse", "HEAD"], cwd=self.workdir, quiet=True)
         return out.strip()
 
     @observe(name="repo_git_meta")
@@ -143,8 +142,7 @@ class GitRepository:
 
     @observe(name="repo_git_branches")
     async def branches(self) -> list[dict[str, Any]]:
-        out = await self._run(["git", "branch", "-r", "--format=%(refname:short)"],
-                              cwd=self.workdir, quiet=True)
+        out = await self._run(["git", "branch", "-r", "--format=%(refname:short)"], cwd=self.workdir, quiet=True)
         rows: list[dict[str, Any]] = []
         for line in out.splitlines():
             line = line.strip()
@@ -152,11 +150,13 @@ class GitRepository:
                 continue
             name = line.replace("origin/", "", 1)
             count = await self._commit_count(name)
-            rows.append({
-                "name": name,
-                "commits": count,
-                "active": name in {"main", "master"} or name == self.branch,
-            })
+            rows.append(
+                {
+                    "name": name,
+                    "commits": count,
+                    "active": name in {"main", "master"} or name == self.branch,
+                }
+            )
         return rows
 
     @observe(name="repo_git_commits")
@@ -178,7 +178,7 @@ class GitRepository:
             try:
                 dt = datetime.fromisoformat(iso)
             except ValueError:
-                dt = datetime.now(timezone.utc)
+                dt = datetime.now(UTC)
             rows.append({"sha": sha, "author": author, "message": message, "time": dt})
         return rows
 
@@ -249,8 +249,9 @@ class GitRepository:
     # ------------------------------------------------------------------ #
 
     async def _commit_count(self, branch: str) -> int:
-        out = await self._run(["git", "rev-list", "--count", f"origin/{branch}"],
-                              cwd=self.workdir, quiet=True, allow_fail=True)
+        out = await self._run(
+            ["git", "rev-list", "--count", f"origin/{branch}"], cwd=self.workdir, quiet=True, allow_fail=True
+        )
         try:
             return int(out.strip() or 0)
         except ValueError:
@@ -282,12 +283,10 @@ class GitRepository:
                 start_new_session=True,
             )
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout or 30
-                )
-            except asyncio.TimeoutError:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout or 30)
+            except TimeoutError:
                 os.killpg(os.getpgid(proc.pid), 15)
-                raise GitRepoError(f"git command timed out: {' '.join(cmd)}")
+                raise GitRepoError(f"git command timed out: {' '.join(cmd)}") from None
         except FileNotFoundError as exc:
             raise GitRepoError(f"git binary not found: {exc}") from exc
 

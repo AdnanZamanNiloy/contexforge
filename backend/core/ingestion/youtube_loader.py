@@ -3,13 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from typing import List
 
 import httpx
 
-from .base_loader import BaseLoader
 from core.types import Document
 from observability.tracer import observe
+
+from .base_loader import BaseLoader
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +28,7 @@ _YOUTUBE_URL_RE = re.compile(
 
 _OEMBED_URL = "https://www.youtube.com/oembed"
 
-_USER_AGENT = (
-    "Mozilla/5.0 (compatible; ContextForge/2.0; "
-    "+https://github.com/yourorg/contextforge)"
-)
+_USER_AGENT = "Mozilla/5.0 (compatible; ContextForge/2.0; +https://github.com/yourorg/contextforge)"
 
 # YouTube transcripts can only be fetched for a handful of languages; English
 # plus Hindi mirrors the reference Tube-AI-API implementation. Auto-generated
@@ -52,14 +49,12 @@ def extract_video_id(url: str) -> str:
     match = _YOUTUBE_URL_RE.search(url)
     if not match:
         raise ValueError(
-            f"Cannot detect a YouTube video id in: '{url}'. "
-            "Expected a watch, youtu.be, shorts, embed, or live URL."
+            f"Cannot detect a YouTube video id in: '{url}'. Expected a watch, youtu.be, shorts, embed, or live URL."
         )
     return match.group(1)
 
 
 class YouTubeLoader(BaseLoader):
-
     def __init__(self, timeout: float = 30.0, max_retries: int = 2) -> None:
         self._timeout = timeout
         self._max_retries = max_retries
@@ -72,11 +67,9 @@ class YouTubeLoader(BaseLoader):
         source_id: str,
         filename: str | None = None,
         metadata: dict | None = None,
-    ) -> List[Document]:
+    ) -> list[Document]:
         if not isinstance(source, str):
-            raise ValueError(
-                f"YouTubeLoader expects a URL string, got {type(source).__name__}"
-            )
+            raise TypeError(f"YouTubeLoader expects a URL string, got {type(source).__name__}")
 
         video_url = source.strip()
         video_id = extract_video_id(video_url)
@@ -124,11 +117,9 @@ class YouTubeLoader(BaseLoader):
                 asyncio.to_thread(self._get_transcript_snippets, video_id),
                 timeout=self._transcript_timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("Transcript fetch timed out. video_id=%s", video_id)
-            raise RuntimeError(
-                f"Timed out fetching a transcript for video '{video_id}'."
-            ) from None
+            raise RuntimeError(f"Timed out fetching a transcript for video '{video_id}'.") from None
         except Exception as exc:
             logger.error("Failed to fetch transcript. video_id=%s error=%s", video_id, exc)
             raise RuntimeError(f"Failed to fetch YouTube transcript: {exc}") from exc
@@ -162,9 +153,7 @@ class YouTubeLoader(BaseLoader):
                 except Exception:
                     continue
 
-        raise RuntimeError(
-            f"No retrievable transcript found for video '{video_id}'."
-        )
+        raise RuntimeError(f"No retrievable transcript found for video '{video_id}'.")
 
     # ------------------------------------------------------------------ #
     # VIDEO METADATA (oEmbed)
@@ -186,13 +175,15 @@ class YouTubeLoader(BaseLoader):
             except httpx.HTTPStatusError as exc:
                 logger.warning(
                     "oEmbed HTTP %d for video_id=%s — using id fallback.",
-                    exc.response.status_code, video_id,
+                    exc.response.status_code,
+                    video_id,
                 )
                 return {}
             except httpx.RequestError as exc:
                 logger.warning(
                     "oEmbed network error for video_id=%s — using id fallback. error=%s",
-                    video_id, exc,
+                    video_id,
+                    exc,
                 )
                 return {}
 

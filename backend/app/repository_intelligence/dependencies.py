@@ -5,6 +5,7 @@ inbound edges) and infers ``calls`` edges from qualified-name usage.  Every
 edge keeps a ``relationship_source`` and ``confidence`` so claims are
 traceable back to the evidence.
 """
+
 from __future__ import annotations
 
 import ast
@@ -15,21 +16,19 @@ from typing import Any
 from observability.tracer import observe
 
 __all__ = [
-    "enrich_nodes_with_degree",
-    "derive_calls",
-    "ranked_modules",
     "build_dependency_subgraph",
-    "dependents_of",
     "dependencies_of",
+    "dependents_of",
+    "derive_calls",
+    "enrich_nodes_with_degree",
+    "ranked_modules",
 ]
 
 _CALL_RE = re.compile(r"\b([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)\(")
 
 
 @observe(name="repo_dependency_degree")
-def enrich_nodes_with_degree(
-    nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def enrich_nodes_with_degree(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return nodes with ``deps`` (out) and ``dependents`` (in) counts."""
     deps: dict[str, int] = defaultdict(int)
     dependents: dict[str, int] = defaultdict(int)
@@ -98,10 +97,15 @@ def derive_calls(
                 continue
             target = _resolve_spec(spec, ns_to_node)
             if target and target != n["id"]:
-                calls.append({
-                    "source": n["id"], "target": target, "kind": "calls",
-                    "relationship_source": "ast", "confidence": 0.7,
-                })
+                calls.append(
+                    {
+                        "source": n["id"],
+                        "target": target,
+                        "kind": "calls",
+                        "relationship_source": "ast",
+                        "confidence": 0.7,
+                    }
+                )
     return calls
 
 
@@ -117,16 +121,13 @@ def _resolve_spec(spec: str, ns_to_node: dict[str, str]) -> str | None:
 
 
 @observe(name="repo_dependency_rank")
-def ranked_modules(
-    nodes: list[dict[str, Any]], top: int = 5
-) -> list[dict[str, Any]]:
+def ranked_modules(nodes: list[dict[str, Any]], top: int = 5) -> list[dict[str, Any]]:
     """Rank modules/files by dependency weight (deps + dependents)."""
     weighted = [
         {
             "name": n["path"] or n["label"],
             "value": min(100.0, (n.get("deps", 0) + n.get("dependents", 0)) * 3.0),
-            "reason": (f"{n.get('deps', 0)} upstream deps, "
-                       f"{n.get('dependents', 0)} dependents"),
+            "reason": (f"{n.get('deps', 0)} upstream deps, {n.get('dependents', 0)} dependents"),
         }
         for n in nodes
         if n.get("kind") in {"module", "area", "file"} and n.get("path")
@@ -182,11 +183,9 @@ def build_dependency_subgraph(
     return {"nodes": sub_nodes, "edges": visited_edges}
 
 
-def dependents_of(nodes: list[dict[str, Any]], edges: list[dict[str, Any]],
-                  node_id: str) -> list[str]:
+def dependents_of(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], node_id: str) -> list[str]:
     return [e["source"] for e in edges if e["target"] == node_id]
 
 
-def dependencies_of(nodes: list[dict[str, Any]], edges: list[dict[str, Any]],
-                    node_id: str) -> list[str]:
+def dependencies_of(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], node_id: str) -> list[str]:
     return [e["target"] for e in edges if e["source"] == node_id]

@@ -1,4 +1,5 @@
 """Unit tests for change-impact / blast-radius analysis."""
+
 from __future__ import annotations
 
 import pytest

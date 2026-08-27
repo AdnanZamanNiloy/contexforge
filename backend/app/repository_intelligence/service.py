@@ -6,6 +6,7 @@ The service owns the analysis lifecycle (create run, run in the background or
 blocking, incremental short-circuit by commit SHA, persist nodes/edges + a
 JSON bundle) and rehydrates the typed view models from the store on read.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -13,13 +14,11 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from observability.tracer import observe
-
-from .analyzer import AnalysisResult, RepositoryAnalyzer
 from . import dependencies as dep_mod
+from .analyzer import AnalysisResult, RepositoryAnalyzer
 from .git import GitRepoError, GitRepository
 from .impact import compute_change_impact
 from .schemas import (
@@ -27,9 +26,11 @@ from .schemas import (
     AnalysisSummary,
     DependencyGraph,
     RepositoryAnalysis,
-    Repository as RepositorySchema,
     RepositoryEdge,
     RepositoryNode,
+)
+from .schemas import (
+    Repository as RepositorySchema,
 )
 from .storage import RepositoryStore
 
@@ -55,9 +56,7 @@ class RepositoryIntelligenceService:
     # Lifecycle
     # ------------------------------------------------------------------ #
 
-    async def start_analysis(
-        self, repo_url: str, branch: str | None = None, force: bool = False
-    ) -> dict[str, Any]:
+    async def start_analysis(self, repo_url: str, branch: str | None = None, force: bool = False) -> dict[str, Any]:
         """Create a run and schedule it in the background.
 
         Returns a ``{analysis_id, status}`` payload.  The route maps this to
@@ -69,19 +68,22 @@ class RepositoryIntelligenceService:
         except GitRepoError as exc:
             raise RepositoryIntelligenceError(str(exc)) from exc
         run_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
-        await self._store.create_run({
-            "id": run_id,
-            "owner": owner,
-            "name": name,
-            "full_name": f"{owner}/{name}",
-            "repo_url": repo_url,
-            "branch": branch or "main",
-            "commit": "",
-            "status": "queued",            "progress": 0,
-            "incremental": False,
-            "created_at": now.isoformat(),
-        })
+        now = datetime.now(UTC)
+        await self._store.create_run(
+            {
+                "id": run_id,
+                "owner": owner,
+                "name": name,
+                "full_name": f"{owner}/{name}",
+                "repo_url": repo_url,
+                "branch": branch or "main",
+                "commit": "",
+                "status": "queued",
+                "progress": 0,
+                "incremental": False,
+                "created_at": now.isoformat(),
+            }
+        )
         asyncio.create_task(self._run(run_id, repo_url, branch, force))
         return {"analysis_id": run_id, "status": await self.get_status(run_id)}
 
@@ -91,9 +93,7 @@ class RepositoryIntelligenceService:
         """Run analysis synchronously (blocking) and persist the result."""
         return await self._run(run_id, repo_url, branch, force)
 
-    async def _run(
-        self, run_id: str, repo_url: str, branch: str | None, force: bool
-    ) -> dict[str, Any]:
+    async def _run(self, run_id: str, repo_url: str, branch: str | None, force: bool) -> dict[str, Any]:
         git: GitRepository | None = None
         try:
             git = GitRepository(repo_url, branch=branch)
@@ -112,9 +112,7 @@ class RepositoryIntelligenceService:
                 and latest.get("status") == "complete"
                 and latest.get("summary_json")
             ):
-                logger.info(
-                    "repo analysis: reuse cached run %s (commit %s)", latest["id"], commit
-                )
+                logger.info("repo analysis: reuse cached run %s (commit %s)", latest["id"], commit)
                 # Reuse the cached analysis by copying its persisted result into
                 # the newly-created run_id, so the new run is fully readable.
                 summary = latest.get("summary_json") or "{}"
@@ -125,65 +123,67 @@ class RepositoryIntelligenceService:
                     summary,
                 )
                 await self._store.update_run(
-                    run_id, status="complete", progress=100, commit_sha=commit,
-                    finished_at=datetime.now(timezone.utc).isoformat(),
+                    run_id,
+                    status="complete",
+                    progress=100,
+                    commit_sha=commit,
+                    finished_at=datetime.now(UTC).isoformat(),
                     incremental=True,
                 )
-                return {"commit": commit, "incremental": True,
-                        "reused_commit": commit, "cached_run_id": latest["id"]}
+                return {"commit": commit, "incremental": True, "reused_commit": commit, "cached_run_id": latest["id"]}
 
-            result = await self._analyzer.analyze(
-                git, run_id=run_id, progress=self._progress(run_id)
-            )
+            result = await self._analyzer.analyze(git, run_id=run_id, progress=self._progress(run_id))
             await self._persist(run_id, result)
             git.close()
-            logger.info("repo analysis complete: run=%s nodes=%d edges=%d",
-                        run_id, len(result.nodes), len(result.edges))
+            logger.info(
+                "repo analysis complete: run=%s nodes=%d edges=%d", run_id, len(result.nodes), len(result.edges)
+            )
             return {"commit": commit, "incremental": False}
         except GitRepoError as exc:
-            await self._store.update_run(run_id, status="failed", error=str(exc),
-                                         finished_at=datetime.now(timezone.utc).isoformat())
+            await self._store.update_run(
+                run_id, status="failed", error=str(exc), finished_at=datetime.now(UTC).isoformat()
+            )
             raise RepositoryIntelligenceError(str(exc)) from exc
         except Exception as exc:  # pragma: no cover - defensive
             logger.exception("repo analysis failed: run=%s", run_id)
-            await self._store.update_run(run_id, status="failed", error=str(exc),
-                                         finished_at=datetime.now(timezone.utc).isoformat())
+            await self._store.update_run(
+                run_id, status="failed", error=str(exc), finished_at=datetime.now(UTC).isoformat()
+            )
             raise RepositoryIntelligenceError(str(exc)) from exc
         finally:
             if git is not None:
                 git.close()
 
-    async def _ensure_run(
-        self, run_id: str, git: GitRepository, branch: str | None
-    ) -> None:
+    async def _ensure_run(self, run_id: str, git: GitRepository, branch: str | None) -> None:
         """Create the run row if it does not already exist (defensive)."""
         existing = await self._store.get_run(run_id)
         if existing is not None:
             return
-        await self._store.create_run({
-            "id": run_id,
-            "owner": git.owner,
-            "name": git.name,
-            "full_name": f"{git.owner}/{git.name}",
-            "repo_url": git.repo_url,
-            "branch": branch or "main",
-            "commit": "",
-            "status": "queued",
-            "progress": 0,
-            "incremental": False,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        await self._store.create_run(
+            {
+                "id": run_id,
+                "owner": git.owner,
+                "name": git.name,
+                "full_name": f"{git.owner}/{git.name}",
+                "repo_url": git.repo_url,
+                "branch": branch or "main",
+                "commit": "",
+                "status": "queued",
+                "progress": 0,
+                "incremental": False,
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
     async def _persist(self, run_id: str, result: AnalysisResult) -> None:
         bundle = dict(result.bundle)
-        await self._store.save_analysis(
-            run_id, result.nodes, result.edges, json.dumps(bundle, separators=(",", ":"))
-        )
+        await self._store.save_analysis(run_id, result.nodes, result.edges, json.dumps(bundle, separators=(",", ":")))
 
     def _progress(self, run_id: str):
         async def cb(pct: int, msg: str) -> None:
             await self._store.update_run(run_id, progress=pct)
             logger.info("repo analysis %s: %d%% %s", run_id, pct, msg)
+
         return cb
 
     # ------------------------------------------------------------------ #
@@ -223,7 +223,8 @@ class RepositoryIntelligenceService:
         run = await self._store.get_latest_run(owner, name)
         if run is None:
             raise RepositoryIntelligenceError(
-                f"No completed analysis for '{owner}/{name}' — repository not found in analysis store")
+                f"No completed analysis for '{owner}/{name}' — repository not found in analysis store"
+            )
         return await self.get_status(run["id"])
 
     async def reanalyze(self, analysis_id: str) -> dict[str, Any]:
@@ -237,23 +238,23 @@ class RepositoryIntelligenceService:
         if run is None:
             raise RepositoryIntelligenceError(f"Analysis '{analysis_id}' not found")
         new_run_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
-        await self._store.create_run({
-            "id": new_run_id,
-            "owner": run["owner"],
-            "name": run["name"],
-            "full_name": run["full_name"],
-            "repo_url": run["repo_url"],
-            "branch": run["branch"],
-            "commit": "",
-            "status": "queued",
-            "progress": 0,
-            "incremental": False,
-            "created_at": now.isoformat(),
-        })
-        asyncio.create_task(
-            self._run(new_run_id, run["repo_url"], run["branch"], force=True)
+        now = datetime.now(UTC)
+        await self._store.create_run(
+            {
+                "id": new_run_id,
+                "owner": run["owner"],
+                "name": run["name"],
+                "full_name": run["full_name"],
+                "repo_url": run["repo_url"],
+                "branch": run["branch"],
+                "commit": "",
+                "status": "queued",
+                "progress": 0,
+                "incremental": False,
+                "created_at": now.isoformat(),
+            }
         )
+        asyncio.create_task(self._run(new_run_id, run["repo_url"], run["branch"], force=True))
         return {"analysis_id": new_run_id, "status": await self.get_status(new_run_id)}
 
     async def get_analysis(self, analysis_id: str, default_impact: bool = True) -> RepositoryAnalysis:
@@ -267,12 +268,11 @@ class RepositoryIntelligenceService:
         dependencies = self._dependencies(nodes, edges)
         change_impact = None
         if default_impact and nodes:
-            root = next((n for n in nodes if n.get("kind") == "repo"), None)
             default_path = _default_impact_path(nodes)
             if default_path:
                 change_impact = compute_change_impact(nodes, edges, default_path)
 
-        generated_at = datetime.now(timezone.utc)
+        generated_at = datetime.now(UTC)
         summary = AnalysisSummary(
             id=analysis_id,
             commit=run.get("commit_sha"),
@@ -303,9 +303,7 @@ class RepositoryIntelligenceService:
         edges = await self._store.get_edges(analysis_id)
         return self._architecture(nodes, edges)
 
-    async def get_dependencies(
-        self, analysis_id: str, selected: str | None, depth: int = 2
-    ) -> DependencyGraph:
+    async def get_dependencies(self, analysis_id: str, selected: str | None, depth: int = 2) -> DependencyGraph:
         await self._require_complete(analysis_id)
         nodes = await self._store.get_nodes(analysis_id)
         edges = await self._store.get_edges(analysis_id)
@@ -328,12 +326,10 @@ class RepositoryIntelligenceService:
             raise RepositoryIntelligenceError(f"Node '{node_id}' not found")
         bundle = json.loads(run.get("summary_json") or "{}")
         # recent changes: pull from stored activity, scoped to this node path.
-        activity = [
-            a for a in bundle.get("activity", [])
-            if (node.get("path") in a.get("message", ""))
-        ][:3]
+        activity = [a for a in bundle.get("activity", []) if (node.get("path") in a.get("message", ""))][:3]
         top_deps = [
-            e["target"] for e in (await self._store.get_edges(analysis_id))
+            e["target"]
+            for e in (await self._store.get_edges(analysis_id))
             if e["source"] == node_id and e["kind"] in {"imports", "calls"}
         ][:5]
         return {
@@ -424,16 +420,15 @@ class RepositoryIntelligenceService:
         if run is None:
             raise RepositoryIntelligenceError(f"Analysis '{analysis_id}' not found")
         if run["status"] != "complete":
-            raise RepositoryIntelligenceError(
-                f"Analysis '{analysis_id}' is {run['status']}, not complete")
+            raise RepositoryIntelligenceError(f"Analysis '{analysis_id}' is {run['status']}, not complete")
         if not run.get("summary_json"):
-            raise RepositoryIntelligenceError(
-                f"Analysis '{analysis_id}' has no persisted result")
+            raise RepositoryIntelligenceError(f"Analysis '{analysis_id}' has no persisted result")
 
 
 # ---------------------------------------------------------------------------
 # View builders (dict -> typed schema)
 # ---------------------------------------------------------------------------
+
 
 class NodeView:
     @staticmethod
@@ -505,6 +500,7 @@ def _sha256(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> str:
 
 def _schema_health(h: dict[str, Any]) -> Any:
     from .schemas import HealthDimension, RepositoryHealth
+
     return RepositoryHealth(
         score=h.get("score", 0.0),
         dimensions=[HealthDimension(**d) for d in h.get("dimensions", [])],

@@ -5,7 +5,6 @@ import hashlib
 import logging
 import threading
 import unicodedata
-from typing import List
 
 from core.types import Document
 
@@ -14,35 +13,25 @@ __all__ = ["Deduplicator"]
 logger = logging.getLogger(__name__)
 
 
+def _validate_documents(documents: list[Document]) -> None:
 
-def _validate_documents(documents: List[Document]) -> None:
- 
     if not isinstance(documents, list):
-        raise ValueError(
-            f"Deduplicator expected a list of Document objects, got {type(documents).__name__}"
-        )
+        raise TypeError(f"Deduplicator expected a list of Document objects, got {type(documents).__name__}")
     if not documents:
         raise ValueError("Deduplicator received an empty document list")
     for idx, doc in enumerate(documents):
         if not isinstance(doc, Document):
-            raise ValueError(
-                f"Deduplicator expected Document at index {idx}, got {type(doc).__name__}"
-            )
+            raise TypeError(f"Deduplicator expected Document at index {idx}, got {type(doc).__name__}")
         if not isinstance(doc.text, str) or not doc.text.strip():
-            raise ValueError(
-                f"Deduplicator received empty or non-string text for document '{doc.document_id}'"
-            )
-
+            raise ValueError(f"Deduplicator received empty or non-string text for document '{doc.document_id}'")
 
 
 class Deduplicator:
- 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._seen_hashes: set[str] = set()
 
-
-    async def deduplicate(self, documents: List[Document]) -> List[Document]:
+    async def deduplicate(self, documents: list[Document]) -> list[Document]:
         return await asyncio.to_thread(self._deduplicate_sync, documents)
 
     def reset(self) -> None:
@@ -50,11 +39,10 @@ class Deduplicator:
             self._seen_hashes.clear()
         logger.debug("Deduplicator state reset; seen-hash set cleared.")
 
-
-    def _deduplicate_sync(self, documents: List[Document]) -> List[Document]:
+    def _deduplicate_sync(self, documents: list[Document]) -> list[Document]:
 
         _validate_documents(documents)
-        unique: List[Document] = []
+        unique: list[Document] = []
 
         for doc in documents:
             digest = self._fingerprint(doc.text, doc.metadata.get("source_id"))

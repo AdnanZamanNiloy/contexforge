@@ -6,6 +6,7 @@ Walks a cloned working tree, classifies files by language, and builds a
 languages use a conservative regex matcher.  Any relationship we cannot
 prove statically is attributed to ``convention`` with ``confidence < 1.0``.
 """
+
 from __future__ import annotations
 
 import ast
@@ -19,10 +20,10 @@ from observability.tracer import observe
 
 __all__ = [
     "LANG_BY_EXT",
-    "is_analysable_path",
+    "build_graph",
     "discover_files",
     "extract_imports",
-    "build_graph",
+    "is_analysable_path",
     "primary_language",
 ]
 
@@ -30,28 +31,97 @@ __all__ = [
 # Language detection
 # ---------------------------------------------------------------------------
 LANG_BY_EXT: dict[str, str] = {
-    ".py": "Python", ".pyi": "Python",
-    ".js": "JavaScript", ".jsx": "JavaScript", ".mjs": "JavaScript",
-    ".ts": "TypeScript", ".tsx": "TypeScript",
-    ".go": "Go", ".rs": "Rust", ".java": "Java", ".kt": "Kotlin",
-    ".c": "C", ".h": "C", ".cpp": "C++", ".hpp": "C++", ".cc": "C++",
-    ".cs": "C#", ".rb": "Ruby", ".php": "PHP", ".swift": "Swift",
-    ".vue": "Vue", ".svelte": "Svelte", ".html": "HTML", ".css": "CSS",
+    ".py": "Python",
+    ".pyi": "Python",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript",
+    ".mjs": "JavaScript",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript",
+    ".go": "Go",
+    ".rs": "Rust",
+    ".java": "Java",
+    ".kt": "Kotlin",
+    ".c": "C",
+    ".h": "C",
+    ".cpp": "C++",
+    ".hpp": "C++",
+    ".cc": "C++",
+    ".cs": "C#",
+    ".rb": "Ruby",
+    ".php": "PHP",
+    ".swift": "Swift",
+    ".vue": "Vue",
+    ".svelte": "Svelte",
+    ".html": "HTML",
+    ".css": "CSS",
 }
 
-_SKIP_DIRS = {".git", ".venv", "venv", "node_modules", "__pycache__",
-              ".next", "dist", "build", ".pytest_cache", ".mypy_cache",
-              ".idea", ".vscode", "target", "vendor", "docs", "doc",
-              "documentation", "images", "img", "screenshots", "media",
-              "static", "public"}
-_LOCK_FILES = {
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
-    "Pipfile.lock", "Gemfile.lock", "composer.lock", "Cargo.lock", "uv.lock",
+_SKIP_DIRS = {
+    ".git",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+    ".next",
+    "dist",
+    "build",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
+    "target",
+    "vendor",
+    "docs",
+    "doc",
+    "documentation",
+    "images",
+    "img",
+    "screenshots",
+    "media",
+    "static",
+    "public",
 }
-_BINARY_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".pdf", ".zip", ".exe",
-                ".bin", ".so", ".dylib", ".dll", ".mp3", ".mp4", ".mov",
-                ".ico", ".woff", ".woff2", ".ttf", ".svg", ".lock",
-                ".pckl", ".pickle", ".pyc", ".pyo", ".gz", ".tar", ".whl"}
+_LOCK_FILES = {
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "Pipfile.lock",
+    "Gemfile.lock",
+    "composer.lock",
+    "Cargo.lock",
+    "uv.lock",
+}
+_BINARY_EXTS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".pdf",
+    ".zip",
+    ".exe",
+    ".bin",
+    ".so",
+    ".dylib",
+    ".dll",
+    ".mp3",
+    ".mp4",
+    ".mov",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".svg",
+    ".lock",
+    ".pckl",
+    ".pickle",
+    ".pyc",
+    ".pyo",
+    ".gz",
+    ".tar",
+    ".whl",
+}
 _DOC_EXTS = {".md", ".mdx", ".rst", ".adoc"}
 _STYLE_EXTS = {".css", ".scss", ".less"}
 # Only real source code becomes a node — config, metadata, docs, styles and
@@ -112,6 +182,7 @@ def discover_files(root: Path) -> list[Path]:
 def os_walk(root: Path):
     """Thin wrapper around ``os.walk`` for testability + .venv pruning."""
     import os
+
     return os.walk(root)
 
 
@@ -139,9 +210,8 @@ def extract_imports(path: Path, text: str) -> list[tuple[int, str]]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imports.append((0, alias.name))
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append((node.level, node.module))
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.append((node.level, node.module))
             # Detect cross-file qualified calls: a.b(...) where a.matches module
         return imports
     if suffix in {".js", ".jsx", ".ts", ".tsx", ".mjs", ".vue", ".svelte"}:
@@ -168,10 +238,13 @@ def build_graph(root: Path) -> dict[str, Any]:
     # slash module path (no extension) -> file node_id (JS/TS resolution)
     ns_slash: dict[str, str] = {}
 
-    root_rel = str(root.resolve())
     nodes["repo"] = {
-        "id": "repo", "label": root.name, "kind": "repo", "path": "/",
-        "files": len(files), "loc": 0,
+        "id": "repo",
+        "label": root.name,
+        "kind": "repo",
+        "path": "/",
+        "files": len(files),
+        "loc": 0,
     }
 
     for fp in files:
@@ -184,8 +257,12 @@ def build_graph(root: Path) -> dict[str, Any]:
         area_id = _safe_id(area) if area else None
         if area and area_id and area_id not in nodes:
             nodes[area_id] = {
-                "id": area_id, "label": area + "/", "kind": "area",
-                "path": area, "files": 0, "loc": 0,
+                "id": area_id,
+                "label": area + "/",
+                "kind": "area",
+                "path": area,
+                "files": 0,
+                "loc": 0,
             }
             edges.append(_contains("repo", area_id))
 
@@ -196,8 +273,12 @@ def build_graph(root: Path) -> dict[str, Any]:
             if dir_id not in nodes:
                 pkg = (fp.parent / "__init__.py").exists() or (fp.parent / "index.ts").exists()
                 nodes[dir_id] = {
-                    "id": dir_id, "label": parts[-2] + "/", "kind": "module" if pkg else "directory",
-                    "path": dir_path, "files": 0, "loc": 0,
+                    "id": dir_id,
+                    "label": parts[-2] + "/",
+                    "kind": "module" if pkg else "directory",
+                    "path": dir_path,
+                    "files": 0,
+                    "loc": 0,
                 }
                 edges.append(_contains(parent_scope, dir_id, "convention"))
             # parent file chain: parent directory -> this file
@@ -213,8 +294,12 @@ def build_graph(root: Path) -> dict[str, Any]:
             except OSError:
                 loc = 0
             nodes[node_id] = {
-                "id": node_id, "label": fp.name, "kind": "file",
-                "path": rel, "files": 1, "loc": loc,
+                "id": node_id,
+                "label": fp.name,
+                "kind": "file",
+                "path": rel,
+                "files": 1,
+                "loc": loc,
             }
             edges.append(_contains(parent_id, node_id, "convention"))
             module_name = _module_name_of(rel, fp.suffix)
@@ -243,16 +328,13 @@ def build_graph(root: Path) -> dict[str, Any]:
         # Slash-relative directory of the importing file (for ./ ../ app imports).
         base_dir = "/".join(rel.split("/")[:-1]) if "/" in rel else ""
         for level, spec in imports:
-            target = resolve_import_target(
-                spec, ns_to_node, ns_slash, level=level, base_dir=base_dir
-            )
+            target = resolve_import_target(spec, ns_to_node, ns_slash, level=level, base_dir=base_dir)
             if target and target != node_id and (node_id, target) not in seen_imports:
                 seen_imports.add((node_id, target))
                 edges.append(_import_edge(node_id, target))
 
     nodes_out = sorted(
-        (nodes[n["id"]] for n in nodes.values()
-         if n["id"] in _reachable(nodes, edges, "repo")),
+        (nodes[n["id"]] for n in nodes.values() if n["id"] in _reachable(nodes, edges, "repo")),
         key=lambda n: n["id"],
     )
     _aggregate_metrics(nodes_out, edges)
@@ -281,10 +363,16 @@ def _aggregate_metrics(nodes: list[dict[str, Any]], edges: list[dict[str, Any]])
             return (0, 0)
         if node.get("kind") == "file":
             return (node.get("files", 0), node.get("loc", 0))
-        files = sum(n.get("files", 0) for c in children[node_id]
-                    if (n := node_by_id.get(c)) is not None and n.get("kind") != "file")
-        loc = sum(n.get("loc", 0) for c in children[node_id]
-                  if (n := node_by_id.get(c)) is not None and n.get("kind") != "file")
+        files = sum(
+            n.get("files", 0)
+            for c in children[node_id]
+            if (n := node_by_id.get(c)) is not None and n.get("kind") != "file"
+        )
+        loc = sum(
+            n.get("loc", 0)
+            for c in children[node_id]
+            if (n := node_by_id.get(c)) is not None and n.get("kind") != "file"
+        )
         for c in children[node_id]:
             child_files, child_loc = rollup(c)
             files += child_files
@@ -300,15 +388,21 @@ def _aggregate_metrics(nodes: list[dict[str, Any]], edges: list[dict[str, Any]])
 
 def _contains(source: str, target: str, source_kind: str = "convention") -> dict[str, Any]:
     return {
-        "source": source, "target": target, "kind": "contains",
-        "relationship_source": source_kind, "confidence": 1.0,
+        "source": source,
+        "target": target,
+        "kind": "contains",
+        "relationship_source": source_kind,
+        "confidence": 1.0,
     }
 
 
 def _import_edge(source: str, target: str) -> dict[str, Any]:
     return {
-        "source": source, "target": target, "kind": "imports",
-        "relationship_source": "ast", "confidence": 1.0,
+        "source": source,
+        "target": target,
+        "kind": "imports",
+        "relationship_source": "ast",
+        "confidence": 1.0,
     }
 
 
@@ -322,7 +416,7 @@ def _ns_of(dir_path: str) -> str:
 
 
 def _module_name_of(rel: str, suffix: str) -> str:
-    base = rel[:-len(suffix)] if suffix else rel
+    base = rel[: -len(suffix)] if suffix else rel
     parts = base.split("/")
     # `pkg/__init__.py` represents the package itself.
     if parts and parts[-1] == "__init__":
@@ -406,9 +500,7 @@ def resolve_import_target(
 
     if spec.startswith("@"):  # Alias path, e.g. @/components/ui/button.
         candidate = spec.split("/", 1)[-1]
-        return _suffix_slash(candidate, ns_slash) or _suffix_dotted(
-            candidate.replace("/", "."), ns_to_node
-        )
+        return _suffix_slash(candidate, ns_slash) or _suffix_dotted(candidate.replace("/", "."), ns_to_node)
 
     cand = _lookup_slash(spec, ns_slash)
     if cand:

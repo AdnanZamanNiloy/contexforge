@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
-from typing import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 
 import httpx
 
@@ -15,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 _RETRYABLE = (
-    OSError,            # network-level failures
-    TimeoutError,       # request timeouts
-    RuntimeError,       # API wrapper errors (httpx, google-generativeai, groq)
+    OSError,  # network-level failures
+    TimeoutError,  # request timeouts
+    RuntimeError,  # API wrapper errors (httpx, google-generativeai, groq)
     httpx.HTTPStatusError,
     httpx.TransportError,
 )
@@ -66,14 +65,16 @@ class FallbackLLM(BaseLLM):
         for idx, llm in enumerate(self._providers):
             try:
                 return await llm.generate(prompt, system_prompt=system_prompt)
-            except Exception as exc:  # noqa: BLE001 - fall through to next provider
+            except Exception as exc:
                 if not isinstance(exc, _RETRYABLE) or idx == len(self._providers) - 1:
                     raise
                 logger.warning(
-                    "FallbackLLM: provider[%d/%d] (%s) failed for generate "
-                    "(%s: %s) — trying next provider.",
-                    idx + 1, len(self._providers),
-                    _model_name(llm), type(exc).__name__, exc,
+                    "FallbackLLM: provider[%d/%d] (%s) failed for generate (%s: %s) — trying next provider.",
+                    idx + 1,
+                    len(self._providers),
+                    _model_name(llm),
+                    type(exc).__name__,
+                    exc,
                 )
                 last_exc = exc
         raise RuntimeError("All providers failed") from last_exc
@@ -91,20 +92,22 @@ class FallbackLLM(BaseLLM):
                     tokens_yielded += 1
                     yield token
                 return
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 if not isinstance(exc, _RETRYABLE) or idx == len(self._providers) - 1:
                     raise
                 if tokens_yielded > 0:
                     logger.error(
                         "FallbackLLM: provider (%s) failed mid-stream after %d "
                         "token(s) — cannot fall back safely; re-raising.",
-                        _model_name(llm), tokens_yielded,
+                        _model_name(llm),
+                        tokens_yielded,
                     )
                     raise
                 logger.warning(
-                    "FallbackLLM: provider (%s) stream failed before first token "
-                    "(%s: %s) — trying next provider.",
-                    _model_name(llm), type(exc).__name__, exc,
+                    "FallbackLLM: provider (%s) stream failed before first token (%s: %s) — trying next provider.",
+                    _model_name(llm),
+                    type(exc).__name__,
+                    exc,
                 )
                 last_exc = exc
         raise RuntimeError("All providers failed to stream") from last_exc

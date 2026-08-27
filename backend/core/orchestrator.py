@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import AsyncIterator, Dict, List, Tuple
+from collections.abc import AsyncIterator
 
 from app.config.settings import settings
 from core.chunking.code_chunker import CodeChunker
@@ -13,13 +13,20 @@ from core.interfaces.llm import LLM
 from core.processing.cleaner import TextCleaner
 from core.processing.deduplicator import Deduplicator
 from core.processing.metadata_extractor import MetadataExtractor
-from core.retrieval.hyde import HydeQueryExpander
 from core.retrieval.hybrid_retriever import HybridRetriever
+from core.retrieval.hyde import HydeQueryExpander
 from core.retrieval.reranker import Reranker
 from core.storage.bm25_index import BM25Index
 from core.storage.faiss_store import FaissStore
+
 # FIX: import ConfidenceMetrics alongside existing types
-from core.types import Chunk, ConfidenceMetrics, Document, GenerationResult, RerankedChunk
+from core.types import (
+    Chunk,
+    ConfidenceMetrics,
+    Document,
+    GenerationResult,
+    RerankedChunk,
+)
 from observability.tracer import observe
 
 __all__ = ["Orchestrator"]
@@ -63,11 +70,43 @@ def _is_vague_query(question: str) -> bool:
 # knowledge keeps the response instant and keeps irrelevant KB chunks from
 # being attached as "sources".
 _CHITCHAT_TOKENS = {
-    "hello", "hi", "hey", "yo", "hiya", "howdy", "sup", "hola", "greetings",
-    "hii", "hiii", "thanks", "thank", "thx", "ty", "ok", "okay",
-    "good", "morning", "afternoon", "evening", "bye", "goodbye", "cheers",
-    "welcome", "please", "sure", "yes", "yeah", "cool",
-    "there", "how", "are", "you", "doing", "guys", "everyone",
+    "hello",
+    "hi",
+    "hey",
+    "yo",
+    "hiya",
+    "howdy",
+    "sup",
+    "hola",
+    "greetings",
+    "hii",
+    "hiii",
+    "thanks",
+    "thank",
+    "thx",
+    "ty",
+    "ok",
+    "okay",
+    "good",
+    "morning",
+    "afternoon",
+    "evening",
+    "bye",
+    "goodbye",
+    "cheers",
+    "welcome",
+    "please",
+    "sure",
+    "yes",
+    "yeah",
+    "cool",
+    "there",
+    "how",
+    "are",
+    "you",
+    "doing",
+    "guys",
+    "everyone",
 }
 
 
@@ -95,8 +134,19 @@ def _is_chitchat(question: str) -> bool:
 # to an external topic.  A query like "tell me about source" is a request for an
 # overview of the corpus; "tell me about quantum physics" is not.
 _CORPUS_REF_MARKERS = (
-    "source", "this", "document", "what's in", "in here", "these", "file",
-    "content", "about it", "details about", "overview", "on it", "of this",
+    "source",
+    "this",
+    "document",
+    "what's in",
+    "in here",
+    "these",
+    "file",
+    "content",
+    "about it",
+    "details about",
+    "overview",
+    "on it",
+    "of this",
 )
 
 # Overview/summary requests about the corpus are inherently low-relevance to the
@@ -122,7 +172,6 @@ def _is_corpus_overview(question: str) -> bool:
 
 
 class Orchestrator:
-
     def __init__(
         self,
         embedder: Embedder,
@@ -153,13 +202,13 @@ class Orchestrator:
         self._text_chunker = text_chunker or TextChunker()
         self._code_chunker = code_chunker or CodeChunker()
 
-
     @observe(name="ingest_index")
     async def ingest(
         self,
-        documents: List[Document],
+        documents: list[Document],
         use_code_chunker: bool = False,
-        skip_preprocessing: bool = False,) -> int:
+        skip_preprocessing: bool = False,
+    ) -> int:
         """Preprocess, chunk, embed, and index *documents*."""
 
         start = time.perf_counter()
@@ -201,11 +250,13 @@ class Orchestrator:
         elapsed = (time.perf_counter() - start) * 1000
         logger.info(
             "ingest: %d document(s) → %d chunk(s) indexed in %.1f ms.",
-            len(documents), len(chunks), elapsed,
+            len(documents),
+            len(chunks),
+            elapsed,
         )
         return len(chunks)
 
-    async def _preprocess(self, documents: List[Document]) -> List[Document]:
+    async def _preprocess(self, documents: list[Document]) -> list[Document]:
         """Run clean → metadata extract → deduplicate in sequence."""
 
         cleaned = await self._cleaner.clean(documents)
@@ -213,7 +264,9 @@ class Orchestrator:
         deduplicated = await self._deduplicator.deduplicate(enriched)
         logger.debug(
             "_preprocess: %d in → %d out (%d deduped).",
-            len(documents), len(deduplicated), len(documents) - len(deduplicated),
+            len(documents),
+            len(deduplicated),
+            len(documents) - len(deduplicated),
         )
         return deduplicated
 
@@ -281,8 +334,11 @@ class Orchestrator:
                 "delete_source VERIFICATION: source_id=%s "
                 "faiss_removed=%d bm25_removed=%d "
                 "source_still_in_faiss=%s bm25_total_chunks=%d",
-                source_id, faiss_removed, bm25_removed,
-                source_still_in_faiss, remaining_bm25_count,
+                source_id,
+                faiss_removed,
+                bm25_removed,
+                source_still_in_faiss,
+                remaining_bm25_count,
             )
             if source_still_in_faiss:
                 logger.error(
@@ -296,13 +352,17 @@ class Orchestrator:
         elapsed = (time.perf_counter() - start) * 1000
         logger.info(
             "delete_source: source_id=%s faiss=%d bm25=%d elapsed=%.1f ms",
-            source_id, faiss_removed, bm25_removed, elapsed,
+            source_id,
+            faiss_removed,
+            bm25_removed,
+            elapsed,
         )
 
         if errors:
             logger.warning(
                 "delete_source: partial failure for source_id=%s — %s",
-                source_id, "; ".join(errors),
+                source_id,
+                "; ".join(errors),
             )
 
         return faiss_removed
@@ -322,13 +382,13 @@ class Orchestrator:
 
         try:
             faiss_count = await self._faiss.clear_all()
-        except Exception as exc:
-            logger.exception("clear_all: FAISS clear failed: %s", exc)
+        except Exception:
+            logger.exception("clear_all: FAISS clear failed")
 
         try:
             bm25_count = await self._bm25.clear_all()
-        except Exception as exc:
-            logger.exception("clear_all: BM25 clear failed: %s", exc)
+        except Exception:
+            logger.exception("clear_all: BM25 clear failed")
 
         try:
             self._deduplicator.reset()
@@ -348,7 +408,9 @@ class Orchestrator:
         elapsed = (time.perf_counter() - start) * 1000
         logger.info(
             "clear_all: faiss=%d bm25=%d elapsed=%.1f ms",
-            faiss_count, bm25_count, elapsed,
+            faiss_count,
+            bm25_count,
+            elapsed,
         )
         return {"faiss_chunks_removed": faiss_count, "bm25_chunks_removed": bm25_count}
 
@@ -360,9 +422,8 @@ class Orchestrator:
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
         source_id: str | None = None,
-    # FIX: return type now includes mean_confidence from the reranker
-    ) -> tuple[List[RerankedChunk], Dict[str, float], float]:
-
+        # FIX: return type now includes mean_confidence from the reranker
+    ) -> tuple[list[RerankedChunk], dict[str, float], float]:
         """Expand query, embed, retrieve, and rerank.
 
         Returns:
@@ -371,7 +432,7 @@ class Orchestrator:
             reranker scores, floored at 0.35.  On reranker failure it falls
             back to 0.35 so the frontend never shows zero.
         """
-        timings: Dict[str, float] = {}
+        timings: dict[str, float] = {}
 
         # Chitchat / greeting: no information demand on the KB, so bypass the
         # whole retrieval pipeline.  The answer is produced from general
@@ -390,9 +451,10 @@ class Orchestrator:
                 hyde_question = await self._hyde.expand(question)
                 if hyde_question != question:
                     logger.debug(
-                        "retrieve_context: HyDE expanded %d-char question to %d-char "
-                        "hypothesis (auto mode=%s).",
-                        len(question), len(hyde_question), use_hyde,
+                        "retrieve_context: HyDE expanded %d-char question to %d-char hypothesis (auto mode=%s).",
+                        len(question),
+                        len(hyde_question),
+                        use_hyde,
                     )
             else:
                 logger.warning(
@@ -403,7 +465,7 @@ class Orchestrator:
 
         # Embedding -----------------------------------------------------
         t = time.perf_counter()
-      
+
         query_vector = await self._embedder.embed_single(hyde_question, input_type="query")
         timings["embed_ms"] = (time.perf_counter() - t) * 1000
 
@@ -419,7 +481,10 @@ class Orchestrator:
         # FIX: use the (possibly HyDE-expanded) query text for the BM25 + dense
         # legs too, so expansion is consistent across the whole pipeline.
         retrieved = await self._hybrid.retrieve(
-            hyde_question, query_vector, k_retrieve, exclude_source_ids=exclude_source_ids,
+            hyde_question,
+            query_vector,
+            k_retrieve,
+            exclude_source_ids=exclude_source_ids,
         )
         timings["retrieve_ms"] = (time.perf_counter() - t) * 1000
 
@@ -431,7 +496,9 @@ class Orchestrator:
             # FIX: reranker now returns (chunks, mean_confidence).  Use the
             # HyDE-expanded query so scoring matches what was retrieved.
             reranked, mean_confidence = await self._reranker.rerank(
-                hyde_question, retrieved, k_rerank,
+                hyde_question,
+                retrieved,
+                k_rerank,
             )
         except Exception:
             logger.exception(
@@ -456,15 +523,21 @@ class Orchestrator:
         # (e.g. "summarize this resume" over a single small source).  Boost the
         # confidence in that case so a complete answer never reads as "Weak".
         display_confidence = await self._apply_confidence(
-            question, reranked, mean_confidence,
+            question,
+            reranked,
+            mean_confidence,
         )
 
         logger.debug(
             "retrieve_context: retrieved=%d reranked=%d confidence=%.4f "
             "hyde=%.1fms embed=%.1fms retrieve=%.1fms rerank=%.1fms",
-            len(retrieved), len(reranked), display_confidence,
-            timings["hyde_ms"], timings["embed_ms"],
-            timings["retrieve_ms"], timings["rerank_ms"],
+            len(retrieved),
+            len(reranked),
+            display_confidence,
+            timings["hyde_ms"],
+            timings["embed_ms"],
+            timings["retrieve_ms"],
+            timings["rerank_ms"],
         )
         return reranked, timings, display_confidence
 
@@ -531,7 +604,7 @@ class Orchestrator:
     async def _apply_confidence(
         self,
         question: str,
-        reranked: List[RerankedChunk],
+        reranked: list[RerankedChunk],
         base: float,
     ) -> float:
         """Return the confidence to report to the client.
@@ -570,13 +643,18 @@ class Orchestrator:
                 best = tier_confidence
         logger.debug(
             "_apply_confidence: focus=%.3f dominant=%s chunks=%d total=%d base=%.4f → %.4f",
-            focus, dominant, source_counts[dominant], len(reranked), base, best,
+            focus,
+            dominant,
+            source_counts[dominant],
+            len(reranked),
+            base,
+            best,
         )
         return best
 
     @staticmethod
     def _build_confidence(
-        reranked: List[RerankedChunk],
+        reranked: list[RerankedChunk],
         mean_confidence: float,
     ) -> ConfidenceMetrics:
         """Derive server-side ConfidenceMetrics from the reranker output.
@@ -604,7 +682,7 @@ class Orchestrator:
         )
 
     @observe(name="generate_answer")
-    async def generate_answer(self, question: str, chunks: List[Chunk]) -> str:
+    async def generate_answer(self, question: str, chunks: list[Chunk]) -> str:
         """Generate a complete answer from *chunks* for *question*."""
         built = self._prompt_builder.build(question, chunks)
         return await self._llm.generate(
@@ -613,8 +691,7 @@ class Orchestrator:
         )
 
     @observe(name="stream_answer")
-    async def stream_answer(
-        self, question: str, chunks: List[Chunk]) -> AsyncIterator[str]:
+    async def stream_answer(self, question: str, chunks: list[Chunk]) -> AsyncIterator[str]:
         """Stream answer tokens for *question* grounded in *chunks*."""
         built = self._prompt_builder.build(question, chunks)
         async for token in self._llm.stream(

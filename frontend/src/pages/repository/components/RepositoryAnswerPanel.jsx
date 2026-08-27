@@ -3,8 +3,14 @@
 // shared intel-viewport scroll area, scrolling together with the repository
 // visualization rather than operating as its own bounded, independently
 // scrolling box.
-export default function RepositoryAnswerPanel({ question, answer, sources = [], loading = false, error = '' }) {
-  if (!question && !loading && !answer && !error) return null;
+export default function RepositoryAnswerPanel({
+  question,
+  answer,
+  sources = [],
+  loading = false,
+  error = '',
+}) {
+  if (!question && !loading && !answer && !error) return null
 
   return (
     <section className="repo-answer-panel" aria-live="polite">
@@ -36,5 +42,5 @@ export default function RepositoryAnswerPanel({ question, answer, sources = [], 
         </div>
       ) : null}
     </section>
-  );
+  )
 }

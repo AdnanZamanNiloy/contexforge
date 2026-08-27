@@ -4,6 +4,7 @@ routes/github.py — GitHub repository ingestion endpoint.
 Endpoint:
     POST /github/ingest — Validate and ingest a public GitHub repository.
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,8 +14,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import get_ingest_service
-from app.schemas.ingest import IngestRequest, IngestResponse
 from app.schemas.github import GithubIngestRequest
+from app.schemas.ingest import IngestRequest, IngestResponse
 from app.services.ingest_service import IngestService
 
 __all__ = ["router"]
@@ -34,6 +35,7 @@ _GITHUB_URL_RE = re.compile(
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/ingest",
@@ -90,18 +92,14 @@ async def ingest_github(
             metadata={"branch": request.branch} if request.branch else None,
         )
         source_id, chunks_indexed = await service.ingest_source(ingest_request)
-        rag_message = (
-            f"Successfully indexed {chunks_indexed} chunk"
-            f"{'s' if chunks_indexed != 1 else ''}."
-        )
+        rag_message = f"Successfully indexed {chunks_indexed} chunk{'s' if chunks_indexed != 1 else ''}."
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except RuntimeError as exc:
         logger.warning(
             "ingest_github: knowledge-base ingest failed for '%s': %s",
-            request.repo_url, exc,
+            request.repo_url,
+            exc,
         )
         rag_message = "Knowledge-base indexing skipped (embedding service unavailable)."
 
@@ -113,14 +111,14 @@ async def ingest_github(
     analysis_id = None
     try:
         from app.dependencies import get_repository_intelligence_service
-        analysis = await get_repository_intelligence_service().start_analysis(
-            request.repo_url, branch=request.branch
-        )
+
+        analysis = await get_repository_intelligence_service().start_analysis(request.repo_url, branch=request.branch)
         analysis_id = analysis.get("analysis_id")
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning(
             "Could not auto-start repository intelligence for %s: %s",
-            request.repo_url, exc,
+            request.repo_url,
+            exc,
         )
 
     message = rag_message

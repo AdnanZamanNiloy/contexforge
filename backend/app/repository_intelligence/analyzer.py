@@ -7,13 +7,15 @@ RAG god-object is not coupled to repository analysis.
 Sequence:  clone -> graph -> dependencies -> co-ownership -> risk -> git ->
 data flows -> health  (each step is traced with ``@observe``).
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from observability.tracer import observe
 
@@ -109,10 +111,14 @@ class RepositoryAnalyzer:
             if n.get("kind") != "file":
                 n["coverage"] = _aggregate_coverage(nodes, path)
             owners = ownership.get("files", {}).get(path)
-            n["ownership_risk"] = ownership_concentration(
-                [{"count": c} for a, c in (owners or {}).items()],
-                path,
-            ) if owners else 0.0
+            n["ownership_risk"] = (
+                ownership_concentration(
+                    [{"count": c} for a, c in (owners or {}).items()],
+                    path,
+                )
+                if owners
+                else 0.0
+            )
 
         await self._report(progress, 75, "Scoring risk")
         nodes = apply_risk_to_nodes(nodes, churn_by_rel)
@@ -121,7 +127,13 @@ class RepositoryAnalyzer:
 
         await self._report(progress, 85, "Inferring data flows & health")
         repository = self._repository_view(
-            git, meta, nodes, language, commits, branches, contributors,
+            git,
+            meta,
+            nodes,
+            language,
+            commits,
+            branches,
+            contributors,
         )
         health = compute_repo_health(nodes)
         data_flows = infer_data_flows(nodes, edges, files_by_rel)
@@ -192,20 +204,22 @@ class RepositoryAnalyzer:
             "branches": len(branches),
             "pull_requests": 0,
             "issues": 0,
-            "last_analyzed": datetime.now(timezone.utc).isoformat(),
+            "last_analyzed": datetime.now(UTC).isoformat(),
         }
 
     def _activity(self, commits: list[dict[str, Any]], limit: int = 8) -> list[dict[str, Any]]:
         rows = []
         for i, c in enumerate(commits[:limit]):
-            rows.append({
-                "id": f"a{i+1}",
-                "hash": c["sha"][:7],
-                "message": c["message"],
-                "time": c["time"].isoformat(),
-                "author": c["author"],
-                "kind": "commit",
-            })
+            rows.append(
+                {
+                    "id": f"a{i + 1}",
+                    "hash": c["sha"][:7],
+                    "message": c["message"],
+                    "time": c["time"].isoformat(),
+                    "author": c["author"],
+                    "kind": "commit",
+                }
+            )
         return rows
 
     def _ownership_view(
@@ -219,47 +233,56 @@ class RepositoryAnalyzer:
         palette = ["#7aa2f7", "#67e0c8", "#b6a1ff", "#f0b36e", "#e07b7b", "#8b94a5"]
         cview = []
         for i, c in enumerate(contributors[:6]):
-            cview.append({
-                "name": c["name"],
-                "commits": c["commits"],
-                "percent": round(c["commits"] / total * 100, 1),
-                "color": palette[i % len(palette)],
-            })
+            cview.append(
+                {
+                    "name": c["name"],
+                    "commits": c["commits"],
+                    "percent": round(c["commits"] / total * 100, 1),
+                    "color": palette[i % len(palette)],
+                }
+            )
 
         # Module ownership: top module/dir nodes by files.
         files_by_path = ownership.get("files", {})
         mview = []
         for n in sorted(
             (x for x in nodes if x.get("kind") in {"module", "directory"}),
-            key=lambda x: x.get("files", 0), reverse=True,
+            key=lambda x: x.get("files", 0),
+            reverse=True,
         )[:6]:
             owner_info = _node_owners(n, files_by_path)
             if not owner_info:
                 continue
             top = owner_info[0]
-            mview.append({
-                "name": n.get("path") or n.get("label"),
-                "owner": top["name"],
-                "percent": round(top["count"] / (sum(o["count"] for o in owner_info) or 1) * 100, 1),
-                "files": n.get("files", 0),
-                "contributors": [
-                    {"name": o["name"],
-                     "percent": round(o["count"] / (sum(x["count"] for x in owner_info) or 1) * 100, 1)}
-                    for o in owner_info[:3]
-                ],
-            })
+            mview.append(
+                {
+                    "name": n.get("path") or n.get("label"),
+                    "owner": top["name"],
+                    "percent": round(top["count"] / (sum(o["count"] for o in owner_info) or 1) * 100, 1),
+                    "files": n.get("files", 0),
+                    "contributors": [
+                        {
+                            "name": o["name"],
+                            "percent": round(o["count"] / (sum(x["count"] for x in owner_info) or 1) * 100, 1),
+                        }
+                        for o in owner_info[:3]
+                    ],
+                }
+            )
 
         top1 = cview[0]["percent"] if cview else 0
         top3 = sum(c["percent"] for c in cview[:3])
         bus_factor = len(cview) if cview else 1
-        concentration_risk = ("High" if top1 >= 45 else "Medium" if top1 >= 30 else "Low")
+        concentration_risk = "High" if top1 >= 45 else "Medium" if top1 >= 30 else "Low"
 
         return {
             "contributors": cview,
             "modules": mview,
             "concentration": {
-                "top1": top1, "top3": round(top3, 1),
-                "bus_factor": bus_factor, "risk": concentration_risk,
+                "top1": top1,
+                "top3": round(top3, 1),
+                "bus_factor": bus_factor,
+                "risk": concentration_risk,
             },
         }
 
@@ -272,20 +295,23 @@ class RepositoryAnalyzer:
     ) -> dict[str, Any]:
         palette = ["#7aa2f7", "#67e0c8", "#b6a1ff", "#e07b7b", "#f0b36e"]
         bview = [
-            {"name": b["name"], "commits": b["commits"],
-             "color": palette[i % len(palette)], "active": b["active"]}
+            {"name": b["name"], "commits": b["commits"], "color": palette[i % len(palette)], "active": b["active"]}
             for i, b in enumerate(branches[:6])
         ]
         timeline = _bucket_by_week(commits)
         cview = []
         for c in commits[:20]:
-            cview.append({
-                "hash": c["sha"][:7],
-                "message": c["message"],
-                "author": c["author"],
-                "time": c["time"].isoformat(),
-                "files": 0, "inserts": 0, "deletes": 0,
-            })
+            cview.append(
+                {
+                    "hash": c["sha"][:7],
+                    "message": c["message"],
+                    "author": c["author"],
+                    "time": c["time"].isoformat(),
+                    "files": 0,
+                    "inserts": 0,
+                    "deletes": 0,
+                }
+            )
         return {
             "range": window,
             "branches": bview,
@@ -314,6 +340,7 @@ class RepositoryAnalyzer:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_sources(root: Path, files: list[Path]) -> dict[str, str]:
     """Return repo-relative path -> file text for Python sources."""
     out: dict[str, str] = {}
@@ -340,9 +367,11 @@ def _build_namespace_map(nodes: list[dict[str, Any]]) -> dict[str, str]:
 
 def _aggregate_coverage(nodes: list[dict[str, Any]], path: str) -> float:
     prefix = path + "/"
-    children = [n["coverage"] for n in nodes
-                if n.get("kind") == "file" and (n.get("path", "") == path
-                                                or n.get("path", "").startswith(prefix))]
+    children = [
+        n["coverage"]
+        for n in nodes
+        if n.get("kind") == "file" and (n.get("path", "") == path or n.get("path", "").startswith(prefix))
+    ]
     return sum(children) / len(children) if children else 0.0
 
 
@@ -353,8 +382,7 @@ def _node_owners(n: dict[str, Any], files_by_path: dict[str, dict[str, int]]) ->
         if path == hint or path.startswith(hint + "/"):
             for author, count in owners.items():
                 counts[author] = counts.get(author, 0) + count
-    return [{"name": a, "count": c}
-            for a, c in sorted(counts.items(), key=lambda kv: kv[1], reverse=True)]
+    return [{"name": a, "count": c} for a, c in sorted(counts.items(), key=lambda kv: kv[1], reverse=True)]
 
 
 def _bucket_by_week(commits: list[dict[str, Any]], buckets: int = 5) -> list[dict[str, Any]]:
@@ -365,7 +393,7 @@ def _bucket_by_week(commits: list[dict[str, Any]], buckets: int = 5) -> list[dic
     size = max(1, -(-total // buckets))
     out = []
     for i in range(0, total, size):
-        group = ordered[i:i + size]
+        group = ordered[i : i + size]
         out.append({"week": f"W{i // size + 1}", "commits": len(group)})
     return out
 

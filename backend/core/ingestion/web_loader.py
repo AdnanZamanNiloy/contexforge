@@ -1,35 +1,31 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
 import httpx
 import trafilatura
 
-from .base_loader import BaseLoader
 from core.types import Document
 from observability.tracer import observe
 
+from .base_loader import BaseLoader
+
 logger = logging.getLogger(__name__)
 
-_USER_AGENT = (
-    "Mozilla/5.0 (compatible; ContextForge/2.0; "
-    "+https://github.com/yourorg/contextforge)"
-)
+_USER_AGENT = "Mozilla/5.0 (compatible; ContextForge/2.0; +https://github.com/yourorg/contextforge)"
 
 
 _MIN_LINE_LENGTH = 10
 
 
 class WebLoader(BaseLoader):
-
     def __init__(
         self,
         timeout: float = 30.0,
         max_retries: int = 2,
         enable_js_fallback: bool = False,
     ) -> None:
-      
+
         self._timeout = timeout
         self._max_retries = max_retries
         self._enable_js_fallback = enable_js_fallback
@@ -41,12 +37,10 @@ class WebLoader(BaseLoader):
         source_id: str,
         filename: str | None = None,
         metadata: dict | None = None,
-    ) -> List[Document]:
-    
+    ) -> list[Document]:
+
         if not isinstance(source, str):
-            raise ValueError(
-                f"WebLoader expects a URL string, got {type(source).__name__}"
-            )
+            raise TypeError(f"WebLoader expects a URL string, got {type(source).__name__}")
 
         html = await self._fetch(source)
 
@@ -66,7 +60,7 @@ class WebLoader(BaseLoader):
 
         text = self._clean_text(text)
 
-        # Use trafilatura's built-in metadata 
+        # Use trafilatura's built-in metadata
         title = self._extract_title(html)
         lang = self._detect_language(text)
 
@@ -76,7 +70,7 @@ class WebLoader(BaseLoader):
             "source_type": "web",
             "title": title,
             "language": lang,
-            "content_length": len(text),  
+            "content_length": len(text),
         }
 
         return [
@@ -93,7 +87,7 @@ class WebLoader(BaseLoader):
     # ------------------------------------------------------------------ #
 
     async def _fetch(self, url: str) -> str:
-        
+
         transport = httpx.AsyncHTTPTransport(retries=self._max_retries)
 
         async with httpx.AsyncClient(
@@ -109,34 +103,30 @@ class WebLoader(BaseLoader):
                 # Now properly caught separately from network errors
                 logger.error(
                     "HTTP error fetching URL. url=%s status=%d",
-                    url, exc.response.status_code,
+                    url,
+                    exc.response.status_code,
                 )
-                raise RuntimeError(
-                    f"HTTP {exc.response.status_code} fetching {url}"
-                ) from exc
+                raise RuntimeError(f"HTTP {exc.response.status_code} fetching {url}") from exc
             except httpx.RequestError as exc:
                 logger.error("Network error fetching URL. url=%s error=%s", url, exc)
                 raise RuntimeError(f"Network error fetching {url}: {exc}") from exc
 
-         
             content_type = response.headers.get("content-type", "")
             if "text/html" not in content_type:
-                raise ValueError(
-                    f"WebLoader expects HTML, got '{content_type}' for {url}"
-                )
+                raise ValueError(f"WebLoader expects HTML, got '{content_type}' for {url}")
 
-            return response.text  
+            return response.text
 
     # ------------------------------------------------------------------ #
     # EXTRACTION
     # ------------------------------------------------------------------ #
 
     def _extract_main_content(self, html: str) -> str:
-      
+
         text = trafilatura.extract(
             html,
             include_comments=False,
-            include_tables=True,       
+            include_tables=True,
             favor_precision=True,
         )
         return text or ""
@@ -153,9 +143,9 @@ class WebLoader(BaseLoader):
     # ------------------------------------------------------------------ #
 
     def _clean_text(self, text: str) -> str:
-        
+
         lines = [line.strip() for line in text.splitlines()]
-        lines = [l for l in lines if len(l) >= _MIN_LINE_LENGTH]
+        lines = [ln for ln in lines if len(ln) >= _MIN_LINE_LENGTH]
 
         # Deduplicate while preserving order
         seen: set[str] = set()
@@ -172,12 +162,13 @@ class WebLoader(BaseLoader):
     # ------------------------------------------------------------------ #
 
     def _detect_language(self, text: str) -> str:
-        
+
         try:
-            from langdetect import detect, DetectorFactory, LangDetectException
-            DetectorFactory.seed = 0       
+            from langdetect import DetectorFactory, detect
+
+            DetectorFactory.seed = 0
             return detect(text[:1000])
-        except Exception:           
+        except Exception:
             return "unknown"
 
     # ------------------------------------------------------------------ #
@@ -185,21 +176,19 @@ class WebLoader(BaseLoader):
     # ------------------------------------------------------------------ #
 
     async def _fetch_with_js(self, url: str) -> str:
-  
+
         try:
             from playwright.async_api import async_playwright
         except ImportError as exc:
-            raise RuntimeError(
-                "Playwright not installed."
-            ) from exc
+            raise RuntimeError("Playwright not installed.") from exc
 
         async with async_playwright() as p:
             browser = await p.chromium.launch()
-            try:                           
+            try:
                 page = await browser.new_page()
                 await page.goto(url, timeout=int(self._timeout * 1000))
                 html = await page.content()
             finally:
-                await browser.close()     
+                await browser.close()
 
         return html

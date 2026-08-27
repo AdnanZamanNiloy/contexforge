@@ -13,12 +13,14 @@ Design rules:
     real measurement source is wired in later;
   * no fixed ContextForge pipeline; no repository-specific mock data.
 """
+
 from __future__ import annotations
 
 import ast
 import re
 from collections import defaultdict, deque
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from observability.tracer import observe
 
@@ -26,32 +28,102 @@ __all__ = ["infer_data_flows"]
 
 # Node kinds we surface in a flow.
 _ENTRY_BASENAMES = {
-    "app.py", "main.py", "__main__.py", "cli.py", "server.py", "manage.py",
-    "wsgi.py", "asgi.py", "index.js", "index.ts", "index.jsx", "index.tsx",
-    "routes.ts", "routes.js", "api.ts", "api.js", "server.js", "server.ts",
-    "main.go", "main.rs", "main.java", "main.kt", "Program.cs", "index.php",
+    "app.py",
+    "main.py",
+    "__main__.py",
+    "cli.py",
+    "server.py",
+    "manage.py",
+    "wsgi.py",
+    "asgi.py",
+    "index.js",
+    "index.ts",
+    "index.jsx",
+    "index.tsx",
+    "routes.ts",
+    "routes.js",
+    "api.ts",
+    "api.js",
+    "server.js",
+    "server.ts",
+    "main.go",
+    "main.rs",
+    "main.java",
+    "main.kt",
+    "Program.cs",
+    "index.php",
 }
 _ENTRY_DIR_PARTS = {
-    "routes", "api", "endpoints", "controllers", "handlers", "views", "web",
-    "cmd", "scripts", "cli", "gateway", "workers", "jobs",
+    "routes",
+    "api",
+    "endpoints",
+    "controllers",
+    "handlers",
+    "views",
+    "web",
+    "cmd",
+    "scripts",
+    "cli",
+    "gateway",
+    "workers",
+    "jobs",
 }
 _SKIP_FLOW_PARTS = {
-    "tests", "test", "__tests__", "testing", "vendor", "node_modules",
-    "migrations", "fixtures", "docs", "images", "public", "static", "build",
-    "dist", ".venv", "venv",
+    "tests",
+    "test",
+    "__tests__",
+    "testing",
+    "vendor",
+    "node_modules",
+    "migrations",
+    "fixtures",
+    "docs",
+    "images",
+    "public",
+    "static",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
 }
 # HTTP decorators that mark a function as a route handler.
-_ROUTE_DECORATORS = {"get", "post", "put", "delete", "patch", "route",
-                     "head", "options", "view", "dispatch", "handle"}
+_ROUTE_DECORATORS = {"get", "post", "put", "delete", "patch", "route", "head", "options", "view", "dispatch", "handle"}
 # Third-party prefixes that mark a file as touching storage / external APIs.
 _STORAGE_IMPORTS = {
-    "sqlalchemy", "psycopg", "psycopg2", "pymysql", "sqlite3", "redis",
-    "pymongo", "motor", "boto3", "aiosqlite", "duckdb", "sqlite", "elasticsearch",
+    "sqlalchemy",
+    "psycopg",
+    "psycopg2",
+    "pymysql",
+    "sqlite3",
+    "redis",
+    "pymongo",
+    "motor",
+    "boto3",
+    "aiosqlite",
+    "duckdb",
+    "sqlite",
+    "elasticsearch",
 }
 _EXTERNAL_IMPORTS = {
-    "requests", "httpx", "aiohttp", "urllib", "urllib3", "openai", "anthropic",
-    "langchain", "langgraph", "boto3", "google", "grpc", "kafka", "redis",
-    "twilio", "stripe", "sendgrid", "firebase", "certifi",
+    "requests",
+    "httpx",
+    "aiohttp",
+    "urllib",
+    "urllib3",
+    "openai",
+    "anthropic",
+    "langchain",
+    "langgraph",
+    "boto3",
+    "google",
+    "grpc",
+    "kafka",
+    "redis",
+    "twilio",
+    "stripe",
+    "sendgrid",
+    "firebase",
+    "certifi",
 }
 
 MAX_FLOWS = 6
@@ -101,8 +173,14 @@ def infer_data_flows(
         if len(flows) >= max_flows:
             break
         flows[entry["id"]] = _build_flow(
-            entry, reachable, flow_edges, by_id, out_edges, in_edges,
-            files_by_rel, internal_areas,
+            entry,
+            reachable,
+            flow_edges,
+            by_id,
+            out_edges,
+            in_edges,
+            files_by_rel,
+            internal_areas,
         )
     return flows
 
@@ -110,6 +188,7 @@ def infer_data_flows(
 # ---------------------------------------------------------------------------
 # Entry-point detection
 # ---------------------------------------------------------------------------
+
 
 def _detect_entry_points(
     nodes: list[dict[str, Any]],
@@ -135,13 +214,15 @@ def _detect_entry_points(
         if _looks_like_entry(path):
             score += 20
         if score:
-            candidates.append({
-                "id": n["id"],
-                "path": path,
-                "label": n.get("label", path or n["id"]),
-                "score": score,
-                "endpoints": endpoints,
-            })
+            candidates.append(
+                {
+                    "id": n["id"],
+                    "path": path,
+                    "label": n.get("label", path or n["id"]),
+                    "score": score,
+                    "endpoints": endpoints,
+                }
+            )
     candidates.sort(key=lambda c: (-c["score"], c["path"]))
     return candidates
 
@@ -187,9 +268,7 @@ def _looks_like_entry(path: str) -> bool:
         return True
     if len(parts) >= 2 and name.startswith("__init__."):
         return True
-    if any(part in _ENTRY_DIR_PARTS for part in parts[:-1]):
-        return True
-    return False
+    return any(part in _ENTRY_DIR_PARTS for part in parts[:-1])
 
 
 def _is_skipped_path(path: str) -> bool:
@@ -200,6 +279,7 @@ def _is_skipped_path(path: str) -> bool:
 # ---------------------------------------------------------------------------
 # Tracing
 # ---------------------------------------------------------------------------
+
 
 def _trace(
     entry_id: str,
@@ -231,6 +311,7 @@ def _trace(
 # Flow construction
 # ---------------------------------------------------------------------------
 
+
 def _build_flow(
     entry: dict[str, Any],
     reachable: set[str],
@@ -246,9 +327,9 @@ def _build_flow(
     for nid in ordered:
         raw = by_id[nid]
         path = raw.get("path", "")
-        resp = _flow_node(nid, raw, path, out_edges, in_edges, by_id,
-                          files_by_rel, internal_areas,
-                          is_entry=(nid == entry["id"]))
+        resp = _flow_node(
+            nid, raw, path, out_edges, in_edges, by_id, files_by_rel, internal_areas, is_entry=(nid == entry["id"])
+        )
         nodes_out.append(resp)
 
     edges_out = [
@@ -351,8 +432,7 @@ def _classify_kind(path: str, callees: list[str], dependencies: list[str], is_en
     low = path.lower()
     if any(p in low for p in ("service", "services")):
         return "service"
-    if any(p in low for p in ("storage", "storages", "db", "database",
-                              "persist", "store", "model", "schema", "repo")):
+    if any(p in low for p in ("storage", "storages", "db", "database", "persist", "store", "model", "schema", "repo")):
         return "storage"
     if any(p in low for p in ("llm", "generation", "inference", "embed")):
         return "llm"
@@ -395,9 +475,7 @@ def _defined_functions(text: str) -> list[str]:
         return []
     names: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            names.append(node.name)
-        elif isinstance(node, ast.ClassDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names.append(node.name)
     return _dedup(names)
 
@@ -405,6 +483,7 @@ def _defined_functions(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Layout ordering + bottlenecks
 # ---------------------------------------------------------------------------
+
 
 def _order_nodes(
     entry_id: str,
@@ -442,11 +521,16 @@ def _bottlenecks(nodes_out: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Real coupling hotspots inside a flow — never fabricated timings."""
     scored = [
         {
-            "id": n["id"], "label": n["label"], "kind": n["kind"],
-            "path": n["path"], "functions": n["functions"],
-            "callers": n["callers"], "callees": n["callees"],
+            "id": n["id"],
+            "label": n["label"],
+            "kind": n["kind"],
+            "path": n["path"],
+            "functions": n["functions"],
+            "callers": n["callers"],
+            "callees": n["callees"],
             "dependencies": n["dependencies"],
-            "deps": n["deps"], "dependents": n["dependents"],
+            "deps": n["deps"],
+            "dependents": n["dependents"],
             "latency_ms": None,
         }
         for n in nodes_out
@@ -459,6 +543,7 @@ def _bottlenecks(nodes_out: list[dict[str, Any]]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Misc helpers
 # ---------------------------------------------------------------------------
+
 
 def _internal_areas(nodes: list[dict[str, Any]]) -> set[str]:
     areas: set[str] = set()

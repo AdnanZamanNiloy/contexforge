@@ -11,6 +11,7 @@ Design rules:
     analysis, so no repo code is ever executed;
   * chunks are tagged with repo-relative ``path`` so citations map to real files.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,9 +19,9 @@ from typing import Any
 
 from core.types import Document
 
-from .git import GitRepository, GitRepoError, parse_repo_id
+from .git import GitRepoError, GitRepository, parse_repo_id
 
-__all__ = ["repo_source_id", "ensure_repo_indexed"]
+__all__ = ["ensure_repo_indexed", "repo_source_id"]
 
 logger = logging.getLogger(__name__)
 
@@ -93,13 +94,18 @@ async def ensure_repo_indexed(
             if _is_indexed(orchestrator, source_id):
                 logger.info(
                     "repo chat: indexed %d chunk(s) from %d doc(s) for %s (source_id=%s)",
-                    n_chunks, len(documents), full_name, source_id,
+                    n_chunks,
+                    len(documents),
+                    full_name,
+                    source_id,
                 )
             else:
                 logger.warning(
                     "repo chat: ingest returned %d chunk(s) but %s has no indexed chunks "
                     "(source_id=%s); embed/index step likely failed.",
-                    n_chunks, full_name, source_id,
+                    n_chunks,
+                    full_name,
+                    source_id,
                 )
         else:
             logger.warning("repo chat: no analysable source files for %s", full_name)

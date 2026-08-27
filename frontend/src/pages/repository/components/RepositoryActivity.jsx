@@ -1,27 +1,39 @@
 function timeAgo(iso) {
   try {
-    const d = new Date(iso);
-    const secs = Math.round((Date.now() - d.getTime()) / 1000);
-    if (secs < 60) return 'just now';
-    const mins = Math.round(secs / 60);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.round(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.round(hrs / 24);
-    if (days < 30) return `${days}d ago`;
-    return d.toLocaleDateString('en-GB');
+    const d = new Date(iso)
+    const secs = Math.round((Date.now() - d.getTime()) / 1000)
+    if (secs < 60) return 'just now'
+    const mins = Math.round(secs / 60)
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.round(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.round(hrs / 24)
+    if (days < 30) return `${days}d ago`
+    return d.toLocaleDateString('en-GB')
   } catch {
-    return '—';
+    return '—'
   }
 }
 
 function kindIcon(kind) {
   if (kind === 'commit') {
     return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 3v5M12 16v5M3 12h5M16 12h5" /></svg>
-    );
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 3v5M12 16v5M3 12h5M16 12h5" />
+      </svg>
+    )
   }
-  return null;
+  return null
 }
 
 export default function RepositoryActivity({ activity = [], onViewHistory }) {
@@ -43,7 +55,9 @@ export default function RepositoryActivity({ activity = [], onViewHistory }) {
           </div>
         ))}
       </div>
-      <button className="ghost wide" onClick={onViewHistory}>View Full Commit History →</button>
+      <button className="ghost wide" onClick={onViewHistory}>
+        View Full Commit History →
+      </button>
     </section>
-  );
+  )
 }

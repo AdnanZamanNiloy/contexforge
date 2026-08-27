@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import CreateMindMapButton from './CreateMindMapButton';
-import RepositoryIntelButton from './RepositoryIntelButton';
+import { useEffect, useMemo, useState } from 'react'
+import CreateMindMapButton from './CreateMindMapButton'
+import RepositoryIntelButton from './RepositoryIntelButton'
 
 function formatSourceTitle(source) {
-  const meta = source.metadata || {};
-  return meta.filename || meta.title || source.source_id || 'Unknown source';
+  const meta = source.metadata || {}
+  return meta.filename || meta.title || source.source_id || 'Unknown source'
 }
 
 function formatSourceType(source) {
-  const meta = source.metadata || {};
-  return meta.source_type || meta.type || 'doc';
+  const meta = source.metadata || {}
+  return meta.source_type || meta.type || 'doc'
 }
 
 function chunkIcon(type) {
@@ -20,88 +20,126 @@ function chunkIcon(type) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <rect x="2" y="2" width="20" height="20" rx="4" fill="#EF4444" />
           <rect x="2" y="2" width="13" height="7" rx="4" fill="#DC2626" />
-          <text x="12" y="16" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold" fontFamily="Arial,sans-serif">PDF</text>
+          <text
+            x="12"
+            y="16"
+            textAnchor="middle"
+            fill="white"
+            fontSize="7"
+            fontWeight="bold"
+            fontFamily="Arial,sans-serif"
+          >
+            PDF
+          </text>
         </svg>
-      );
+      )
     case 'web':
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
           <line x1="2" y1="12" x2="22" y2="12" />
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
         </svg>
-      );
+      )
     case 'github':
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
         </svg>
-      );
+      )
     case 'youtube':
       return (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
           <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
         </svg>
-      );
+      )
     default:
       return (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
           <line x1="16" y1="13" x2="8" y2="13" />
           <line x1="16" y1="17" x2="8" y2="17" />
         </svg>
-      );
+      )
   }
 }
 
 function iconClass(type) {
   switch (type) {
-    case 'pdf': return 'chunk-icon is-pdf';
-    case 'web': return 'chunk-icon is-web';
-    case 'github': return 'chunk-icon is-github';
-    case 'youtube': return 'chunk-icon is-youtube';
-    default: return 'chunk-icon';
+    case 'pdf':
+      return 'chunk-icon is-pdf'
+    case 'web':
+      return 'chunk-icon is-web'
+    case 'github':
+      return 'chunk-icon is-github'
+    case 'youtube':
+      return 'chunk-icon is-youtube'
+    default:
+      return 'chunk-icon'
   }
 }
 
 function extractDomain(url) {
-  if (!url) return null;
+  if (!url) return null
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    return new URL(url).hostname.replace(/^www\./, '')
   } catch {
-    return null;
+    return null
   }
 }
 
 function formatChunkMeta(source) {
-  const meta = source.metadata || {};
-  const type = formatSourceType(source);
+  const meta = source.metadata || {}
+  const type = formatSourceType(source)
 
   if (type === 'web' && meta.url) {
-    const domain = extractDomain(meta.url);
-    return domain || meta.url;
+    const domain = extractDomain(meta.url)
+    return domain || meta.url
   }
   if (type === 'github') {
-    return meta.repo || meta.title || 'GitHub Repository';
+    return meta.repo || meta.title || 'GitHub Repository'
   }
   if (type === 'youtube') {
-    return meta.author || meta.video_id || 'YouTube Video';
+    return meta.author || meta.video_id || 'YouTube Video'
   }
   if (meta.page) {
-    return `Page ${meta.page}`;
+    return `Page ${meta.page}`
   }
-  return `Chunk ${source.rank}`;
+  return `Chunk ${source.rank}`
 }
 
 function formatTypeLabel(type) {
   switch (type) {
-    case 'pdf': return 'PDF';
-    case 'web': return 'Web';
-    case 'github': return 'GitHub';
-    case 'youtube': return 'YouTube';
-    default: return type.toUpperCase();
+    case 'pdf':
+      return 'PDF'
+    case 'web':
+      return 'Web'
+    case 'github':
+      return 'GitHub'
+    case 'youtube':
+      return 'YouTube'
+    default:
+      return type.toUpperCase()
   }
 }
 
@@ -111,7 +149,7 @@ function Skeleton({ width, height }) {
       className="skeleton-pulse"
       style={{ width: width || '100%', height: height || '14px', borderRadius: '4px' }}
     />
-  );
+  )
 }
 
 // FIX: accept confidence prop from the backend; default to null for loading state
@@ -124,53 +162,53 @@ export default function SourceViewer({
   onOpenIntel,
   showQuickActions = false,
 }) {
-  const DEFAULT_VISIBLE_CHUNKS = 3;
-  const hasSources = sources.length > 0;
-  const isLoading = isStreaming && !hasSources;
+  const DEFAULT_VISIBLE_CHUNKS = 3
+  const hasSources = sources.length > 0
+  const isLoading = isStreaming && !hasSources
 
   // FIX: use server-side confidence — no sigmoid math in the frontend
-  const displayConfidence = confidence
-    ? Math.round(confidence.answer_confidence * 100)
-    : 0;
-  const coverage = confidence?.source_coverage ?? 'Pending';
-  const sourcesUsed = confidence?.sources_used ?? 0;
-  const retrievedChunks = confidence?.retrieved_chunks ?? sources.length;
-  const retrieveMs = latency?.retrieve_ms;
-  const totalChunks = sources.length;
+  const displayConfidence = confidence ? Math.round(confidence.answer_confidence * 100) : 0
+  const coverage = confidence?.source_coverage ?? 'Pending'
+  const sourcesUsed = confidence?.sources_used ?? 0
+  const retrievedChunks = confidence?.retrieved_chunks ?? sources.length
+  const retrieveMs = latency?.retrieve_ms
+  const totalChunks = sources.length
 
-  const [visibleChunks, setVisibleChunks] = useState(() => Math.min(DEFAULT_VISIBLE_CHUNKS, totalChunks));
+  const [visibleChunks, setVisibleChunks] = useState(() =>
+    Math.min(DEFAULT_VISIBLE_CHUNKS, totalChunks),
+  )
 
   useEffect(() => {
     setVisibleChunks((current) => {
-      if (totalChunks === 0) return 0;
-      const baseline = Math.min(DEFAULT_VISIBLE_CHUNKS, totalChunks);
-      if (current < baseline) return baseline;
-      return Math.min(current, totalChunks);
-    });
-  }, [totalChunks]);
+      if (totalChunks === 0) return 0
+      const baseline = Math.min(DEFAULT_VISIBLE_CHUNKS, totalChunks)
+      if (current < baseline) return baseline
+      return Math.min(current, totalChunks)
+    })
+  }, [totalChunks])
 
-  const showEmpty = !isLoading && !hasSources;
+  const showEmpty = !isLoading && !hasSources
 
-  const circumference = 2 * Math.PI * 46;
-  const offset = circumference - (circumference * Math.min(displayConfidence, 100)) / 100;
-  const visibleSources = sources.slice(0, visibleChunks);
-  const hasMoreChunks = totalChunks > visibleChunks;
+  const circumference = 2 * Math.PI * 46
+  const offset = circumference - (circumference * Math.min(displayConfidence, 100)) / 100
+  const visibleSources = sources.slice(0, visibleChunks)
+  const hasMoreChunks = totalChunks > visibleChunks
 
   const dominantSourceId = useMemo(() => {
-    const counts = {};
+    const counts = {}
     for (const item of sources) {
-      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1;
+      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1
     }
-    let best = null;
-    let bestCount = 0;
+    let best = null
+    let bestCount = 0
     for (const [id, count] of Object.entries(counts)) {
       if (count > bestCount) {
-        best = id;
-        bestCount = count;
+        best = id
+        bestCount = count
       }
     }
-    return best;
-  }, [sources]);
+    return best
+  }, [sources])
 
   return (
     <aside className="evidence">
@@ -178,9 +216,7 @@ export default function SourceViewer({
         {showQuickActions ? (
           <div className="mindmap-cta-row">
             <CreateMindMapButton sourceId={dominantSourceId} />
-            {onOpenIntel ? (
-              <RepositoryIntelButton repoUrl={repoUrl} onOpen={onOpenIntel} />
-            ) : null}
+            {onOpenIntel ? <RepositoryIntelButton repoUrl={repoUrl} onOpen={onOpenIntel} /> : null}
           </div>
         ) : null}
         <div className="panel-head">
@@ -195,7 +231,10 @@ export default function SourceViewer({
         </div>
         <div className="chunk-list">
           {isLoading ? (
-            <div className="empty" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div
+              className="empty"
+              style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+            >
               {[1, 2, 3].map((i) => (
                 <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                   <Skeleton width="32px" height="32px" />
@@ -207,22 +246,18 @@ export default function SourceViewer({
                 </div>
               ))}
             </div>
-            ) : hasSources ? (
-              visibleSources.map((item) => {
-              const type = formatSourceType(item);
+          ) : hasSources ? (
+            visibleSources.map((item) => {
+              const type = formatSourceType(item)
               return (
                 <article className="chunk" key={item.chunk_id}>
-                  <div className={iconClass(type)}>
-                    {chunkIcon(type)}
-                  </div>
+                  <div className={iconClass(type)}>{chunkIcon(type)}</div>
                   <div className="chunk-title">{formatSourceTitle(item)}</div>
                   <div className="chunk-type">{formatTypeLabel(type)}</div>
                   <div className="chunk-meta">{formatChunkMeta(item)}</div>
-                  {item.text_preview ? (
-                    <p className="chunk-text">{item.text_preview}</p>
-                  ) : null}
+                  {item.text_preview ? <p className="chunk-text">{item.text_preview}</p> : null}
                 </article>
-              );
+              )
             })
           ) : (
             <div className="empty">Ask a question to populate sources.</div>
@@ -242,9 +277,18 @@ export default function SourceViewer({
         {isLoading || showEmpty ? (
           <div className="confidence">
             {isLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  alignItems: 'center',
+                }}
+              >
                 <Skeleton width="120px" height="120px" style={{ borderRadius: '50%' }} />
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div
+                  style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                >
                   {[1, 2, 3, 4, 5].map((i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Skeleton width="100px" height="14px" />
@@ -304,5 +348,5 @@ export default function SourceViewer({
         )}
       </section>
     </aside>
-  );
+  )
 }

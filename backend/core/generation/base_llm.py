@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from core.interfaces.llm import LLM
 
@@ -12,13 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class BaseLLM(LLM):
-
     def __init__(self, model: str) -> None:
         if not model or not model.strip():
             raise ValueError(f"{type(self).__name__} received an empty model string")
         self._model = model
         logger.debug("%s initialised with model '%s'.", type(self).__name__, self._model)
-
 
     async def generate(
         self,
@@ -28,12 +26,12 @@ class BaseLLM(LLM):
         self._validate_prompt(prompt)
         logger.debug(
             "%s.generate: model=%s prompt_len=%d",
-            type(self).__name__, self._model, len(prompt),
+            type(self).__name__,
+            self._model,
+            len(prompt),
         )
         response = await self._generate_impl(prompt, system_prompt)
-        logger.debug(
-            "%s.generate: response_len=%d", type(self).__name__, len(response)
-        )
+        logger.debug("%s.generate: response_len=%d", type(self).__name__, len(response))
         return response
 
     async def stream(
@@ -44,7 +42,9 @@ class BaseLLM(LLM):
         self._validate_prompt(prompt)
         logger.debug(
             "%s.stream: model=%s prompt_len=%d",
-            type(self).__name__, self._model, len(prompt),
+            type(self).__name__,
+            self._model,
+            len(prompt),
         )
         async for token in self._stream_impl(prompt, system_prompt):
             yield token

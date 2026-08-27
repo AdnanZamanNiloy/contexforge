@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
-from typing import List
 
 import httpx
 
 from app.config.settings import settings
-from .base_loader import BaseLoader
 from core.types import Document
 from observability.tracer import observe
 
+from .base_loader import BaseLoader
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +22,9 @@ class GitHubLoader(BaseLoader):
         source_id: str,
         filename: str | None = None,
         metadata: dict | None = None,
-    ) -> List[Document]:
+    ) -> list[Document]:
         if not isinstance(source, str):
-            raise ValueError("GitHubLoader expects a repo URL string")
+            raise TypeError("GitHubLoader expects a repo URL string")
         owner, repo = self._parse_repo(source)
         # FIX — honour the caller-supplied branch; fall back to the repo default.
         requested_branch = (metadata or {}).get("branch")
@@ -35,7 +33,7 @@ class GitHubLoader(BaseLoader):
             branch = requested_branch or repo_data.get("default_branch", "main")
             tree = await self._fetch_tree(client, owner, repo, branch)
             file_paths = self._filter_paths(tree)
-            documents: List[Document] = []
+            documents: list[Document] = []
             for path in file_paths[: settings.MAX_GITHUB_FILES]:
                 content = await self._fetch_raw(client, owner, repo, branch, path)
                 if self._is_binary_content(content):
@@ -43,7 +41,12 @@ class GitHubLoader(BaseLoader):
                 text = content.decode("utf-8", errors="ignore")
                 if not text.strip():
                     continue
-                metadata = {"path": path, "repo": f"{owner}/{repo}", "source_id": source_id, "url": f"https://github.com/{owner}/{repo}"}
+                metadata = {
+                    "path": path,
+                    "repo": f"{owner}/{repo}",
+                    "source_id": source_id,
+                    "url": f"https://github.com/{owner}/{repo}",
+                }
                 doc_id = f"{source_id}:{path}"
                 documents.append(Document(document_id=doc_id, text=text, metadata=metadata, source_type="github"))
             return documents
@@ -53,25 +56,19 @@ class GitHubLoader(BaseLoader):
         response.raise_for_status()
         return response.json()
 
-    async def _fetch_tree(
-        self, client: httpx.AsyncClient, owner: str, repo: str, branch: str
-    ) -> List[dict]:
-        response = await client.get(
-            f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1"
-        )
+    async def _fetch_tree(self, client: httpx.AsyncClient, owner: str, repo: str, branch: str) -> list[dict]:
+        response = await client.get(f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1")
         response.raise_for_status()
         payload = response.json()
         return payload.get("tree", [])
 
-    async def _fetch_raw(
-        self, client: httpx.AsyncClient, owner: str, repo: str, branch: str, path: str
-    ) -> bytes:
+    async def _fetch_raw(self, client: httpx.AsyncClient, owner: str, repo: str, branch: str, path: str) -> bytes:
         response = await client.get(f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}")
         response.raise_for_status()
         return response.content
 
-    def _filter_paths(self, tree: List[dict]) -> List[str]:
-        files: List[str] = []
+    def _filter_paths(self, tree: list[dict]) -> list[str]:
+        files: list[str] = []
         for node in tree:
             if node.get("type") != "blob":
                 continue

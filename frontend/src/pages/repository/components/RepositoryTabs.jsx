@@ -6,7 +6,7 @@ export default function RepositoryTabs({ active, onChange }) {
     { id: 'git-history', label: 'Git History' },
     { id: 'ownership', label: 'Ownership' },
     { id: 'change-impact', label: 'Change Impact' },
-  ];
+  ]
 
   return (
     <nav className="repo-tabs">
@@ -22,5 +22,5 @@ export default function RepositoryTabs({ active, onChange }) {
         ))}
       </div>
     </nav>
-  );
+  )
 }

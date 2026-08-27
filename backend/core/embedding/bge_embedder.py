@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import List, Literal
+from typing import Literal
 
 from core.interfaces.embedder import Embedder
-
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +15,7 @@ class BGEEmbedder(Embedder):
     def __init__(self) -> None:
         self._model = None
 
-    async def embed_texts(
-        self, texts: List[str], input_type: Literal["document", "query"]
-    ) -> List[List[float]]:
+    async def embed_texts(self, texts: list[str], input_type: Literal["document", "query"]) -> list[list[float]]:
         await self._ensure_model_loaded()
         if self._model is None:
             raise RuntimeError("BGE model not available")

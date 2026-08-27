@@ -1,4 +1,5 @@
 """Unit tests for the git analysis layer."""
+
 from __future__ import annotations
 
 import pytest

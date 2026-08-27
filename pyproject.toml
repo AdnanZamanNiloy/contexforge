@@ -5,5 +5,40 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "contextforge"
 version = "0.1.0"
-description = "ContextForge workspace scaffold"
+description = "A grounded AI workspace for Retrieval-Augmented Generation."
+readme = "README.md"
 requires-python = ">=3.14"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "ruff>=0.16,<1.0",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = [".venv", "frontend", "data", "mindmap", "node_modules", "dist", "build"]
+
+# Curated, opinionated-but-pragmatic rule set. Errors (E), pyflakes (F) and
+# import sorting (I) are non-negotiable; UP/B/C4/SIM/RUF read the code the way
+# a reviewer would. Anything below `lint.ignore` is a documented, deliberate
+# exception rather than an accident.
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "BLE001",  # broad exception handling is intentional across pipeline glue
+    "B008",    # FastAPI/Starlette inject dependencies as callables in defaults
+    "B017",    # tests assert a blind Exception as a stability guard
+    "PYI034",  # context managers annotate __aenter__ -> self at runtime
+    "S110", "S112",  # deliberate pass/continue in best-effort error paths
+    "RUF001",  # ambiguous unicode in content/identifier literals
+    "RUF006",  # background asyncio tasks are created intentionally
+    "SIM105",  # try/except pass reads clearer than contextlib.suppress here
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "core", "observability"]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/**" = ["S101"]  # `assert` is the intended assertion style in tests

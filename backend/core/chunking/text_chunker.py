@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import List
 
 import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -29,27 +28,20 @@ def get_token_len(text: str) -> int:
 _SEPARATORS = ["\n\n", "\n", ". ", "? ", "! ", "; ", " ", ""]
 
 
-def _validate_documents(documents: List[Document]) -> None:
+def _validate_documents(documents: list[Document]) -> None:
 
     if not isinstance(documents, list):
-        raise ValueError(
-            f"TextChunker expected a list of Document objects, got {type(documents).__name__}"
-        )
+        raise TypeError(f"TextChunker expected a list of Document objects, got {type(documents).__name__}")
     if not documents:
         raise ValueError("TextChunker received an empty document list")
     for idx, doc in enumerate(documents):
         if not isinstance(doc, Document):
-            raise ValueError(
-                f"TextChunker expected Document at index {idx}, got {type(doc).__name__}"
-            )
+            raise TypeError(f"TextChunker expected Document at index {idx}, got {type(doc).__name__}")
         if not isinstance(doc.text, str) or not doc.text.strip():
-            raise ValueError(
-                f"TextChunker received empty text for document '{doc.document_id}'"
-            )
+            raise ValueError(f"TextChunker received empty text for document '{doc.document_id}'")
 
 
 class TextChunker:
-
     def __init__(
         self,
         chunk_size: int | None = None,
@@ -64,11 +56,9 @@ class TextChunker:
             raise ValueError(f"chunk_overlap must be >= 0, got {self._chunk_overlap}")
         if self._chunk_overlap >= self._chunk_size:
             raise ValueError(
-                f"chunk_overlap ({self._chunk_overlap}) must be strictly less than "
-                f"chunk_size ({self._chunk_size})"
+                f"chunk_overlap ({self._chunk_overlap}) must be strictly less than chunk_size ({self._chunk_size})"
             )
 
-      
         self._splitter = RecursiveCharacterTextSplitter(
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
@@ -83,13 +73,12 @@ class TextChunker:
             self._chunk_overlap,
         )
 
-
     # Public API
     @observe(name="chunk_text")
-    def chunk_documents(self, documents: List[Document]) -> List[Chunk]:
+    def chunk_documents(self, documents: list[Document]) -> list[Chunk]:
 
         _validate_documents(documents)
-        chunks: List[Chunk] = []
+        chunks: list[Chunk] = []
         for doc in documents:
             doc_chunks = self._chunk_document(doc)
             chunks.extend(doc_chunks)
@@ -97,10 +86,9 @@ class TextChunker:
         logger.debug("TextChunker produced %d total chunk(s).", len(chunks))
         return chunks
 
-
-    def _chunk_document(self, doc: Document) -> List[Chunk]:
+    def _chunk_document(self, doc: Document) -> list[Chunk]:
         """Return all chunks for a single document."""
-        chunks: List[Chunk] = []
+        chunks: list[Chunk] = []
         for index, text in enumerate(self._split_text(doc.text)):
             metadata = dict(doc.metadata)
             metadata["chunk_index"] = index
@@ -118,7 +106,7 @@ class TextChunker:
             )
         return chunks
 
-    def _split_text(self, text: str) -> List[str]:
+    def _split_text(self, text: str) -> list[str]:
         """Split *text*, filtering out whitespace-only fragments."""
         if not text.strip():
             return []

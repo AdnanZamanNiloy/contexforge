@@ -1,5 +1,3 @@
-import pytest
-
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
 from core.types import Document

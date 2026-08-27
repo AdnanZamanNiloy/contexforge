@@ -6,7 +6,6 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import List
 
 import numpy as np
 
@@ -20,18 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 class FaissStore:
-
     def __init__(self, index_path: Path | None = None) -> None:
         self._index_path: Path = Path(index_path or settings.FAISS_INDEX_PATH)
         self._metadata_path: Path = self._index_path.with_suffix(".json")
         # Fallback: older code may have written metadata to .meta.json
-        self._metadata_path_alt: Path = self._index_path.parent / (
-            self._index_path.stem + ".meta.json"
-        )
+        self._metadata_path_alt: Path = self._index_path.parent / (self._index_path.stem + ".meta.json")
 
         self._index = None
         self._faiss = None
-        self._chunks: List[Chunk] = []
+        self._chunks: list[Chunk] = []
         self._load_lock = asyncio.Lock()
         self._loaded = False
 
@@ -40,11 +36,9 @@ class FaissStore:
     # ------------------------------------------------------------------ #
 
     @observe(name="faiss_add")
-    async def add(self, chunks: List[Chunk], vectors: List[List[float]]) -> None:
+    async def add(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
         if len(chunks) != len(vectors):
-            raise ValueError(
-                f"chunks ({len(chunks)}) and vectors ({len(vectors)}) length mismatch"
-            )
+            raise ValueError(f"chunks ({len(chunks)}) and vectors ({len(vectors)}) length mismatch")
         if not vectors:
             logger.debug("faiss_add called with empty vectors — nothing to do.")
             return
@@ -54,7 +48,9 @@ class FaissStore:
         await asyncio.to_thread(self._add_sync, chunks, vectors)
 
     @observe(name="faiss_search")
-    async def search(self, query_vector: List[float], top_k: int, exclude_source_ids: set[str] | None = None) -> List[RetrievedChunk]:
+    async def search(
+        self, query_vector: list[float], top_k: int, exclude_source_ids: set[str] | None = None
+    ) -> list[RetrievedChunk]:
         if not query_vector:
             raise ValueError("query_vector must not be empty")
         if top_k <= 0:
@@ -68,13 +64,9 @@ class FaissStore:
 
         effective_top_k = min(top_k, self._index.ntotal)
         if effective_top_k < top_k:
-            logger.debug(
-                "top_k=%d clamped to index size %d.", top_k, effective_top_k
-            )
+            logger.debug("top_k=%d clamped to index size %d.", top_k, effective_top_k)
 
-        return await asyncio.to_thread(
-            self._search_sync, query_vector, effective_top_k, exclude_source_ids
-        )
+        return await asyncio.to_thread(self._search_sync, query_vector, effective_top_k, exclude_source_ids)
 
     @observe(name="faiss_delete_by_source")
     async def delete_by_source_id(self, source_id: str) -> int:
@@ -102,9 +94,7 @@ class FaissStore:
                 logger.debug("delete_by_source_id: index empty — nothing to delete.")
                 return 0
 
-            removed = await asyncio.to_thread(
-                self._delete_by_source_id_sync, source_id
-            )
+            removed = await asyncio.to_thread(self._delete_by_source_id_sync, source_id)
 
             # Force reload from the freshly-persisted disk state so in-memory
             # is guaranteed to reflect the on-disk truth.  This also clears
@@ -117,9 +107,10 @@ class FaissStore:
             self._loaded = True
 
             logger.info(
-                "delete_by_source_id: completed source_id=%s removed=%d "
-                "remaining=%d vectors.",
-                source_id, removed, self._index.ntotal if self._index else 0,
+                "delete_by_source_id: completed source_id=%s removed=%d remaining=%d vectors.",
+                source_id,
+                removed,
+                self._index.ntotal if self._index else 0,
             )
             return removed
 
@@ -176,9 +167,7 @@ class FaissStore:
         await self._ensure_loaded(None)
         if not source_id:
             return list(self._chunks)
-        return [
-            chunk for chunk in self._chunks if chunk.source_id == source_id
-        ]
+        return [chunk for chunk in self._chunks if chunk.source_id == source_id]
 
     async def get_source_info(self) -> list[dict]:
         """Return grouped source info with metadata from stored chunks.
@@ -193,8 +182,8 @@ class FaissStore:
         # likely missing/corrupt on first load — try reloading now.
         if not self._chunks and self._index is not None and self._index.ntotal > 0:
             logger.warning(
-                "get_source_info: %d vectors in FAISS but 0 chunks in memory — "
-                "attempting disk reload.", self._index.ntotal,
+                "get_source_info: %d vectors in FAISS but 0 chunks in memory — attempting disk reload.",
+                self._index.ntotal,
             )
             async with self._load_lock:
                 self._loaded = False
@@ -241,21 +230,14 @@ class FaissStore:
         object, to avoid any accumulated internal FAISS state after
         repeated delete/rebuild cycles.
         """
-        indices_to_remove = [
-            i for i, chunk in enumerate(self._chunks)
-            if chunk.source_id == source_id
-        ]
+        indices_to_remove = [i for i, chunk in enumerate(self._chunks) if chunk.source_id == source_id]
 
         if not indices_to_remove:
-            logger.info(
-                "delete_by_source_id: no chunks found for source_id=%s.", source_id
-            )
+            logger.info("delete_by_source_id: no chunks found for source_id=%s.", source_id)
             return 0
 
         remove_set = set(indices_to_remove)
-        remaining_chunks = [
-            chunk for i, chunk in enumerate(self._chunks) if i not in remove_set
-        ]
+        remaining_chunks = [chunk for i, chunk in enumerate(self._chunks) if i not in remove_set]
 
         dimension = self._index.d
 
@@ -284,12 +266,13 @@ class FaissStore:
 
         logger.info(
             "delete_by_source_id: removed %d chunk(s), index now has %d vectors.",
-            len(indices_to_remove), self._index.ntotal,
+            len(indices_to_remove),
+            self._index.ntotal,
         )
         self._persist_sync()
         return len(indices_to_remove)
 
-    def _add_sync(self, chunks: List[Chunk], vectors: List[List[float]]) -> None:
+    def _add_sync(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
         arr = np.array(vectors, dtype=np.float32)
         arr = _normalize(arr)
         self._index.add(arr)
@@ -298,9 +281,11 @@ class FaissStore:
         self._persist_sync()
 
     def _search_sync(
-        self, query_vector: List[float], top_k: int,
+        self,
+        query_vector: list[float],
+        top_k: int,
         exclude_source_ids: set[str] | None = None,
-    ) -> List[RetrievedChunk]:
+    ) -> list[RetrievedChunk]:
         query = np.array([query_vector], dtype=np.float32)
         query = _normalize(query)
 
@@ -309,8 +294,8 @@ class FaissStore:
         fetch_k = min(fetch_k, self._index.ntotal)
         scores, indices = self._index.search(query, fetch_k)
 
-        results: List[RetrievedChunk] = []
-        for score, idx in zip(scores[0], indices[0]):
+        results: list[RetrievedChunk] = []
+        for score, idx in zip(scores[0], indices[0], strict=False):
             if idx < 0 or idx >= len(self._chunks):
                 continue
             chunk = self._chunks[idx]
@@ -318,19 +303,26 @@ class FaissStore:
             if exclude_source_ids and chunk.source_id in exclude_source_ids:
                 logger.debug(
                     "FAISS search: filtered out chunk %s (source_id=%s in exclude set).",
-                    chunk.chunk_id, chunk.source_id,
+                    chunk.chunk_id,
+                    chunk.source_id,
                 )
                 continue
             results.append(RetrievedChunk(chunk=chunk, score=float(score)))
             if len(results) >= top_k:
                 break
 
-        logger.debug("FAISS search returned %d result(s) (excluded %d).",
-                      len(results),
-                      sum(1 for score, idx in zip(scores[0], indices[0])
-                          if idx >= 0 and idx < len(self._chunks)
-                          and exclude_source_ids
-                          and self._chunks[idx].source_id in exclude_source_ids))
+        logger.debug(
+            "FAISS search returned %d result(s) (excluded %d).",
+            len(results),
+            sum(
+                1
+                for score, idx in zip(scores[0], indices[0], strict=False)
+                if idx >= 0
+                and idx < len(self._chunks)
+                and exclude_source_ids
+                and self._chunks[idx].source_id in exclude_source_ids
+            ),
+        )
         return results
 
     def _persist_sync(self) -> None:
@@ -343,9 +335,7 @@ class FaissStore:
             self._index_path.parent.mkdir(parents=True, exist_ok=True)
 
             # --- Write FAISS index to temp file, then rename ---
-            tmp_fd, tmp_index_path = tempfile.mkstemp(
-                dir=self._index_path.parent, suffix=".tmp"
-            )
+            tmp_fd, tmp_index_path = tempfile.mkstemp(dir=self._index_path.parent, suffix=".tmp")
             try:
                 os.close(tmp_fd)
                 self._faiss.write_index(self._index, tmp_index_path)
@@ -357,9 +347,7 @@ class FaissStore:
             # --- Write metadata JSON to temp file, then rename ---
             payload = [_chunk_to_dict(chunk) for chunk in self._chunks]
             json_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-            tmp_fd, tmp_meta_path = tempfile.mkstemp(
-                dir=self._metadata_path.parent, suffix=".tmp"
-            )
+            tmp_fd, tmp_meta_path = tempfile.mkstemp(dir=self._metadata_path.parent, suffix=".tmp")
             try:
                 os.write(tmp_fd, json_bytes)
                 os.close(tmp_fd)
@@ -389,11 +377,10 @@ class FaissStore:
     def _load_sync(self, dimension: int | None) -> None:
         try:
             import faiss
+
             self._faiss = faiss
         except ImportError as exc:
-            raise RuntimeError(
-                "faiss-cpu is not installed."
-            ) from exc
+            raise RuntimeError("faiss-cpu is not installed.") from exc
 
         if self._index_path.exists():
             self._index = self._faiss.read_index(str(self._index_path))
@@ -408,15 +395,11 @@ class FaissStore:
                 metadata_path = self._metadata_path
             elif self._metadata_path_alt.exists():
                 metadata_path = self._metadata_path_alt
-                logger.info(
-                    "Using alternate metadata file %s", metadata_path
-                )
+                logger.info("Using alternate metadata file %s", metadata_path)
 
             if metadata_path is not None:
                 try:
-                    payload = json.loads(
-                        metadata_path.read_text(encoding="utf-8")
-                    )
+                    payload = json.loads(metadata_path.read_text(encoding="utf-8"))
                     if payload:
                         self._chunks = [Chunk(**item) for item in payload]
                         logger.debug("Loaded %d chunk metadata entries.", len(self._chunks))
@@ -426,14 +409,16 @@ class FaissStore:
                 except Exception as exc:
                     logger.error(
                         "Chunk metadata at %s is corrupt (%s) — metadata reset.",
-                        metadata_path, exc,
+                        metadata_path,
+                        exc,
                     )
                     self._chunks = []
             else:
                 logger.warning(
-                    "FAISS index loaded (%d vectors) but no metadata file found "
-                    "(checked %s and %s).",
-                    self._index.ntotal, self._metadata_path, self._metadata_path_alt,
+                    "FAISS index loaded (%d vectors) but no metadata file found (checked %s and %s).",
+                    self._index.ntotal,
+                    self._metadata_path,
+                    self._metadata_path_alt,
                 )
             return
 
@@ -449,6 +434,7 @@ class FaissStore:
 # Module-level helpers
 # ------------------------------------------------------------------ #
 
+
 def _normalize(vectors: np.ndarray) -> np.ndarray:
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms = np.where(norms == 0.0, 1.0, norms)
@@ -463,6 +449,7 @@ def _chunk_to_dict(chunk: Chunk) -> dict:
     else:
         try:
             from dataclasses import asdict
+
             d = asdict(chunk)
         except TypeError:
             d = dict(chunk.__dict__)

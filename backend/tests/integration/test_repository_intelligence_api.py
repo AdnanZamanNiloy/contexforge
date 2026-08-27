@@ -4,6 +4,7 @@ Uses a real local git fixture as the repo source (no network) and drives the
 FastAPI app with ``TestClient``.  The analysis was started in the background,
 so we poll the status endpoint until it completes.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,6 +42,7 @@ def test_repository_analyze_and_read_views(sample_repo: Path, analysis_dir: Path
             if s["status"] in {"complete", "failed"}:
                 break
             import time
+
             time.sleep(0.1)
         assert status["status"] == "complete", status
 

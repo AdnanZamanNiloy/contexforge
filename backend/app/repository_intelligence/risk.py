@@ -11,6 +11,7 @@ five *observable* signals, each normalised to ``[0, 1]``:
 
 The weights are configurable in ``settings`` and can be reproduced exactly.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,13 +20,13 @@ from app.config.settings import settings
 from observability.tracer import observe
 
 __all__ = [
-    "compute_node_signals",
-    "score_to_risk",
-    "risk_score",
     "RISK_EXPLANATIONS",
+    "compute_node_signals",
     "compute_repo_health",
     "coverage_for_nodes",
     "ownership_concentration",
+    "risk_score",
+    "score_to_risk",
 ]
 
 RISK_EXPLANATIONS: dict[str, str] = {
@@ -109,7 +110,7 @@ def _explain(node: dict[str, Any], signals: dict[str, float]) -> str:
         "coverage": f"{int(node.get('coverage', 0) * 100)}% test coverage",
         "ownership": f"single-author concentration {int(node.get('ownership_risk', 0) * 100)}%",
     }
-    return (f"Driven by {top}: {reasons[top]}.")
+    return f"Driven by {top}: {reasons[top]}."
 
 
 @observe(name="repo_health")
@@ -120,11 +121,10 @@ def compute_repo_health(nodes: list[dict[str, Any]]) -> dict[str, Any]:
         return {"score": 0.0, "dimensions": []}
 
     avg_coverage = sum(n.get("coverage", 0.0) for n in files) / len(files)
-    avg_complexity = 1.0 - sum(min(1.0, n.get("loc", 0) / 500.0)
-                               for n in files) / len(files)
-    avg_dep_health = 1.0 - min(1.0, (sum(n.get("deps", 0) for n in files)
-                                     + sum(n.get("dependents", 0) for n in files))
-                               / (len(files) * 20.0))
+    avg_complexity = 1.0 - sum(min(1.0, n.get("loc", 0) / 500.0) for n in files) / len(files)
+    avg_dep_health = 1.0 - min(
+        1.0, (sum(n.get("deps", 0) for n in files) + sum(n.get("dependents", 0) for n in files)) / (len(files) * 20.0)
+    )
     # Security dimension is a placeholder derived from dependency fan-out,
     # deliberately conservative until a dedicated scanner is wired.
     avg_security = 1.0 - min(1.0, max((n.get("deps", 0) for n in files), default=0) / 30.0)
@@ -136,8 +136,12 @@ def compute_repo_health(nodes: list[dict[str, Any]]) -> dict[str, Any]:
         ("Security", avg_security * 100, "Conservative dependency risk"),
     ]
 
-    score = 0.35 * avg_complexity * 100 + 0.30 * avg_coverage * 100 \
-        + 0.20 * avg_dep_health * 100 + 0.15 * avg_security * 100
+    score = (
+        0.35 * avg_complexity * 100
+        + 0.30 * avg_coverage * 100
+        + 0.20 * avg_dep_health * 100
+        + 0.15 * avg_security * 100
+    )
 
     def _tone(v: float) -> str:
         return "good" if v >= 75 else ("warn" if v >= 50 else "critical")
@@ -145,8 +149,7 @@ def compute_repo_health(nodes: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "score": round(min(100.0, score), 2),
         "dimensions": [
-            {"label": label, "value": round(min(100.0, value), 2),
-             "tone": _tone(value), "detail": detail}
+            {"label": label, "value": round(min(100.0, value), 2), "tone": _tone(value), "detail": detail}
             for label, value, detail in dimensions
         ],
     }
@@ -170,8 +173,7 @@ def coverage_for_nodes(files: list[dict[str, Any]]) -> dict[str, float]:
         base = stem.split(".")[0]
         # heuristic: a sibling with the same base name is the test counterpart
         has_test = any(
-            other != path and other.rsplit("/", 1)[-1].startswith("test_")
-            and base in other
+            other != path and other.rsplit("/", 1)[-1].startswith("test_") and base in other
             for other in (n["path"] for n in files)
         )
         coverage[path] = 1.0 if has_test else 0.0

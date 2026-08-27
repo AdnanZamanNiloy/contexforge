@@ -1,19 +1,19 @@
-import { useRef, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import MessageBubble from './MessageBubble';
+import { useRef, useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import MessageBubble from './MessageBubble'
 
 const WELCOME_SUGGESTIONS = [
   'Research a topic',
   'Understand documents',
   'Analyze a GitHub repository',
   'Build something new',
-];
+]
 
 const ACTIVE_SUGGESTIONS = [
   'Explain positional encoding',
   'Summarize this PDF',
   'Generate architecture diagram',
-];
+]
 
 export default function ChatBox({
   messages,
@@ -27,47 +27,47 @@ export default function ChatBox({
   uploadHint,
   onNewChat,
 }) {
-  const MAX_TEXTAREA_HEIGHT = 200;
-  const textareaRef = useRef(null);
-  const messagesEndRef = useRef(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-  const hasMessages = messages.length > 0;
+  const MAX_TEXTAREA_HEIGHT = 200
+  const textareaRef = useRef(null)
+  const messagesEndRef = useRef(null)
+  const [isOverflowing, setIsOverflowing] = useState(false)
+  const hasMessages = messages.length > 0
 
   const threadTitle = hasMessages
     ? messages[0].text.length > 60
       ? messages[0].text.slice(0, 60) + '…'
       : messages[0].text
-    : '';
+    : ''
 
-  const currentSuggestions = hasMessages ? ACTIVE_SUGGESTIONS : WELCOME_SUGGESTIONS;
+  const currentSuggestions = hasMessages ? ACTIVE_SUGGESTIONS : WELCOME_SUGGESTIONS
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+    e.preventDefault()
     if (input.trim() && !isStreaming) {
-      onSend(input);
+      onSend(input)
     }
-  };
+  }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+      e.preventDefault()
+      handleSubmit(e)
     }
-  };
+  }
 
   useEffect(() => {
     if (textareaRef.current) {
-      const element = textareaRef.current;
-      textareaRef.current.style.height = 'auto';
-      const nextHeight = Math.min(element.scrollHeight, MAX_TEXTAREA_HEIGHT);
-      element.style.height = nextHeight + 'px';
-      setIsOverflowing(element.scrollHeight > MAX_TEXTAREA_HEIGHT);
+      const element = textareaRef.current
+      textareaRef.current.style.height = 'auto'
+      const nextHeight = Math.min(element.scrollHeight, MAX_TEXTAREA_HEIGHT)
+      element.style.height = nextHeight + 'px'
+      setIsOverflowing(element.scrollHeight > MAX_TEXTAREA_HEIGHT)
     }
-  }, [input]);
+  }, [input])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const textareaBase =
     'w-full resize-none rounded-2xl px-5 py-4 pr-14 overflow-y-hidden ' +
@@ -79,7 +79,7 @@ export default function ChatBox({
     'focus:border-[rgba(122,162,247,0.4)] ' +
     'focus:bg-[rgba(255,255,255,0.06)] ' +
     'focus:shadow-[0_0_0_1px_rgba(122,162,247,0.2)] ' +
-    'disabled:opacity-60 disabled:cursor-not-allowed';
+    'disabled:opacity-60 disabled:cursor-not-allowed'
 
   const sendBtnBase =
     'absolute right-2 bottom-2 p-2.5 rounded-xl ' +
@@ -88,7 +88,7 @@ export default function ChatBox({
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
     'transition-all duration-200 ' +
     'hover:shadow-[0_0_20px_rgba(122,162,247,0.5)] ' +
-    'cursor-pointer';
+    'cursor-pointer'
 
   const chipBase =
     'px-5 py-2.5 rounded-full text-sm font-medium ' +
@@ -98,7 +98,7 @@ export default function ChatBox({
     'hover:bg-[rgba(255,255,255,0.18)] ' +
     'hover:border-[rgba(255,255,255,0.4)] ' +
     'transition-all duration-200 ' +
-    'cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed';
+    'cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed'
 
   const inputArea = (
     <>
@@ -141,7 +141,7 @@ export default function ChatBox({
         ContextForge can make mistakes. Please verify important information.
       </p>
     </>
-  );
+  )
 
   if (!hasMessages) {
     return (
@@ -168,9 +168,9 @@ export default function ChatBox({
             transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
             className="text-[#a6abb3] text-base sm:text-lg leading-relaxed max-w-[520px] mx-auto"
           >
-            Forge documents, repositories, web pages, and YouTube URLs into one
-            intelligent conversation. Ask across every source at once and get
-            answers grounded in your knowledge.
+            Forge documents, repositories, web pages, and YouTube URLs into one intelligent
+            conversation. Ask across every source at once and get answers grounded in your
+            knowledge.
           </motion.p>
 
           <motion.div
@@ -196,11 +196,9 @@ export default function ChatBox({
 
         <div className="flex-1" />
 
-        <div className="w-full max-w-[720px] mx-auto px-2 pb-8">
-          {inputArea}
-        </div>
+        <div className="w-full max-w-[720px] mx-auto px-2 pb-8">{inputArea}</div>
       </motion.section>
-    );
+    )
   }
 
   return (
@@ -244,10 +242,7 @@ export default function ChatBox({
             whileHover={{ scale: 1.03, y: -1 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onSuggestion(suggestion)}
-            className={
-              chipBase +
-              ' text-xs px-3.5 py-2'
-            }
+            className={chipBase + ' text-xs px-3.5 py-2'}
             disabled={isStreaming}
           >
             {suggestion}
@@ -305,8 +300,7 @@ export default function ChatBox({
               No sources were used for this answer.
             </div>
             <p className="text-xs text-[#a6abb3] leading-relaxed m-0">
-              For grounded answers, upload a PDF or DOCX, paste a URL, or link a
-              GitHub repo.
+              For grounded answers, upload a PDF or DOCX, paste a URL, or link a GitHub repo.
             </p>
             <div className="flex flex-wrap gap-2">
               {['PDF', 'DOCX', 'URL', 'GitHub Repo'].map((tag) => (
@@ -324,9 +318,7 @@ export default function ChatBox({
         ) : null}
       </div>
 
-      <div className="sticky bottom-0 pr-6">
-        {inputArea}
-      </div>
+      <div className="sticky bottom-0 pr-6">{inputArea}</div>
     </motion.section>
-  );
+  )
 }

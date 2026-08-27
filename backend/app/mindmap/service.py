@@ -127,7 +127,7 @@ class MindMapService:
                 ),
                 timeout=MAX_GENERATION_SECONDS,
             )
-        except asyncio.TimeoutError as exc:  # pragma: no cover - timing guard
+        except TimeoutError as exc:  # pragma: no cover - timing guard
             logger.exception(
                 "mindmap: generation timed out after %.0fs for source_id=%s",
                 MAX_GENERATION_SECONDS, source_id,
