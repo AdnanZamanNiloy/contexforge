@@ -13,8 +13,6 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
 ![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)
 
-[Overview](#overview) · [Features](#features) · [Architecture](#architecture) · [Quick Start](#quick-start) · [Configuration](#configuration) · [API Reference](#api-reference)
-
 </div>
 
 <br>
