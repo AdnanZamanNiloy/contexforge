@@ -5,6 +5,7 @@ import logging
 import re
 
 import httpx
+import requests
 
 from core.types import Document
 from observability.tracer import observe
@@ -28,7 +29,7 @@ _YOUTUBE_URL_RE = re.compile(
 
 _OEMBED_URL = "https://www.youtube.com/oembed"
 
-_USER_AGENT = "Mozilla/5.0 (compatible; ContextForge/2.0; +https://github.com/yourorg/contextforge)"
+_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 # YouTube transcripts can only be fetched for a handful of languages; English
 # plus Hindi mirrors the reference Tube-AI-API implementation. Auto-generated
@@ -55,10 +56,16 @@ def extract_video_id(url: str) -> str:
 
 
 class YouTubeLoader(BaseLoader):
-    def __init__(self, timeout: float = 30.0, max_retries: int = 2) -> None:
+    def __init__(
+        self,
+        timeout: float = 30.0,
+        max_retries: int = 2,
+        proxy_url: str | None = None,
+    ) -> None:
         self._timeout = timeout
         self._max_retries = max_retries
         self._transcript_timeout = max(45.0, timeout * 1.5)
+        self._proxy_url = proxy_url or None
 
     @observe(name="load_youtube")
     async def load(
@@ -74,7 +81,6 @@ class YouTubeLoader(BaseLoader):
         video_url = source.strip()
         video_id = extract_video_id(video_url)
 
-        transcript = await self._fetch_transcript(video_id)
         transcript, language_code = await self._fetch_transcript(video_id)
 
         video_meta = await self._fetch_video_meta(video_url, video_id)
@@ -126,11 +132,22 @@ class YouTubeLoader(BaseLoader):
         text = " ".join(snippet.text for snippet in snippets)
         return text, language_code
 
-    @staticmethod
-    def _get_transcript_snippets(video_id: str) -> tuple[list, str | None]:
+    def _get_transcript_snippets(self, video_id: str) -> tuple[list, str | None]:
         from youtube_transcript_api import YouTubeTranscriptApi
 
-        api = YouTubeTranscriptApi()
+        # Reuse a single requests session so the browser-like headers are applied
+        # consistently.  A proxy (set via YOUTUBE_PROXY) routes transcript
+        # requests through a residential/rotating proxy, which is the documented
+        # workaround for YouTube blocking cloud-provider IP addresses.
+        session = requests.Session()
+        session.headers.update({"User-Agent": _USER_AGENT})
+        if self._proxy_url:
+            session.proxies = {
+                "http": self._proxy_url,
+                "https": self._proxy_url,
+            }
+
+        api = YouTubeTranscriptApi(http_client=session)
 
         # Preferred languages first (English + Hindi, matching the reference
         # implementation).  Transcripts are served directly in these languages
@@ -153,7 +170,12 @@ class YouTubeLoader(BaseLoader):
                 except Exception:
                     continue
 
-        raise RuntimeError(f"No retrievable transcript found for video '{video_id}'.")
+        raise RuntimeError(
+            f"No retrievable transcript found for video '{video_id}'. "
+            "YouTube may be blocking this IP (common on cloud providers). "
+            "Set YOUTUBE_PROXY in backend/.env to a residential/rotating proxy "
+            "to work around the block."
+        )
 
     # ------------------------------------------------------------------ #
     # VIDEO METADATA (oEmbed)

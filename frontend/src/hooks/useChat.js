@@ -128,8 +128,6 @@ export function useChat({ sourceId = null } = {}) {
           onSources: (nextSources) => {
             const normalized = nextSources || []
             setSources(normalized)
-            const tagList = normalized.map((item) => item.chunk_id)
-            updateAssistant(assistantId, { sources: tagList })
             setShowUploadHint(normalized.length === 0)
           },
           onLatency: (timings) => {
@@ -160,7 +158,6 @@ export function useChat({ sourceId = null } = {}) {
           updateAssistant(assistantId, {
             text: fallback.answer,
             status: 'done',
-            sources: (fallback.sources || []).map((item) => item.chunk_id),
           })
           setSources(fallback.sources || [])
           setShowUploadHint((fallback.sources || []).length === 0)

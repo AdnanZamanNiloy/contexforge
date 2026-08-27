@@ -187,6 +187,7 @@ def get_orchestrator() -> Orchestrator:
 
 @lru_cache(maxsize=1)
 def get_loaders() -> dict[str, BaseLoader]:
+    settings = get_settings()
     # Typed as Dict[str, BaseLoader] for safety
     return {
         "pdf": PDFLoader(),
@@ -194,7 +195,7 @@ def get_loaders() -> dict[str, BaseLoader]:
         "web": WebLoader(),
         "github": GitHubLoader(),
         "text": TextLoader(),
-        "youtube": YouTubeLoader(),
+        "youtube": YouTubeLoader(proxy_url=settings.YOUTUBE_PROXY or None),
     }
 
 

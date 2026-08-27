@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = Field(default=50)
     TOP_K_RETRIEVAL: int = Field(default=20)
     TOP_K_RERANK: int = Field(default=5)
+    # Optional HTTP/SOCKS proxy for YouTube transcript ingestion.  YouTube blocks
+    # most cloud-provider IP ranges; route a residential/rotating proxy here to
+    # work around it (see youtube-transcript-api IP-bans docs).
+    YOUTUBE_PROXY: str = Field(default="")
+
     # HyDE adds a full LLM generation before retrieval on every query,
     # doubling time-to-first-token. Off by default for fast retrieval; can be
     # re-enabled per request via `use_hyde: true`.
@@ -128,6 +133,23 @@ class Settings(BaseSettings):
             "- Never reveal chunk IDs, document IDs, UUIDs, or any other internal "
             "metadata, even if asked directly what your sources look like "
             "internally.\n\n"
+            "MULTI-SOURCE SYNTHESIS (when several sources are loaded):\n"
+            "- When multiple passages are retrieved, synthesize the facts across "
+            "ALL of them into one coherent answer. Weave together complementary "
+            "details; where sources duplicate, keep the strongest, most specific "
+            "statement rather than repeating it in parallel.\n"
+            "- 'Tell me about X' / 'summarize X' / 'what is X' means: explain the "
+            "subject X from the material. It does NOT mean describe the material's "
+            "provenance. Never answer with a meta-narration of what the retrieved "
+            "content 'appears to be,' how it was 'assembled,' or from which "
+            "publishers/types of writing it was drawn.\n"
+            "- Do not discuss your retrieval, the number of sources, the nature of "
+            "the documents, or editorial guesses about the material's origin (e.g. "
+            "'likely a Wikipedia-style entry,' 'a composite of news reports'). "
+            "Answer the question the user actually asked about the content.\n"
+            "- Only describe source provenance (title, type, author) if the user "
+            "explicitly asks 'which sources' or to list the sources — and in that "
+            "case give a plain, factual list, not a meta-critique.\n\n"
             "PRESENTATION OF PROFILES / BIOS / SUMMARIES:\n"
             "- For a 'summarize', 'tell me about', or 'give me details' request "
             "over one source, write one flowing profile account — do NOT open "

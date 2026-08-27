@@ -263,7 +263,6 @@ export default function ChatBox({
                 role={message.role}
                 title="ContextForge"
                 text={message.text}
-                sources={message.sources}
                 status={message.status}
               />
             </motion.div>
