@@ -20,7 +20,7 @@ install: ## Create the venv and install backend + frontend dependencies
 	$(PYTHON) -m venv backend/.venv
 	$(PIP) install -U pip
 	$(PIP) install -r backend/requirements.txt
-	$(PIP) install "ruff>=0.16,<1.0" "pytest>=8,<9"
+	$(PIP) install "ruff>=0.16,<1.0" "pytest>=8,<9" "pytest-asyncio>=0.24,<1.0"
 	$(NPM) install
 
 lint: lint-backend lint-frontend ## Run every linter

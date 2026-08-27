@@ -5,6 +5,11 @@
 # No transitive duplicates. No unused extras.
 # ============================================================
 
+# The CPU-only PyTorch index. `+cpu` is a PEP 440 *local* version, so it sorts
+# higher than the default CUDA wheel and wins the version comparison — this
+# keeps the venv ~4 GB smaller for a CPU-only reranker.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # ── Web framework ────────────────────────────────────────────
 fastapi>=0.115,<1.0
 uvicorn>=0.30,<1.0
@@ -37,6 +42,9 @@ faiss-cpu>=1.8,<2.0
 numpy>=1.26,<3.0
 
 # ── Reranker (lazy-loaded) ───────────────────────────────────
+# Explicit CPU torch (see the index note at the top) so the cross-encoder
+# reranker runs on CPU without dragging in the ~4 GB CUDA build.
+torch>=2.0,<3.0
 sentence-transformers>=3.1,<4.0
 
 # ── Document loaders ─────────────────────────────────────────
