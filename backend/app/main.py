@@ -37,10 +37,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger.info("ContextForge starting up.")
 
+    # Fail loudly if a required credential is missing (see settings.validate()).
+    _settings = Settings()
+    if _settings.VALIDATE_ON_START:
+        _settings.validate()
+
     # Optional: clear knowledge base on startup
     try:
-        from app.config.settings import Settings
-        _settings = Settings()
         if getattr(_settings, "CLEAR_ON_START", False):
             logger.info("CLEAR_ON_START=true — wiping knowledge base on startup.")
             from app.dependencies import get_orchestrator

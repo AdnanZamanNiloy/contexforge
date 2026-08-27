@@ -21,9 +21,10 @@ except Exception:  # pragma: no cover - optional
 
 
 @pytest.mark.skipif(not _HAS_TESTCLIENT, reason="fastapi TestClient unavailable")
-def test_repository_analyze_and_read_views(sample_repo: Path, analysis_dir: Path):
+def test_repository_analyze_and_read_views(sample_repo: Path, analysis_dir: Path, monkeypatch):
     from app.dependencies import get_repository_store
 
+    monkeypatch.setenv("VALIDATE_ON_START", "false")
     get_repository_store.cache_clear()
     with TestClient(app) as client:
         resp = client.post("/repository/analyze", json={"repo_url": str(sample_repo)})
@@ -73,9 +74,10 @@ def test_repository_analyze_and_read_views(sample_repo: Path, analysis_dir: Path
 
 
 @pytest.mark.skipif(not _HAS_TESTCLIENT, reason="fastapi TestClient unavailable")
-def test_repository_analyze_rejects_invalid_url():
+def test_repository_analyze_rejects_invalid_url(monkeypatch):
     from app.dependencies import get_repository_store
 
+    monkeypatch.setenv("VALIDATE_ON_START", "false")
     get_repository_store.cache_clear()
     with TestClient(app) as client:
         resp = client.post("/repository/analyze", json={"repo_url": "not-a-repo"})
