@@ -11,7 +11,7 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
 ![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![React](https://img.shields.io/badge/frontend-React%2019-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=flat-square)
-![License](https://img.shields.io/badge/license-unreleased-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)
 
 [Overview](#overview) · [Features](#features) · [Architecture](#architecture) · [Quick Start](#quick-start) · [Configuration](#configuration) · [API Reference](#api-reference) · [Roadmap](#roadmap)
 
@@ -241,6 +241,19 @@ curl http://localhost:8000/health
 
 Then open **http://localhost:5173** in your browser.
 
+### 4 · Run with Docker
+
+```bash
+# Create backend/.env first (see .env.example), then:
+docker compose up --build
+
+# Backend → http://localhost:8000   Frontend → http://localhost:8080
+```
+
+The compose file builds a FastAPI image and an nginx-served React build, mounts
+a named volume for app data, and wires `ALLOWED_ORIGINS` so the browser can reach
+the API from either dev (`:5173`) or compose (`:8080`).
+
 <br>
 
 ## Configuration
@@ -468,13 +481,13 @@ npm run preview   # preview the production build
 
 ## Roadmap
 
-- [ ] Docker Compose deployment with backend + frontend services
+- [x] Docker Compose deployment with backend + frontend services
 - [ ] User authentication and multi-user workspaces
 - [ ] Document-level metadata search and filtering
 - [ ] Batch ingestion for large document sets
 - [ ] Export and share mind maps
 - [ ] REST API client SDK for programmatic access
-- [ ] CI/CD pipeline with GitHub Actions
+- [x] CI/CD pipeline with GitHub Actions
 
 <br>
 
@@ -493,7 +506,8 @@ Contributions are welcome. Please open an issue first to discuss the change you'
 
 ## License
 
-A license has not yet been selected for this project. Until a `LICENSE` file is added, all rights are reserved. Maintainers should choose and add an open-source license before public distribution.
+Released under the [MIT License](LICENSE). See the `LICENSE` file for the full
+text.
 
 <br>
 

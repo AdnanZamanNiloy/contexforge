@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: contextforge-backend
+    container_name: contextforge-backend
+    ports:
+      - "8000:8000"
+    # API keys come from the gitignored backend/.env (see .env.example).
+    env_file:
+      - ./backend/.env
+    environment:
+      - VALIDATE_ON_START=true
+      - 'ALLOWED_ORIGINS=["http://localhost:5173","http://localhost:8080"]'
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser talks to the published backend on the host's localhost.
+        VITE_API_BASE_URL: http://localhost:8000
+    image: contextforge-frontend
+    container_name: contextforge-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_data:
