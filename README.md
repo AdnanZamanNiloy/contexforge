@@ -48,6 +48,8 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
 
 ## Overview
 
+ContextForge is a self-hosted, retrieval-augmented generation (RAG) workspace that turns your own documents, including PDFs, Word files, web pages, YouTube videos, GitHub repositories, and plain text, into a queryable, cited knowledge base. Ingest a source and ask questions in natural language; ContextForge searches across a hybrid index (keyword + dense embeddings), reranks the most relevant passages, and generates a grounded answer with inline source citations, confidence metrics, and per-stage latency breakdowns. Everything runs on your own hardware, and the knowledge base survives restarts via a persistent on-disk store.
+
 Most LLM chat tools are disconnected from your actual data. ContextForge is built around a single idea: **answers should be grounded in sources you control**, not just a model's training data.
 
 | | |
@@ -113,55 +115,117 @@ Generate an interactive SVG mind map from any ingested source — with zoom, pan
 
 ## Architecture
 
+ContextForge is a **client–server system** organised into four layers. The frontend is a single-page React app that talks to a FastAPI backend over REST and Server-Sent Events (SSE). The backend wraps a retrieval-augmented generation (RAG) engine behind an *orchestrator*, which coordinates the loading, chunking, indexing, retrieval and generation stages. Ingestion and query are two separate flows that share the same storage layer.
+
 ```mermaid
 flowchart TB
-    subgraph FE["Frontend — React 19 + Vite 8"]
-        direction LR
-        ChatUI["Chat UI (SSE)"]
-        SourceExplorer["Source Explorer"]
-        MindMapViewer["Mind Map Viewer"]
-        RepoUI["Repository Intelligence"]
-    end
+    classDef frontend fill:#232e4d,stroke:#5b7cfa,color:#fff
+    classDef backend  fill:#1e2a3a,stroke:#3f6d8e,color:#fff
+    classDef storage  fill:#1a2e1f,stroke:#3f8e5f,color:#fff
+    classDef external fill:#3a2e1a,stroke:#c29a3f,color:#fff
 
-    subgraph BE["Backend — FastAPI (Python 3.14+)"]
+    subgraph FE["CLIENT — React 19 + Vite"]
         direction TB
-        subgraph ORCH["Orchestrator"]
+        Chat["Chat UI (REST + SSE)"]
+        Explore["Source Explorer"]
+        Mindmap["Mind Map Viewer"]
+        Repo["Repository Intelligence"]
+    end
+
+    subgraph API["API LAYER — FastAPI"]
+        direction TB
+        Routes["App Routers<br/>/ingest · /query · /mindmap<br/>/repository"]
+        Schemas["Pydantic Schemas<br/>request + response validation"]
+        Services["Application Services<br/>IngestService · QueryService"]
+    end
+
+    subgraph CORE["RAG ENGINE — Core"]
+        direction TB
+        Orchestrator["Orchestrator<br/>pipeline coordinator"]
+        subgraph INGEST["▸ Ingestion"]
             direction LR
-            Ingest["Ingestion Pipeline"]
-            Retrieve["Retrieval Pipeline"]
-            Rerank["Reranker"]
-            Route["LLM Routing"]
+            Loaders["Loaders<br/>pdf · docx · web · github<br/>youtube · text"]
+            Chunking["Chunking<br/>tiktoken text · AST code"]
+            Processing["Processing<br/>cleaner · deduplicator"]
         end
-        FAISS[(FAISS Dense Index)]
-        FTS[(SQLite FTS5 BM25)]
-        Cache[(Embedding Cache)]
-        RepoAnalyzer["Repository Intelligence Analyzer"]
-        MindMapGen["Mind Map Generator"]
+        subgraph QUERY["▸ Query"]
+            direction LR
+            HyDE["HyDE<br/>(optional)"]
+            Hybrid["Hybrid Search"]
+            RRF["Reciprocal<br/>Rank Fusion"]
+            Rerank["Cross-Encoder<br/>Reranker"]
+            Prompt["Prompt<br/>Builder"]
+            Router["LLM Router"]
+        end
     end
 
-    subgraph EXT["External Providers"]
+    subgraph STORE["STORAGE"]
         direction LR
-        Voyage["Voyage AI — Embeddings"]
-        Gemini["Google Gemini — Primary LLM"]
-        Fallback["Groq / OpenRouter / Cerebras / NVIDIA NIM"]
-        Langfuse["Langfuse — Tracing"]
+        FAISS[("FAISS Dense Index<br/>IndexFlatIP")]
+        FTS[("SQLite FTS5<br/>BM25 Index")]
+        Cache[("Embedding Cache<br/>embeddings.json")]
     end
 
-    ChatUI -- "REST / SSE" --> ORCH
-    SourceExplorer -- "REST" --> ORCH
-    MindMapViewer -- "REST" --> MindMapGen
-    RepoUI -- "REST" --> RepoAnalyzer
+    subgraph EXT["EXTERNAL PROVIDERS"]
+        direction LR
+        Voyage["Voyage AI<br/>(embeddings)"]
+        Gemini["Google Gemini<br/>(primary LLM)"]
+        Fallback["Groq · OpenRouter<br/>Cerebras · NVIDIA NIM"]
+        Trace["Langfuse<br/>(tracing)"]
+    end
 
-    Retrieve --> FAISS
-    Retrieve --> FTS
+    Chat --> Routes
+    Explore --> Routes
+    Mindmap --> Routes
+    Repo --> Routes
+
+    Routes <--> Services
+    Services --> Orchestrator
+
+    Orchestrator --> Ingest
+    Orchestrator --> Query
+
+    Loaders --> Chunking --> Processing
     Ingest --> Cache
     Ingest --> Voyage
-    Route --> Gemini
-    Route --> Fallback
-    ORCH -.-> Langfuse
+
+    HyDE --> Hybrid
+    Hybrid --> RRF --> Rerank --> Prompt --> Router
+    Query --> FAISS
+    Query --> FTS
+    Query --> Voyage
+
+    Router --> Gemini
+    Router --> Fallback
+
+    Orchestrator -.-> Trace
+    Services -.-> Trace
+
+    class FE frontend
+    class API,CORE backend
+    class STORE storage
+    class EXT external
 ```
 
-*Solid arrows are synchronous REST/SSE calls; the dotted arrow is optional tracing telemetry.*
+*Solid arrows are synchronous REST/SSE or in-process calls. The dotted arrows are optional Langfuse tracing telemetry. The client never touches storage or providers directly — everything is mediated by the API layer and the orchestrator.*
+
+### The two flows
+
+**Ingestion** (`Loaders → Chunking → Processing`) pulls a source, splits it into digestible chunks, cleans and deduplicates them, then embeds and indexes them into FAISS (dense) and SQLite FTS5 (sparse). The embedding is cached so re-ingesting the same source is cheap.
+
+**Query** (`HyDE → Hybrid → RRF → Rerank → Prompt → LLM Router`) turns a question into a ranked, relevance-scored set of chunks: optional HyDE expansion, parallel hybrid search, reciprocal rank fusion, cross-encoder reranking, then prompt construction and LLM routing.
+
+Layer by layer:
+
+| Layer | Responsibility | Key modules |
+|---|---|---|
+| **Client** | Render UI, stream answers, show sources & confidence | `frontend/src/` (`pages/`, `components/`, `hooks/`) |
+| **API** | Validate requests, orchestrate services, expose REST/SSE | `backend/app/routes/`, `app/services/`, `app/schemas/` |
+| **RAG engine** | Coordinate the pipeline: chunk → index → retrieve → generate | `backend/core/orchestrator.py`, `core/ingestion/`, `core/retrieval/`, `core/generation/` |
+| **Storage** | Persist dense, sparse, and cached representations | `backend/core/storage/` |
+| **Providers** | Embeddings, LLMs, tracing | `backend/core/generation/`, `backend/observability/` |
+
+The architecture is deliberately **provider-agnostic**: every external capability (embedder, LLM, retriever) sits behind an interface in `core/interfaces/`, so swapping Voyage for BGE, or Gemini for a local model, is a one-line change rather than a rewrite.
 
 <br>
 
