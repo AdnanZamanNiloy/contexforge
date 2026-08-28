@@ -43,3 +43,9 @@ known-first-party = ["app", "core", "observability"]
 
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = ["S101"]  # `assert` is the intended assertion style in tests
+
+# Allow pytest to resolve the `app` / `core` / `observability` packages from the
+# repo root (e.g. `pytest backend/tests`) without needing to cd into backend/.
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["backend/tests"]
