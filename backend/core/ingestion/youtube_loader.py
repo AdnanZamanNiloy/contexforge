@@ -30,8 +30,7 @@ _YOUTUBE_URL_RE = re.compile(
 _OEMBED_URL = "https://www.youtube.com/oembed"
 
 _USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
 # YouTube transcripts can only be fetched for a handful of languages; English
