@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import ContextForgeMark from '../components/ContextForgeMark'
+
 // ---------------------------------------------------------------------------
 // ContextForge landing page.
 //
@@ -238,26 +240,7 @@ function SectionHeading({ eyebrow, title, lede, align = 'start' }) {
 }
 
 function BrandMark({ size = 30 }) {
-  return (
-    <svg
-      className="lp-mark"
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect x="1" y="1" width="30" height="30" rx="9" stroke="currentColor" strokeOpacity="0.35" />
-      <path
-        d="M8 21.5V10.5l8 6 8-6v11"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="16" cy="16.5" r="2.1" fill="currentColor" />
-    </svg>
-  )
+  return <ContextForgeMark size={size} withPlate={false} className="lp-mark" />
 }
 
 // ---------------------------------------------------------------------------

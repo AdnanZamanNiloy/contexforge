@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 
+import ContextForgeMark from '../ContextForgeMark'
 import {
-  GithubMark,
-  SOURCE_STATUS,
-  SourceGlyph,
-  formatSourceMeta,
-  sourceIconClass,
+    GithubMark,
+    SOURCE_STATUS,
+    SourceGlyph,
+    formatSourceMeta,
+    sourceIconClass,
 } from '../../lib/sources'
 
 function Brand() {
@@ -17,7 +18,7 @@ function Brand() {
       title="ContextForge workspace"
     >
       <div className="brand-mark" aria-hidden="true">
-        <img src="/logos/project_logo.png" alt="ContextForge" />
+        <ContextForgeMark size={40} />
       </div>
       <div className="brand-text">
         <span className="brand-title">
