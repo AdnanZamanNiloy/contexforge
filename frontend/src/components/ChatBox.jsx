@@ -2,19 +2,6 @@ import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MessageBubble from './MessageBubble'
 
-const WELCOME_SUGGESTIONS = [
-  'Research a topic',
-  'Understand documents',
-  'Analyze a GitHub repository',
-  'Build something new',
-]
-
-const ACTIVE_SUGGESTIONS = [
-  'Explain positional encoding',
-  'Summarize this PDF',
-  'Generate architecture diagram',
-]
-
 export default function ChatBox({
   messages,
   input,
@@ -22,7 +9,6 @@ export default function ChatBox({
   onSend,
   isStreaming,
   error,
-  onSuggestion,
   onRetry,
   uploadHint,
   onNewChat,
@@ -38,8 +24,6 @@ export default function ChatBox({
       ? messages[0].text.slice(0, 60) + '…'
       : messages[0].text
     : ''
-
-  const currentSuggestions = hasMessages ? ACTIVE_SUGGESTIONS : WELCOME_SUGGESTIONS
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -89,16 +73,6 @@ export default function ChatBox({
     'transition-all duration-200 ' +
     'hover:shadow-[0_0_20px_rgba(122,162,247,0.5)] ' +
     'cursor-pointer'
-
-  const chipBase =
-    'px-5 py-2.5 rounded-full text-sm font-medium ' +
-    'bg-[rgba(255,255,255,0.1)] ' +
-    'border border-[rgba(255,255,255,0.2)] ' +
-    'text-white hover:text-white ' +
-    'hover:bg-[rgba(255,255,255,0.18)] ' +
-    'hover:border-[rgba(255,255,255,0.4)] ' +
-    'transition-all duration-200 ' +
-    'cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed'
 
   const inputArea = (
     <>
@@ -172,26 +146,6 @@ export default function ChatBox({
             conversation. Ask across every source at once and get answers grounded in your
             knowledge.
           </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-            className="flex flex-wrap justify-center gap-3 mt-10"
-          >
-            {currentSuggestions.map((suggestion) => (
-              <motion.button
-                key={suggestion}
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onSuggestion(suggestion)}
-                className={chipBase}
-                disabled={isStreaming}
-              >
-                {suggestion}
-              </motion.button>
-            ))}
-          </motion.div>
         </div>
 
         <div className="flex-1" />
@@ -256,26 +210,6 @@ export default function ChatBox({
           </kbd>
         </button>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-        className="flex flex-wrap gap-2 mb-5"
-      >
-        {currentSuggestions.map((suggestion) => (
-          <motion.button
-            key={suggestion}
-            whileHover={{ scale: 1.03, y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onSuggestion(suggestion)}
-            className={chipBase + ' text-xs px-3.5 py-2'}
-            disabled={isStreaming}
-          >
-            {suggestion}
-          </motion.button>
-        ))}
-      </motion.div>
 
       <div className="flex-1 overflow-y-auto space-y-4 mb-5 pr-6 scroll-smooth">
         <AnimatePresence>

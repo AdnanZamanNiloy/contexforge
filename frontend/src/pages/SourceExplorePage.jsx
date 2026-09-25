@@ -235,7 +235,6 @@ export default function SourceExplorePage() {
               onSend={chat.sendMessage}
               isStreaming={chat.isStreaming}
               error={chat.error}
-              onSuggestion={chat.sendMessage}
               onRetry={chat.retryLast}
               uploadHint={chat.showUploadHint}
               onNewChat={chat.resetChat}

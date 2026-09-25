@@ -319,7 +319,6 @@ export default function Home() {
         onSend={sendMessage}
         isStreaming={isStreaming}
         error={error}
-        onSuggestion={sendMessage}
         onRetry={retryLast}
         uploadHint={showUploadHint}
         onNewChat={resetChat}
