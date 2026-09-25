@@ -749,10 +749,6 @@ function Footer() {
 export default function LandingPage() {
   return (
     <div className="lp-root">
-      <div className="lp-backdrop" aria-hidden="true">
-        <span className="lp-backdrop-grid" />
-        <span className="lp-backdrop-glow" />
-      </div>
       <Nav />
       <main id="top">
         <Hero />

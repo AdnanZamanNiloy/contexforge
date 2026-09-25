@@ -4932,47 +4932,6 @@ body {
   box-sizing: border-box;
 }
 
-/* --- ambient backdrop: a technical grid, not a decorative blob ------------- */
-.lp-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  /* The glow is wider than the viewport on small screens; clip it here so it
-     never creates horizontal scroll (fixed children escape .lp-root's clip). */
-  overflow: hidden;
-}
-.lp-backdrop-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
-  background-size: 68px 68px;
-  mask-image: radial-gradient(120% 90% at 50% 0%, #000 8%, transparent 72%);
-  -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 8%, transparent 72%);
-}
-.lp-backdrop-glow {
-  position: absolute;
-  top: -220px;
-  left: 50%;
-  width: min(1100px, 120vw);
-  height: 520px;
-  transform: translateX(-50%);
-  background: radial-gradient(
-    50% 60% at 50% 40%,
-    rgba(122, 162, 247, 0.16),
-    rgba(111, 214, 192, 0.06) 55%,
-    transparent 76%
-  );
-}
-.lp-root > main,
-.lp-nav,
-.lp-footer {
-  position: relative;
-  z-index: 1;
-}
-
 /* --- reveal ---------------------------------------------------------------- */
 .lp-root [data-reveal] {
   opacity: 0;
