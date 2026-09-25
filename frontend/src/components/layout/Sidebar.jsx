@@ -2,11 +2,11 @@ import { useNavigate } from 'react-router-dom'
 
 import ContextForgeMark from '../ContextForgeMark'
 import {
-    GithubMark,
-    SOURCE_STATUS,
-    SourceGlyph,
-    formatSourceMeta,
-    sourceIconClass,
+  GithubMark,
+  SOURCE_STATUS,
+  SourceGlyph,
+  formatSourceMeta,
+  sourceIconClass,
 } from '../../lib/sources'
 
 function Brand() {

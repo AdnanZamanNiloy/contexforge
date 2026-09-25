@@ -5070,15 +5070,7 @@ body {
   font-size: 1rem;
   letter-spacing: -0.01em;
 }
-.lp-brand-tag {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.66rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-left: 10px;
-  border-left: 1px solid var(--lp-line);
-}
+
 .lp-nav-links {
   display: flex;
   align-items: center;
@@ -6055,9 +6047,6 @@ body:has(.lp-root) #root {
   .lp-footer-base {
     padding-left: 16px;
     padding-right: 16px;
-  }
-  .lp-brand-tag {
-    display: none;
   }
   .lp-nav-actions .lp-btn-ghost {
     display: none;

@@ -254,7 +254,6 @@ function Nav() {
         <Link to="/" className="lp-brand" aria-label="ContextForge home">
           <BrandMark />
           <span className="lp-brand-name">ContextForge</span>
-          <span className="lp-brand-tag">RAG workspace</span>
         </Link>
         <nav className="lp-nav-links" aria-label="Sections">
           <a href="#pipeline">Pipeline</a>

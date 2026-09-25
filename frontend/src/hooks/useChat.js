@@ -181,6 +181,10 @@ export function useChat({ sourceId = null } = {}) {
     }
   }, [sendMessage])
 
+  // NOTE: resetChat is declared below; the shortcut effect references it through
+  // a ref so the listener never rebinds while streaming.
+  const resetChatRef = useRef(null)
+
   const resetChat = useCallback(() => {
     stopStream()
     setMessages([])
@@ -197,6 +201,24 @@ export function useChat({ sourceId = null } = {}) {
       // ignore storage errors
     }
   }, [sourceId, stopStream])
+
+  // Keep the shortcut pointing at the latest resetChat implementation.
+  useEffect(() => {
+    resetChatRef.current = resetChat
+  }, [resetChat])
+
+  // Cmd/Ctrl+K starts a new chat, matching the sidebar hint.  Ignored while the
+  // user is typing in a field so it never eats a deliberate shortcut elsewhere.
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== 'k' && event.key !== 'K') return
+      if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return
+      event.preventDefault()
+      resetChatRef.current?.()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return {
     input,

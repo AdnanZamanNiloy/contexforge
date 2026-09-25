@@ -219,14 +219,41 @@ export default function ChatBox({
         </div>
         <button
           onClick={onNewChat}
-          className="px-3 py-1.5 rounded-lg text-xs font-medium
-            bg-[rgba(255,255,255,0.08)] text-[#e6e7ea]
+          type="button"
+          title="Start a new chat and clear this thread"
+          aria-label="Start a new chat"
+          disabled={!onNewChat}
+          className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold
+            bg-[rgba(255,255,255,0.06)] text-[#e6e7ea]
             border border-[rgba(255,255,255,0.12)]
-            cursor-pointer
-            hover:bg-[rgba(255,255,255,0.14)] hover:border-[rgba(255,255,255,0.24)]
-            transition-all duration-200 shrink-0"
+            cursor-pointer shrink-0
+            hover:bg-[rgba(122,162,247,0.16)] hover:border-[rgba(122,162,247,0.45)]
+            hover:text-white
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-all duration-200"
         >
-          New Chat
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="transition-transform duration-200 group-hover:-rotate-12"
+            aria-hidden="true"
+          >
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          <span>New Chat</span>
+          <kbd
+            className="hidden sm:inline-block font-mono text-[0.62rem] leading-none px-1.5 py-1 rounded-md
+              text-[#a6abb3] bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)]"
+          >
+            ⌘K
+          </kbd>
         </button>
       </div>
 
