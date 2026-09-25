@@ -202,6 +202,23 @@ class Orchestrator:
         self._text_chunker = text_chunker or TextChunker()
         self._code_chunker = code_chunker or CodeChunker()
 
+    async def swap_llm(self, llm: LLM) -> None:
+        """Replace the active LLM used for generation.
+
+        Called by the Model Hub when the served LLM / LLM chain changes so a
+        serving switch takes effect on the running pipeline immediately, without
+        a process restart.  The previous LLM is *not* closed here — it may be
+        the shared env-driven fallback chain that other components (e.g. HyDE)
+        still reference.
+        """
+        self._llm = llm
+        logger.info("Orchestrator: active LLM swapped to %s.", type(llm).__name__)
+
+    async def swap_embedder(self, embedder: Embedder) -> None:
+        """Replace the active embedder used for ingestion and query embedding."""
+        self._embedder = embedder
+        logger.info("Orchestrator: active embedder swapped to %s.", type(embedder).__name__)
+
     @observe(name="ingest_index")
     async def ingest(
         self,

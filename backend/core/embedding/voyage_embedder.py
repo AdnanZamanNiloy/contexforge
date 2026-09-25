@@ -73,8 +73,18 @@ def _validate_texts(texts: list[str]) -> None:
 
 
 class VoyageEmbedder(Embedder):
-    def __init__(self, cache_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        cache_path: Path | None = None,
+        *,
+        api_key: str | None = None,
+        model: str | None = None,
+    ) -> None:
         self._cache_path: Path = Path(cache_path or settings.CACHE_PATH)
+        # An explicit key/model (from the Model Hub) overrides the env default;
+        # otherwise the existing settings-driven behaviour is preserved.
+        self._api_key = api_key or settings.VOYAGE_API_KEY
+        self._model = model or settings.VOYAGE_MODEL
         self._cache: dict[str, list[float]] = {}
         self._cache_loaded = False
         self._dirty = False
@@ -89,7 +99,7 @@ class VoyageEmbedder(Embedder):
         self._client = httpx.AsyncClient(
             timeout=60.0,
             headers={
-                "Authorization": f"Bearer {settings.VOYAGE_API_KEY}",
+                "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
             },
         )
@@ -169,7 +179,7 @@ class VoyageEmbedder(Embedder):
     ) -> list[list[float]]:
 
         payload = {
-            "model": settings.VOYAGE_MODEL,
+            "model": self._model,
             "input": texts,
             "input_type": input_type,
         }

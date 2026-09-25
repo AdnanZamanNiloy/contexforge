@@ -14,6 +14,9 @@ from functools import lru_cache
 from app.config.settings import Settings
 from app.mindmap.service import MindMapService
 from app.mindmap.storage import MindMapStore
+from app.model_hub import factory as model_hub_factory
+from app.model_hub.service import ModelHubService
+from app.model_hub.storage import ModelHubStore
 from app.repository_intelligence.analyzer import RepositoryAnalyzer
 from app.repository_intelligence.service import RepositoryIntelligenceService
 from app.repository_intelligence.storage import RepositoryStore
@@ -47,8 +50,10 @@ from core.storage.bm25_index import BM25Index
 from core.storage.faiss_store import FaissStore
 
 __all__ = [
+    "apply_serving_configuration",
     "close_all",
     "get_ingest_service",
+    "get_model_hub_service",
     "get_query_service",
     "get_settings",
 ]
@@ -261,6 +266,80 @@ def get_mindmap_service() -> MindMapService:
 
 
 # ---------------------------------------------------------------------------
+# Model Hub — model registry, fallback chains, and serving selection
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_model_hub_store() -> ModelHubStore:
+    return ModelHubStore()
+
+
+@lru_cache(maxsize=1)
+def get_model_hub_service() -> ModelHubService:
+    return ModelHubService(store=get_model_hub_store())
+
+
+async def apply_serving_configuration() -> None:
+    """Reconcile the running pipeline with the persisted Model Hub serving config.
+
+    This is the linchpin of the feature: changing the served model/chain in the
+    UI must actually change which LLM/embedder ContextForge uses.  When a tier
+    is set to a Model Hub override, the orchestrator's (and, for the LLM, HyDE's
+    and Mind Map's) active component is rebuilt from the stored config.  When a
+    tier is disabled, the original env-driven component is restored.
+
+    Safe to call at startup and after every serving update.
+    """
+    service = get_model_hub_service()
+    orchestrator = get_orchestrator()
+
+    # --- LLM tier ---
+    try:
+        llm_configs = await service.resolve_llm_configs()
+        active_llm = (
+            model_hub_factory.build_llm_from_configs(llm_configs)
+            if llm_configs
+            else get_llm()
+        )
+        await orchestrator.swap_llm(active_llm)
+        _rewire_llm_consumers(active_llm)
+    except Exception as exc:
+        logger.warning("Model Hub: could not apply LLM serving config (%s) — using env default.", exc)
+
+    # --- Embedding tier ---
+    try:
+        embedder_config = await service.resolve_embedding_config()
+        active_embedder = (
+            model_hub_factory.build_embedder(embedder_config)
+            if embedder_config
+            else get_embedder()
+        )
+        await orchestrator.swap_embedder(active_embedder)
+    except Exception as exc:
+        logger.warning(
+            "Model Hub: could not apply embedding serving config (%s) — using env default.",
+            exc,
+        )
+
+
+def _rewire_llm_consumers(llm) -> None:
+    """Point HyDE and Mind Map at the newly active LLM.
+
+    Both hold a reference to the LLM taken at construction time; without this
+    they would keep using the previous model after a serving switch.
+    """
+    try:
+        get_hyde().swap_llm(llm)
+    except Exception as exc:
+        logger.warning("Model Hub: could not rewire HyDE LLM (%s).", exc)
+    try:
+        get_mindmap_service().swap_llm(llm)
+    except Exception as exc:
+        logger.warning("Model Hub: could not rewire Mind Map LLM (%s).", exc)
+
+
+# ---------------------------------------------------------------------------
 # Graceful shutdown: close all resources that hold connections
 # Called from the lifespan context manager in main.py
 # ---------------------------------------------------------------------------
@@ -304,3 +383,9 @@ async def close_all() -> None:
         logger.debug("MindMapStore closed.")
     except Exception as exc:
         logger.warning("Error closing MindMapStore: %s", exc)
+
+    try:
+        get_model_hub_store().close()
+        logger.debug("ModelHubStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing ModelHubStore: %s", exc)

@@ -321,3 +321,75 @@ export async function getMindMap(sourceId) {
   }
   return response.json()
 }
+
+// --- Model Hub --------------------------------------------------------------
+//
+// API keys travel in the JSON request body only — never in a URL — and the
+// backend redacts them from every response.
+
+export async function listModels() {
+  return request('/models', { method: 'GET' })
+}
+
+export async function createModel(payload) {
+  return request('/models', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function getModel(modelId) {
+  return request(`/models/${encodeURIComponent(modelId)}`, { method: 'GET' })
+}
+
+export async function updateModel(modelId, payload) {
+  return request(`/models/${encodeURIComponent(modelId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteModel(modelId) {
+  return request(`/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' })
+}
+
+export async function testModel(modelId) {
+  return request(`/models/${encodeURIComponent(modelId)}/test`, { method: 'POST' })
+}
+
+export async function listChains() {
+  return request('/chains', { method: 'GET' })
+}
+
+export async function createChain(payload) {
+  return request('/chains', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateChain(chainId, payload) {
+  return request(`/chains/${encodeURIComponent(chainId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteChain(chainId) {
+  return request(`/chains/${encodeURIComponent(chainId)}`, { method: 'DELETE' })
+}
+
+export async function testChain(chainId) {
+  return request(`/chains/${encodeURIComponent(chainId)}/test`, { method: 'POST' })
+}
+
+export async function getServing() {
+  return request('/serving', { method: 'GET' })
+}
+
+export async function updateServing(payload) {
+  return request('/serving', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}

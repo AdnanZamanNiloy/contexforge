@@ -87,6 +87,10 @@ class MindMapService:
         self._llm = llm
         self._prompt_builder = prompt_builder or PromptBuilder()
 
+    def swap_llm(self, llm: LLM) -> None:
+        """Point Mind Map generation at the currently served LLM."""
+        self._llm = llm
+
     # ------------------------------------------------------------------ #
     # Public API
     # ------------------------------------------------------------------ #

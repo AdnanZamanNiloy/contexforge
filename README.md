@@ -500,6 +500,29 @@ GET     /mindmap/{source_id}                     Fetch a previously generated mi
 
 </details>
 
+<details open>
+<summary><strong>Model Hub</strong></summary>
+<br>
+
+```
+GET     /models                                  List configured models (API keys redacted)
+POST    /models                                  Create a model (LLM or embedding, API or local)
+GET     /models/{id}                             Get one model
+PATCH   /models/{id}                             Update a model
+DELETE  /models/{id}                             Delete a model
+POST    /models/{id}/test                        Live-test a model (detects embedding dimension)
+GET     /chains                                  List fallback chains
+POST    /chains                                  Create a fallback chain
+GET     /chains/{id}                             Get one chain
+PATCH   /chains/{id}                             Update a chain
+DELETE  /chains/{id}                             Delete a chain
+POST    /chains/{id}/test                        Test a chain end-to-end
+GET     /serving                                 Current LLM/embedding serving configuration
+PUT     /serving                                 Select the served model or chain (applies live)
+```
+
+</details>
+
 <br>
 
 ## Development

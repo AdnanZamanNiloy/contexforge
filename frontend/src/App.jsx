@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import MindMapPage from './pages/MindMapPage'
 import SourceExplorePage from './pages/SourceExplorePage'
 import RepositoryIntelligencePage from './pages/repository/RepositoryIntelligencePage'
+import ModelHubPage from './pages/modelhub/ModelHubPage'
 
 export default function App() {
   const location = useLocation()
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/mindmap/:sourceId" element={<MindMapPage />} />
         <Route path="/repository" element={<RepositoryIntelligencePage />} />
         <Route path="/repository/:repositoryId" element={<RepositoryIntelligencePage />} />
+        <Route path="/models" element={<ModelHubPage />} />
       </Routes>
     </div>
   )

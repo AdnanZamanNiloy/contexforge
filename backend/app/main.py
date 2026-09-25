@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from app.config.settings import Settings
 from app.dependencies import close_all
 from app.mindmap.routes import router as mindmap_router
+from app.model_hub.routes import router as model_hub_router
 from app.repository_intelligence.routes import router as repository_router
 from app.routes.github import router as github_router
 from app.routes.ingest import router as ingest_router
@@ -43,6 +44,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _settings = Settings()
     if _settings.VALIDATE_ON_START:
         _settings.validate()
+
+    # Apply any persisted Model Hub serving selection so a model/chain chosen in
+    # a previous session is the one the pipeline uses from the first query.
+    try:
+        from app.dependencies import apply_serving_configuration
+
+        await apply_serving_configuration()
+    except Exception as exc:
+        logger.warning("Model Hub: startup serving reconciliation failed: %s", exc)
 
     # Optional: clear knowledge base on startup
     try:
@@ -109,7 +119,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],  # only what the API actually uses
+    # Methods the API actually uses — includes PATCH/PUT for Model Hub updates.
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -123,6 +134,7 @@ app.include_router(github_router)
 app.include_router(query_router)
 app.include_router(repository_router)
 app.include_router(mindmap_router)
+app.include_router(model_hub_router)
 
 
 # ---------------------------------------------------------------------------

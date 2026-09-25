@@ -354,6 +354,7 @@ export default function Home() {
             onSelectSource={handleSelectSource}
             onDeleteSource={handleDeleteSource}
             onClearKB={handleClearKB}
+            onOpenModelHub={() => navigate('/models')}
           />
         }
         main={main}

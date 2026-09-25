@@ -1031,6 +1031,7 @@ body {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .main-card {
@@ -6140,5 +6141,653 @@ body:has(.lp-root) #root {
   .lp-btn-primary:hover,
   .lp-cap:hover {
     transform: none;
+  }
+}
+
+/* ==========================================================================
+   Model Hub — model registry, fallback chains, serving configuration
+   ========================================================================== */
+
+.model-hub-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.model-hub-btn:hover {
+  background: var(--accent-soft);
+  border-color: rgba(122, 162, 247, 0.4);
+  color: var(--text);
+}
+
+.mh-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 26px 30px 0;
+  gap: 18px;
+}
+
+.mh-header {
+  flex: 0 0 auto;
+}
+
+.mh-header h1 {
+  margin: 4px 0 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.mh-subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.mh-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--stroke);
+  overflow-x: auto;
+  flex: 0 0 auto;
+}
+.mh-tab {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.mh-tab:hover {
+  color: #d3e3ff;
+  background: rgba(122, 162, 247, 0.08);
+}
+.mh-tab.active {
+  color: #eaf1ff;
+  background: rgba(122, 162, 247, 0.12);
+}
+.mh-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.mh-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 40px;
+}
+
+/* ---------- shared form / button primitives ---------- */
+
+.mh-form,
+.mh-chain-editor,
+.mh-serving-tier,
+.mh-chain-card {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.mh-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mh-field label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mh-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-family: inherit;
+}
+.mh-input:focus {
+  border-color: var(--accent);
+}
+.mh-hint {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.mh-choice-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mh-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 160px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--stroke);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.mh-choice:hover {
+  border-color: rgba(122, 162, 247, 0.4);
+}
+.mh-choice.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mh-choice-label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.mh-choice-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.mh-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.mh-btn {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.mh-btn:hover:not(:disabled) {
+  border-color: rgba(122, 162, 247, 0.5);
+  background: var(--panel);
+  color: var(--text);
+}
+.mh-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.mh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mh-btn.primary {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: #10131a;
+  font-weight: 600;
+}
+/* Keep the primary button legible across every interaction state — hovering
+   must not fall back to the translucent base background, which would leave
+   dark text on a near-transparent fill (the "invisible button" bug). */
+.mh-btn.primary:hover:not(:disabled),
+.mh-btn.primary:focus-visible:not(:disabled),
+.mh-btn.primary:active:not(:disabled) {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: #10131a;
+  filter: brightness(1.12);
+}
+.mh-btn.primary:disabled {
+  background: var(--accent-grad);
+  color: #10131a;
+}
+.mh-btn.danger {
+  color: #f0a6a6;
+  border-color: rgba(224, 123, 123, 0.35);
+}
+.mh-btn.danger:hover:not(:disabled),
+.mh-btn.danger:focus-visible:not(:disabled) {
+  background: rgba(224, 123, 123, 0.12);
+  border-color: rgba(224, 123, 123, 0.6);
+  color: #f7c4c4;
+}
+
+.mh-message {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+.mh-message.is-success {
+  background: rgba(95, 180, 130, 0.12);
+  color: #9fe0bb;
+  border: 1px solid rgba(95, 180, 130, 0.3);
+}
+.mh-message.is-error {
+  background: rgba(224, 123, 123, 0.12);
+  color: #f0a6a6;
+  border: 1px solid rgba(224, 123, 123, 0.3);
+}
+.mh-error {
+  color: #f0a6a6;
+}
+
+/* ---------- models grid ---------- */
+
+.mh-filter-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.mh-filter {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.mh-filter.is-active {
+  color: var(--text);
+  background: var(--accent-soft);
+  border-color: rgba(122, 162, 247, 0.4);
+}
+
+.mh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.mh-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--stroke);
+  background: var(--panel);
+}
+.mh-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.mh-card-head h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.mh-card-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mh-tag {
+  font-size: 0.68rem;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  text-transform: capitalize;
+}
+.mh-tag.is-llm {
+  background: rgba(122, 162, 247, 0.16);
+  color: #b7ccff;
+}
+.mh-tag.is-embedding {
+  background: rgba(154, 168, 255, 0.16);
+  color: #cfd6ff;
+}
+
+.mh-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.mh-status.is-ready {
+  background: rgba(95, 180, 130, 0.16);
+  color: #9fe0bb;
+}
+.mh-status.is-error {
+  background: rgba(224, 123, 123, 0.16);
+  color: #f0a6a6;
+}
+.mh-status.is-untested {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.mh-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.mh-card-meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.76rem;
+}
+.mh-card-meta dt {
+  color: var(--muted);
+}
+.mh-card-meta dd {
+  margin: 0;
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+.mh-card-detail {
+  font-size: 0.74rem;
+  color: #f0a6a6;
+  margin: 0;
+}
+
+.mh-test-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+}
+.mh-test-result.is-ok {
+  background: rgba(95, 180, 130, 0.1);
+  color: #9fe0bb;
+}
+.mh-test-result.is-fail {
+  background: rgba(224, 123, 123, 0.1);
+  color: #f0a6a6;
+}
+.mh-test-response {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.mh-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mh-card-actions .mh-btn {
+  flex: 1;
+  min-width: 70px;
+}
+
+.mh-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mh-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.mh-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  margin-top: 12px;
+}
+
+/* ---------- chains ---------- */
+
+.mh-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.mh-section-head h2 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+.mh-section-head .mh-form-actions {
+  margin-top: 0;
+}
+
+.mh-chain-type-note {
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.mh-chain-members {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mh-chain-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--stroke);
+}
+.mh-chain-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: #b7ccff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.mh-chain-name {
+  flex: 1;
+  font-size: 0.84rem;
+}
+.mh-chain-member-actions {
+  display: flex;
+  gap: 4px;
+}
+.mh-chain-member-actions button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.mh-chain-member-actions button:hover {
+  color: var(--text);
+  border-color: rgba(122, 162, 247, 0.5);
+}
+.mh-chain-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 8px 0;
+}
+
+.mh-chain-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.mh-chain-add .mh-input {
+  flex: 1;
+}
+
+.mh-chain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.mh-chain-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mh-chain-card-head h3 {
+  margin: 0 8px 0 0;
+  font-size: 1rem;
+  display: inline;
+}
+.mh-chain-card-head .mh-tag,
+.mh-chain-card-head .mh-status {
+  margin-left: 6px;
+}
+
+.mh-chain-flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mh-chain-flow li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.mh-chain-node {
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--stroke);
+  font-size: 0.82rem;
+}
+.mh-chain-arrow {
+  color: var(--accent);
+  font-size: 0.9rem;
+  padding-left: 16px;
+}
+
+/* ---------- serving ---------- */
+
+.mh-serving {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.mh-serving-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mh-serving-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.mh-serving-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.mh-side-panel .mh-side-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0 4px;
+}
+.mh-side-stats div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+.mh-side-stats dt {
+  color: var(--muted);
+}
+.mh-side-stats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mh-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .mh-page {
+    padding: 18px 16px 32px;
+  }
+  .mh-grid {
+    grid-template-columns: 1fr;
   }
 }

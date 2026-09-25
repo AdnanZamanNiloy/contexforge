@@ -15,6 +15,10 @@ class HydeQueryExpander:
     def __init__(self, llm: LLM) -> None:
         self._llm = llm
 
+    def swap_llm(self, llm: LLM) -> None:
+        """Point HyDE at the currently served LLM (used by the Model Hub)."""
+        self._llm = llm
+
     @observe(name="hyde_generate")
     async def expand(self, question: str) -> str:
 

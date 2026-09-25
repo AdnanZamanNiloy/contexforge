@@ -242,6 +242,9 @@ class Settings(BaseSettings):
     # Persisted generated mind maps (keyed by source_id).
     MINDMAP_DIR: Path = Field(default=Path("data/mindmaps"))
 
+    # Model Hub — configured models, fallback chains, and serving selection.
+    MODEL_HUB_DB_PATH: Path = Field(default=Path("data/model_hub/model_hub.db"))
+
     # Scoring / health thresholds (transparent, explainable — no opaque AI)
     RISK_FANOUT_WEIGHT: float = Field(default=0.30)
     RISK_CHURN_WEIGHT: float = Field(default=0.25)
