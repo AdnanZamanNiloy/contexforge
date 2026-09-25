@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import ContextForgeMark from '../ContextForgeMark'
 import {
   GithubMark,
+  LinkedSourceMark,
   SOURCE_STATUS,
   SourceGlyph,
   formatSourceMeta,
@@ -50,6 +51,8 @@ export default function Sidebar({
   const webCount = sources.filter((s) => s.type === 'web').length
   const githubCount = sources.filter((s) => s.type === 'github').length
   const youtubeCount = sources.filter((s) => s.type === 'youtube').length
+  const textCount = sources.filter((s) => s.type === 'text').length
+  const docxCount = sources.filter((s) => s.type === 'docx').length
 
   const kbRows = [
     {
@@ -59,6 +62,12 @@ export default function Sidebar({
       icon: <SourceGlyph type="text" size={16} />,
     },
     { id: 'pdf', label: 'PDFs', count: pdfCount, icon: <SourceGlyph type="pdf" size={16} /> },
+    {
+      id: 'docx',
+      label: 'Word Docs',
+      count: docxCount,
+      icon: <SourceGlyph type="docx" size={16} />,
+    },
     { id: 'web', label: 'Web Pages', count: webCount, icon: <SourceGlyph type="web" size={16} /> },
     { id: 'github', label: 'GitHub Repos', count: githubCount, icon: <GithubMark size={16} /> },
     {
@@ -66,6 +75,12 @@ export default function Sidebar({
       label: 'YouTube Videos',
       count: youtubeCount,
       icon: <SourceGlyph type="youtube" size={16} />,
+    },
+    {
+      id: 'text',
+      label: 'Text',
+      count: textCount,
+      icon: <SourceGlyph type="text" size={16} />,
     },
   ]
 
@@ -150,6 +165,13 @@ export default function Sidebar({
                     <div className="source-item-title">{source.title}</div>
                     <div className="source-item-meta">{formatSourceMeta(source)}</div>
                   </div>
+                  <span
+                    className="source-item-linked"
+                    title="Opens its own workspace"
+                    aria-label="Opens its own workspace"
+                  >
+                    <LinkedSourceMark size={13} />
+                  </span>
                   <div className="source-item-status">
                     <span className={status.dot} title={status.label} />
                   </div>

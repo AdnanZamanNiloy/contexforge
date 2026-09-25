@@ -28,6 +28,27 @@ export function GithubMark({ size = 16 }) {
   )
 }
 
+// Indicates a source opens its own dedicated workspace (source explorer).
+export function LinkedSourceMark({ size = 14 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14 4h6v6" />
+      <path d="M20 4l-8 8" />
+      <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+    </svg>
+  )
+}
+
 export function FileMark({ size = 16 }) {
   return (
     <svg

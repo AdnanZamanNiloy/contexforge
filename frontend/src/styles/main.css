@@ -316,6 +316,28 @@ body {
   flex-shrink: 0;
 }
 
+/* Visible "opens its own workspace" affordance for every source row. */
+.source-item-linked {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(122, 162, 247, 0.35);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.source-item-compact:hover .source-item-linked {
+  color: #eaf1ff;
+  background: rgba(122, 162, 247, 0.24);
+  border-color: rgba(122, 162, 247, 0.6);
+}
+
 .source-item-delete {
   border: none;
   background: transparent;
