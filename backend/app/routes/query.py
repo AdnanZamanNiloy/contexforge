@@ -52,14 +52,11 @@ async def query(
         logger.error("query failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     except httpx.HTTPStatusError as exc:
-        # LLM provider throttling / quota exhaustion (transient).  Report a
-        # retryable 503 with a clear message instead of a bare 500 that the
-        # frontend can mistake for a network error.
+        # Map the upstream provider status to an accurate message instead of
+        # labelling every failure as a rate limit.
+        code, detail = _provider_error_detail(exc)
         logger.warning("query failed: LLM provider HTTP %s", exc.response.status_code)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The AI provider is currently at its rate limit — please wait a moment and try again.",
-        ) from exc
+        raise HTTPException(status_code=code, detail=detail) from exc
     except Exception:
         logger.exception("query failed: unexpected error")
         raise HTTPException(
@@ -136,6 +133,45 @@ async def stream_query(
 # ---------------------------------------------------------------------------
 
 
+def _provider_error_detail(exc: httpx.HTTPStatusError) -> tuple[int, str]:
+    """Map an LLM provider HTTP error to an accurate (status, message).
+
+    Provider errors were previously all reported as "rate limit", which hid the
+    real cause (bad key, no balance, wrong model id).  Branch on the upstream
+    status so the user sees what actually went wrong.
+    """
+    upstream = exc.response.status_code
+    if upstream == 429:
+        return (
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "The served model's provider is rate limiting requests — please wait a moment and try again.",
+        )
+    if upstream in (401, 403):
+        return (
+            status.HTTP_502_BAD_GATEWAY,
+            "The served model's API key was rejected by the provider. Check the key in the Model Hub.",
+        )
+    if upstream == 402:
+        return (
+            status.HTTP_502_BAD_GATEWAY,
+            "The served model's provider account has insufficient balance or quota.",
+        )
+    if upstream == 404:
+        return (
+            status.HTTP_502_BAD_GATEWAY,
+            "The served model's model ID was not found at the provider. Check the Model Hub configuration.",
+        )
+    if upstream == 400:
+        return (
+            status.HTTP_502_BAD_GATEWAY,
+            "The served model's provider rejected the request. Check the Model Hub configuration.",
+        )
+    return (
+        status.HTTP_502_BAD_GATEWAY,
+        f"The served model's provider returned an error (HTTP {upstream}).",
+    )
+
+
 async def _sse_generator(request: QueryRequest, service: QueryService):
     """Async generator that yields SSE-formatted strings.
 
@@ -174,6 +210,11 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
     except ValueError as exc:
         logger.warning("stream_query validation error: %s", exc)
         yield f"data: [ERROR] {exc}\n\n"
+
+    except httpx.HTTPStatusError as exc:
+        _, detail = _provider_error_detail(exc)
+        logger.warning("stream_query: LLM provider HTTP %s", exc.response.status_code)
+        yield f"data: [ERROR] {detail}\n\n"
 
     except Exception as exc:
         # Mid-stream failure emits a structured error event

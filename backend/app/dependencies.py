@@ -24,13 +24,6 @@ from app.services.ingest_service import IngestService
 from app.services.query_service import QueryService
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
-from core.embedding.voyage_embedder import VoyageEmbedder
-from core.generation.cerebras_llm import CerebrasLLM
-from core.generation.fallback_llm import FallbackLLM
-from core.generation.gemini_llm import GeminiLLM
-from core.generation.groq_llm import GroqLLM
-from core.generation.nvidia_nim_llm import NvidiaNimLLM
-from core.generation.openrouter_llm import OpenRouterLLM
 from core.generation.prompt_builder import PromptBuilder
 from core.ingestion.base_loader import BaseLoader
 from core.ingestion.docx_loader import DocxLoader
@@ -39,6 +32,9 @@ from core.ingestion.pdf_loader import PDFLoader
 from core.ingestion.text_loader import TextLoader
 from core.ingestion.web_loader import WebLoader
 from core.ingestion.youtube_loader import YouTubeLoader
+from core.interfaces.embedder import Embedder
+from core.interfaces.llm import LLM
+from core.interfaces.not_configured import NullEmbedder, NullLLM
 from core.orchestrator import Orchestrator
 from core.processing.deduplicator import Deduplicator
 from core.retrieval.bm25_retriever import BM25Retriever
@@ -78,10 +74,13 @@ def get_settings() -> Settings:
 
 
 @lru_cache(maxsize=1)
-def get_embedder() -> VoyageEmbedder:
-    # Use get_settings() everywhere instead of constructing Settings()
-    settings = get_settings()
-    return VoyageEmbedder(cache_path=settings.CACHE_PATH)
+def get_embedder() -> Embedder:
+    """Return the currently served embedder, or a not-configured sentinel.
+
+    As with :func:`get_llm`, model selection is owned by the Model Hub; this
+    default is replaced by :func:`apply_serving_configuration`.
+    """
+    return NullEmbedder()
 
 
 @lru_cache(maxsize=1)
@@ -121,27 +120,24 @@ def get_deduplicator() -> Deduplicator:
 
 
 # ---------------------------------------------------------------------------
-# LLM — FIX #2: model strings sourced from settings, not hardcoded defaults
+# LLM — model selection is owned by the Model Hub
 # ---------------------------------------------------------------------------
+#
+# There is deliberately NO environment-driven provider chain here.  The active
+# LLM is the one selected in the Model Hub's Serving tab and installed by
+# ``apply_serving_configuration``.  Until a model is served, ``get_llm`` returns
+# a sentinel that fails loudly with a pointer to the Model Hub rather than
+# silently calling whichever provider happens to have a key in the environment.
 
 
 @lru_cache(maxsize=1)
-def get_llm() -> FallbackLLM:
-    settings = get_settings()
-    # Ordered fallback chain — try each in turn, falling through on failure.
-    # Gemini and Groq keys are in place; the free aggregators (OpenRouter, NIM,
-    # Cerebras) are added only when their API key is configured in .env.
-    providers = [
-        GroqLLM(model=settings.GROQ_MODEL),
-        GeminiLLM(model=settings.GEMINI_MODEL),
-    ]
-    if settings.OPENROUTER_API_KEY:
-        providers.append(OpenRouterLLM(model=settings.OPENROUTER_MODEL))
-    if settings.NVIDIA_API_KEY:
-        providers.append(NvidiaNimLLM(model=settings.NVIDIA_MODEL))
-    if settings.CEREBRAS_API_KEY:
-        providers.append(CerebrasLLM(model=settings.CEREBRAS_MODEL))
-    return FallbackLLM(providers=providers)
+def get_llm() -> LLM:
+    """Return the currently served LLM, or a not-configured sentinel.
+
+    This default is replaced at startup / on serving changes by
+    :func:`apply_serving_configuration`.
+    """
+    return NullLLM()
 
 
 # ---------------------------------------------------------------------------
@@ -348,23 +344,25 @@ def _rewire_llm_consumers(llm) -> None:
 async def close_all() -> None:
     """Release all resources acquired by singleton factories.
 
-    Closes:
-    - VoyageEmbedder  (httpx.AsyncClient)
-    - BM25Index       (sqlite3.Connection)
+    Closes the active LLM/embedder HTTP clients and the SQLite-backed stores.
     """
     logger.info("Shutting down ContextForge — releasing resources.")
 
     try:
-        await get_llm().aclose()
+        close_llm = getattr(get_llm(), "aclose", None)
+        if close_llm is not None:
+            await close_llm()
         logger.debug("LLM clients closed.")
     except Exception as exc:
         logger.warning("Error closing LLM clients: %s", exc)
 
     try:
-        await get_embedder().aclose()
-        logger.debug("VoyageEmbedder closed.")
+        close_embedder = getattr(get_embedder(), "aclose", None)
+        if close_embedder is not None:
+            await close_embedder()
+        logger.debug("Embedder closed.")
     except Exception as exc:
-        logger.warning("Error closing VoyageEmbedder: %s", exc)
+        logger.warning("Error closing embedder: %s", exc)
 
     try:
         get_bm25_index().close()

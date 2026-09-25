@@ -256,36 +256,19 @@ class Settings(BaseSettings):
     # Validation — fail loudly instead of running with missing credentials
     # ------------------------------------------------------------------
 
-    @property
-    def has_llm_provider(self) -> bool:
-        """True when at least one LLM provider key is configured."""
-        return bool(
-            self.GOOGLE_API_KEY
-            or self.GROQ_API_KEY
-            or self.OPENROUTER_API_KEY
-            or self.CEREBRAS_API_KEY
-            or self.NVIDIA_API_KEY
-        )
-
     def validate(self) -> None:
         """Raise a clear, actionable error if a required credential is missing.
 
-        The app cannot ingest (embeddings) or answer (LLM) without at least one
-        key per tier, so we abort at startup with guidance rather than surface
-        confusing API errors at request time.
+        Embedding for ingestion still needs a key.  LLM selection is owned by
+        the Model Hub (configured in the UI), so no LLM key is required here —
+        the pipeline reports a clear error at request time if no LLM is served.
         """
         if not self.VOYAGE_API_KEY:
             raise ValueError(
                 "VOYAGE_API_KEY is not set. Ingestion needs an embedding key. "
                 "Copy backend/.env.example to backend/.env and add your "
-                "https://docs.voyageai.com key."
-            )
-        if not self.has_llm_provider:
-            raise ValueError(
-                "No LLM API key configured. Set at least one of "
-                "GOOGLE_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY, "
-                "CEREBRAS_API_KEY, or NVIDIA_API_KEY in backend/.env "
-                "(see backend/.env.example)."
+                "https://docs.voyageai.com key — or configure an embedding "
+                "model in the Model Hub."
             )
 
 
