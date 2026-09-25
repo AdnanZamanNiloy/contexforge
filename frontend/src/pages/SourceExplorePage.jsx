@@ -86,7 +86,7 @@ export default function SourceExplorePage() {
       /* best effort */
     }
     removeSource(id)
-    if (id === sourceId) navigate('/')
+    if (id === sourceId) navigate('/workspace')
   }
 
   const handleClearKB = async () => {
@@ -115,7 +115,7 @@ export default function SourceExplorePage() {
         main={
           <div className="explore-empty">
             <p>This source could not be found. It may have been deleted.</p>
-            <button className="primary" onClick={() => navigate('/')}>
+            <button className="primary" onClick={() => navigate('/workspace')}>
               Back to workspace
             </button>
           </div>
@@ -244,7 +244,7 @@ export default function SourceExplorePage() {
           return (
             <div className="intel-analyzing-card empty-intel">
               <p className="intel-error">{repository.error}</p>
-              <button className="primary" onClick={() => navigate('/')}>
+              <button className="primary" onClick={() => navigate('/workspace')}>
                 Back to workspace
               </button>
             </div>
@@ -321,7 +321,7 @@ export default function SourceExplorePage() {
         <div className="explore-main">
           <SourceHeader
             source={source}
-            onBack={() => navigate('/')}
+            onBack={() => navigate('/workspace')}
             actions={
               isGithub ? (
                 <button className="sync-btn" onClick={() => repository.reanalyze()}>

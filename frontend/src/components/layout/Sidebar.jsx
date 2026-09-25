@@ -13,7 +13,7 @@ function Brand() {
   return (
     <button
       className="brand brand-link"
-      onClick={() => navigate('/')}
+      onClick={() => navigate('/workspace')}
       title="ContextForge workspace"
     >
       <div className="brand-mark" aria-hidden="true">

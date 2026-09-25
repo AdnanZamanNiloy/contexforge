@@ -105,7 +105,7 @@ export default function MindMapPage() {
         {error ? (
           <div className="empty">
             <p>{error}</p>
-            <button className="ghost" onClick={() => navigate('/')}>
+            <button className="ghost" onClick={() => navigate('/workspace')}>
               Back to chat
             </button>
           </div>

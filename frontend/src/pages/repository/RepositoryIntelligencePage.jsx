@@ -41,7 +41,7 @@ export default function RepositoryIntelligencePage() {
     } catch {
       /* best effort */
     }
-    navigate('/')
+    navigate('/workspace')
   }
 
   let main
@@ -58,7 +58,7 @@ export default function RepositoryIntelligencePage() {
     main = (
       <div className="intel-analyzing-card empty-intel">
         <p className="intel-error">{repository.error}</p>
-        <button className="primary" onClick={() => navigate('/')}>
+        <button className="primary" onClick={() => navigate('/workspace')}>
           Back to workspace
         </button>
       </div>

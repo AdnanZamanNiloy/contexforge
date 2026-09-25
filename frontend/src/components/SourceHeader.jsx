@@ -31,7 +31,7 @@ export default function SourceHeader({ source = {}, onBack, actions }) {
         ) : (
           <button
             className="icon-button source-back"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/workspace')}
             title="Back to workspace"
           >
             <svg
