@@ -5302,10 +5302,10 @@ body {
 }
 
 .lp-trace {
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 .lp-trace-q,
 .lp-answer {
@@ -5334,15 +5334,18 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
+/* Compact, single-line rows: label and detail share one baseline instead of
+   stacking, which keeps all six stages visible in a short window. */
 .lp-rail {
   display: grid;
-  grid-template-columns: 26px 108px minmax(0, 1fr);
+  /* index · label+detail (flexes) · meter */
+  grid-template-columns: 20px minmax(0, 1fr) 52px;
   align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 7px;
   border: 1px solid transparent;
   transition:
     background 0.25s ease,
@@ -5365,20 +5368,24 @@ body {
 }
 .lp-rail-body {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 .lp-rail-label {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
+  /* Fixed label lane keeps the detail text aligned down the column. */
+  flex: 0 0 72px;
 }
 .lp-rail-detail {
   font-family: 'Space Mono', monospace;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 /* Stable meter: width never changes, only the fill grows. */
 .lp-rail-meter {
@@ -5413,14 +5420,35 @@ body {
 
 .lp-answer {
   border-top: 1px solid var(--lp-line-soft);
-  padding-top: 14px;
+  padding-top: 12px;
+  gap: 8px;
 }
+/* The answer row is reserved at the wrapped height of the full streamed answer,
+   so tokens filling in never change the window size. The grid row is not
+   stretched — content grows inside a fixed cell. */
 .lp-answer-text {
   margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.7;
+  font-size: 0.84rem;
+  line-height: 1.6;
   color: var(--text);
-  min-height: 3.1em;
+  min-height: calc(4 * 1.6em);
+}
+/* The citations row always occupies its finished footprint; the chips fade in
+   rather than mounting, so the window height is identical while running. */
+.lp-cites-slot {
+  grid-column: 2 / -1;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.4s ease,
+    visibility 0s linear 0.4s;
+}
+.lp-cites-slot[data-visible='true'] {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 0.4s ease,
+    visibility 0s;
 }
 .lp-caret {
   display: inline-block;
@@ -5440,18 +5468,19 @@ body {
   grid-column: 2 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 .lp-cite {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 9px;
-  border-radius: 7px;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
   border: 1px solid var(--lp-line);
   background: rgba(255, 255, 255, 0.03);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
+  line-height: 1.5;
   max-width: 100%;
 }
 .lp-cite b {
@@ -6107,7 +6136,8 @@ body:has(.lp-root) #root {
     grid-template-columns: 1fr;
     gap: 6px;
   }
-  .lp-cites {
+  .lp-cites,
+  .lp-cites-slot {
     grid-column: 1 / -1;
   }
   .lp-rail {

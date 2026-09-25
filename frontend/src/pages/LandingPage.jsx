@@ -48,10 +48,12 @@ const ANSWER_TOKENS = [
   'generation.',
 ]
 
+// Kept short: the shared `core/retrieval/` prefix is stated once in the label so
+// the three chips sit on a single row inside the compact hero window.
 const CITATIONS = [
-  { n: 1, label: 'core/retrieval/hybrid.py', score: '0.87' },
-  { n: 2, label: 'core/retrieval/rrf.py', score: '0.81' },
-  { n: 3, label: 'core/retrieval/reranker.py', score: '0.78' },
+  { n: 1, label: 'retrieval/hybrid.py', score: '0.87' },
+  { n: 2, label: 'retrieval/rrf.py', score: '0.81' },
+  { n: 3, label: 'retrieval/reranker.py', score: '0.78' },
 ]
 
 const SOURCE_KINDS = [
@@ -338,7 +340,7 @@ function RetrievalTrace() {
             ))}
             {phase === 'running' ? <i className="lp-caret" aria-hidden="true" /> : null}
           </p>
-          {phase === 'done' ? (
+          <div className="lp-cites-slot" data-visible={phase === 'done'}>
             <div className="lp-cites">
               {CITATIONS.map((cite) => (
                 <span key={cite.n} className="lp-cite">
@@ -348,7 +350,7 @@ function RetrievalTrace() {
                 </span>
               ))}
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
     </HudFrame>
