@@ -28,8 +28,8 @@ function Donut({ score = 0 }) {
         />
         <defs>
           <linearGradient id="rvHealthGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#67e0c8" />
-            <stop offset="100%" stopColor="#7aa2f7" />
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="100%" stopColor="#00d992" />
           </linearGradient>
         </defs>
       </svg>

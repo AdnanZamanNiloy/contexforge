@@ -22,34 +22,34 @@ function kindColor(kind, accentOverride) {
   if (accentOverride) return accentOverride
   switch (kind) {
     case 'repo':
-      return '#9aa8ff'
+      return '#2fd6a1'
     case 'area':
-      return '#7aa2f7'
+      return '#00d992'
     case 'directory':
-      return '#67e0c8'
+      return '#10b981'
     case 'module':
-      return '#6f9ff2'
+      return '#00d992'
     case 'file':
-      return '#8f7bf5'
+      return '#2fd6a1'
     case 'func':
-      return '#c9a7ff'
+      return '#10b981'
     case 'route':
-      return '#f0b36e'
+      return '#8b949e'
     case 'input':
     case 'output':
-      return '#67e0c8'
+      return '#10b981'
     case 'service':
-      return '#7aa2f7'
+      return '#00d992'
     case 'llm':
-      return '#c9a7ff'
+      return '#2fd6a1'
     case 'storage':
-      return '#67e0c8'
+      return '#10b981'
     case 'transport':
-      return '#f0b36e'
+      return '#8b949e'
     case 'core':
-      return '#7aa2f7'
+      return '#00d992'
     default:
-      return '#8b94a5'
+      return '#8b949e'
   }
 }
 
@@ -344,7 +344,7 @@ export default function GraphViewer({
                     y={node.kind === 'repo' ? -34 : -30}
                     textAnchor="middle"
                     className="graph-node-label"
-                    style={{ fill: isSel ? '#eaf1ff' : '#b9c0cc' }}
+                    style={{ fill: isSel ? '#ffffff' : '#bdbdbd' }}
                   >
                     {node.label}
                   </text>

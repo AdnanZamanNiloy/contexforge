@@ -22,11 +22,11 @@ export default function MessageBubble({ role, text, status }) {
     return (
       <div className="flex justify-end">
         <div
-          className="max-w-[78%] rounded-2xl px-4 py-3
-            bg-[rgba(255,255,255,0.06)]
-            border border-[rgba(255,255,255,0.08)]"
+          className="max-w-[78%] rounded-[8px] px-4 py-3
+            bg-[#1a1a1a]
+            border border-[#3d3a39]"
         >
-          <p className="text-base text-white leading-relaxed m-0 whitespace-pre-line">{text}</p>
+          <p className="text-base text-[#f2f2f2] leading-relaxed m-0 whitespace-pre-line">{text}</p>
         </div>
       </div>
     )
@@ -35,16 +35,16 @@ export default function MessageBubble({ role, text, status }) {
   const isStreamingEmpty = status === 'streaming' && !text
 
   return (
-    <div className="rounded-2xl p-4">
+    <div className="rounded-[8px] p-4">
       {isStreamingEmpty ? (
-        <span className="inline-flex items-center gap-0.5 text-[#a6abb3]">
+        <span className="inline-flex items-center gap-0.5 text-[#8b949e]">
           <span className="animate-pulse duration-1000">Thinking</span>
           <span className="animate-pulse duration-1000 delay-150">.</span>
           <span className="animate-pulse duration-1000 delay-300">.</span>
           <span className="animate-pulse duration-1000 delay-450">.</span>
         </span>
       ) : (
-        <div className="font-sans text-base leading-relaxed text-white markdown-body">
+        <div className="font-sans text-base leading-relaxed text-[#f2f2f2] markdown-body">
           <MarkdownRenderer content={text || ''} />
         </div>
       )}

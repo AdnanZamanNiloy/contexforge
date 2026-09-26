@@ -16,23 +16,23 @@ import {
 
 // Detected execution flow kinds -> label + node colour. Purely data-driven.
 const KIND_META = {
-  route: { label: 'API / route', color: '#f0b36e' },
-  input: { label: 'Entry point', color: '#67e0c8' },
-  output: { label: 'Output', color: '#67e0c8' },
-  service: { label: 'Service', color: '#7aa2f7' },
-  storage: { label: 'Storage / data', color: '#67e0c8' },
-  external: { label: 'External API', color: '#f0b36e' },
-  llm: { label: 'LLM / model', color: '#c9a7ff' },
-  core: { label: 'Core pipeline', color: '#7aa2f7' },
-  transport: { label: 'Transport', color: '#f0b36e' },
-  module: { label: 'Module', color: '#6f9ff2' },
-  file: { label: 'File', color: '#8f7bf5' },
-  func: { label: 'Function', color: '#c9a7ff' },
+  route: { label: 'API / route', color: '#8b949e' },
+  input: { label: 'Entry point', color: '#10b981' },
+  output: { label: 'Output', color: '#10b981' },
+  service: { label: 'Service', color: '#00d992' },
+  storage: { label: 'Storage / data', color: '#10b981' },
+  external: { label: 'External API', color: '#8b949e' },
+  llm: { label: 'LLM / model', color: '#2fd6a1' },
+  core: { label: 'Core pipeline', color: '#00d992' },
+  transport: { label: 'Transport', color: '#8b949e' },
+  module: { label: 'Module', color: '#00d992' },
+  file: { label: 'File', color: '#2fd6a1' },
+  func: { label: 'Function', color: '#10b981' },
 }
 
 const GRAPH_DIMS = { width: 1240, height: 860 }
 
-const accentFor = (node) => KIND_META[node.kind]?.color || '#8b94a5'
+const accentFor = (node) => KIND_META[node.kind]?.color || '#8b949e'
 
 // Layered left-to-right layout: depth (from entry) -> x, sibling index -> y.
 function layoutFlow(nodes, edges) {

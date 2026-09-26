@@ -12,8 +12,8 @@ const LAYOUTS = [
 ]
 
 const KIND_LEGEND = [
-  { label: 'Repository', color: '#9aa8ff' },
-  { label: 'File', color: '#8f7bf5' },
+  { label: 'Repository', color: '#2fd6a1' },
+  { label: 'File', color: '#10b981' },
 ]
 
 export default function ArchitectureView({

@@ -54,24 +54,24 @@ export default function ChatBox({
   }, [messages])
 
   const textareaBase =
-    'w-full resize-none rounded-2xl px-5 py-4 pr-14 overflow-y-hidden ' +
-    'bg-[rgba(255,255,255,0.04)] ' +
-    'border border-[rgba(255,255,255,0.08)] ' +
-    'text-[#e6e7ea] placeholder-[#a6abb3] ' +
+    'w-full resize-none rounded-[8px] px-5 py-4 pr-14 overflow-y-hidden ' +
+    'bg-[#1a1a1a] ' +
+    'border border-[#3d3a39] ' +
+    'text-[#f2f2f2] placeholder-[#8b949e] ' +
     'text-base leading-relaxed outline-none ' +
     'transition-all duration-200 ' +
-    'focus:border-[rgba(122,162,247,0.4)] ' +
-    'focus:bg-[rgba(255,255,255,0.06)] ' +
-    'focus:shadow-[0_0_0_1px_rgba(122,162,247,0.2)] ' +
+    'focus:border-[rgba(47,214,161,0.6)] ' +
+    'focus:bg-[#1a1a1a] ' +
+    'focus:shadow-[0_0_0_3px_rgba(47,214,161,0.15)] ' +
     'disabled:opacity-60 disabled:cursor-not-allowed'
 
   const sendBtnBase =
-    'absolute right-2 bottom-2 p-2.5 rounded-xl ' +
-    'bg-[linear-gradient(135deg,#7aa2f7,#9aa8ff)] ' +
-    'text-[#0b1020] font-semibold ' +
+    'absolute right-2 bottom-2 p-2.5 rounded-[6px] ' +
+    'bg-[#00d992] ' +
+    'text-[#101010] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
     'transition-all duration-200 ' +
-    'hover:shadow-[0_0_20px_rgba(122,162,247,0.5)] ' +
+    'hover:shadow-[0_0_15px_rgba(0,217,146,0.35)] ' +
     'cursor-pointer'
 
   const inputArea = (
@@ -111,7 +111,7 @@ export default function ChatBox({
           </motion.button>
         </div>
       </form>
-      <p className="text-center text-xs text-[#a6abb3] mt-4">
+      <p className="text-center text-xs text-[#8b949e] mt-4">
         ContextForge can make mistakes. Please verify important information.
       </p>
     </>
@@ -132,7 +132,7 @@ export default function ChatBox({
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
-            className="text-[2.4rem] sm:text-[3rem] font-semibold tracking-tight text-white leading-[1.15] mb-4"
+            className="text-[2.4rem] sm:text-[3rem] font-normal tracking-tight text-[#ffffff] leading-[1.15] mb-4"
           >
             What would you like to explore?
           </motion.h1>
@@ -140,7 +140,7 @@ export default function ChatBox({
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-            className="text-[#a6abb3] text-base sm:text-lg leading-relaxed max-w-[520px] mx-auto"
+            className="text-[#8b949e] text-base sm:text-lg leading-relaxed max-w-[520px] mx-auto"
           >
             Forge documents, repositories, web pages, and YouTube URLs into one intelligent
             conversation. Ask across every source at once and get answers grounded in your
@@ -164,7 +164,7 @@ export default function ChatBox({
     >
       <div className="flex items-start justify-between gap-4 mb-3 pr-6">
         <div className="min-w-0">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-[#a6abb3] mb-1.5">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-[#8b949e] mb-1.5">
             Active Thread
           </div>
           <h2 className="text-xl sm:text-2xl font-semibold text-white leading-tight truncate m-0">
@@ -177,12 +177,12 @@ export default function ChatBox({
           title="Start a new chat and clear this thread"
           aria-label="Start a new chat"
           disabled={!onNewChat}
-          className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold
-            bg-[rgba(255,255,255,0.06)] text-[#e6e7ea]
-            border border-[rgba(255,255,255,0.12)]
+          className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-[6px] text-xs font-semibold
+            bg-[#1a1a1a] text-[#f2f2f2]
+            border border-[#3d3a39]
             cursor-pointer shrink-0
-            hover:bg-[rgba(122,162,247,0.16)] hover:border-[rgba(122,162,247,0.45)]
-            hover:text-white
+            hover:bg-[rgba(0,217,146,0.12)] hover:border-[rgba(0,217,146,0.45)]
+            hover:text-[#2fd6a1]
             disabled:opacity-40 disabled:cursor-not-allowed
             transition-all duration-200"
         >
@@ -203,8 +203,8 @@ export default function ChatBox({
           </svg>
           <span>New Chat</span>
           <kbd
-            className="hidden sm:inline-block font-mono text-[0.62rem] leading-none px-1.5 py-1 rounded-md
-              text-[#a6abb3] bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)]"
+            className="hidden sm:inline-block font-mono text-[0.62rem] leading-none px-1.5 py-1 rounded-[4px]
+              text-[#8b949e] bg-[#101010] border border-[#3d3a39]"
           >
             ⌘K
           </kbd>
@@ -234,17 +234,17 @@ export default function ChatBox({
 
         {error ? (
           <div
-            className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl
-              bg-[rgba(239,83,80,0.1)] border border-[rgba(239,83,80,0.3)]
-              text-[#f5b5b4] text-sm"
+            className="flex items-center justify-between gap-3 px-4 py-3 rounded-[8px]
+              bg-[rgba(139,148,158,0.1)] border border-[rgba(139,148,158,0.3)]
+              text-[#bdbdbd] text-sm"
           >
             <span>{error}</span>
             <button
               onClick={onRetry}
-              className="px-3 py-1 rounded-lg text-xs font-medium
-                bg-[rgba(255,255,255,0.08)] text-[#e6e7ea]
-                border border-[rgba(255,255,255,0.12)]
-                hover:bg-[rgba(255,255,255,0.14)] transition-colors cursor-pointer"
+              className="px-3 py-1 rounded-[6px] text-xs font-medium
+                bg-[rgba(255,255,255,0.05)] text-[#f2f2f2]
+                border border-[#3d3a39]
+                hover:bg-[rgba(255,255,255,0.1)] transition-colors cursor-pointer"
             >
               Retry
             </button>
@@ -253,22 +253,22 @@ export default function ChatBox({
 
         {uploadHint ? (
           <div
-            className="rounded-xl border border-[rgba(122,162,247,0.3)]
-              bg-[rgba(122,162,247,0.06)] p-4 space-y-2"
+            className="rounded-[8px] border border-[rgba(0,217,146,0.3)]
+              bg-[rgba(0,217,146,0.06)] p-4 space-y-2"
           >
             <div className="font-semibold text-sm text-white">
               No sources were used for this answer.
             </div>
-            <p className="text-xs text-[#a6abb3] leading-relaxed m-0">
+            <p className="text-xs text-[#8b949e] leading-relaxed m-0">
               For grounded answers, upload a PDF or DOCX, paste a URL, or link a GitHub repo.
             </p>
             <div className="flex flex-wrap gap-2">
               {['PDF', 'DOCX', 'URL', 'GitHub Repo'].map((tag) => (
                 <span
                   key={tag}
-                  className="px-2.5 py-1 rounded-full text-[10px] font-mono
-                    bg-[rgba(122,162,247,0.12)] text-[#d6e8ff]
-                    border border-[rgba(122,162,247,0.3)]"
+                  className="px-2.5 py-1 rounded-[9999px] text-[10px] font-mono
+                    bg-[rgba(0,217,146,0.12)] text-[#2fd6a1]
+                    border border-[rgba(0,217,146,0.3)]"
                 >
                   {tag}
                 </span>
