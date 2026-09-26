@@ -1,25 +1,27 @@
-export default function RepositoryStats({ stats = {} }) {
-  const items = [
-    { label: 'Files', value: stats.files },
-    { label: 'Modules', value: stats.modules },
-    { label: 'Commits', value: stats.commits },
-    { label: 'Contributors', value: stats.contributors },
-    { label: 'Branches', value: stats.branches },
-    { label: 'Pull Requests', value: stats.pullRequests },
-    { label: 'Issues', value: stats.issues },
-  ]
+import { Card, formatNumber } from '../ui/primitives'
 
+// Repository overview stats shown in the right-hand insight rail.
+const ITEMS = [
+  { label: 'Files', key: 'files' },
+  { label: 'Modules', key: 'modules' },
+  { label: 'Commits', key: 'commits' },
+  { label: 'Contributors', key: 'contributors' },
+  { label: 'Branches', key: 'branches' },
+  { label: 'Pull requests', key: 'pullRequests' },
+  { label: 'Issues', key: 'issues' },
+]
+
+export default function RepositoryStats({ stats = {} }) {
   return (
-    <section className="sidebar-section">
-      <div className="sidebar-section-title">Repository Overview</div>
-      <div className="stat-grid">
-        {items.map((item) => (
-          <div className="stat-cell" key={item.label}>
-            <span className="stat-value">{item.value.toLocaleString()}</span>
-            <span className="stat-label">{item.label}</span>
+    <Card title="Repository Overview" className="rv-rail-card">
+      <div className="rv-stat-grid">
+        {ITEMS.map((item) => (
+          <div className="rv-stat-cell" key={item.label}>
+            <span className="rv-stat-cell-value">{formatNumber(stats[item.key])}</span>
+            <span className="rv-stat-cell-label">{item.label}</span>
           </div>
         ))}
       </div>
-    </section>
+    </Card>
   )
 }

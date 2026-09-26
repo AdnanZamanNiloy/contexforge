@@ -1,8 +1,23 @@
 import { useMemo, useState } from 'react'
+
 import GraphViewer from '../GraphViewer'
 import InfoPanel from '../components/InfoPanel'
+import { ViewShell, ViewHeader, Legend, StatTile } from '../ui/primitives'
+import { IconExpand, IconGrid, IconSearch } from '../ui/icons'
 
-const LAYOUTS = ['Hierarchical', 'Tree', 'Radial']
+const LAYOUTS = [
+  { id: 'Hierarchical', label: 'Hierarchy' },
+  { id: 'Tree', label: 'Tree' },
+  { id: 'Radial', label: 'Radial' },
+]
+
+const KIND_LEGEND = [
+  { label: 'Repository', color: '#9aa8ff' },
+  { label: 'Area', color: '#7aa2f7' },
+  { label: 'Directory', color: '#67e0c8' },
+  { label: 'Module', color: '#6f9ff2' },
+  { label: 'File', color: '#8f7bf5' },
+]
 
 export default function ArchitectureView({
   architecture = { nodes: [], edges: [] },
@@ -13,143 +28,141 @@ export default function ArchitectureView({
   const [query, setQuery] = useState('')
   const [fullscreen, setFullscreen] = useState(false)
 
+  const nodes = useMemo(() => architecture.nodes || [], [architecture])
+  const edges = useMemo(() => architecture.edges || [], [architecture])
+
   const selectedNode = useMemo(
-    () => architecture.nodes.find((n) => n.id === selected) || null,
-    [selected],
+    () => nodes.find((n) => n.id === selected) || null,
+    [selected, nodes],
   )
 
   const highlighted = useMemo(() => {
-    if (!query.trim() || query.length < 2) return null
-    const q = query.toLowerCase()
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return null
     const ids = new Set(
-      architecture.nodes
+      nodes
         .filter(
-          (n) => n.label.toLowerCase().includes(q) || (n.path || '').toLowerCase().includes(q),
+          (n) =>
+            n.label.toLowerCase().includes(q) ||
+            (n.path || n.meta?.path || '').toLowerCase().includes(q),
         )
         .map((n) => n.id),
     )
     return ids.size ? ids : null
-  }, [query])
-
-  const handleSelect = (id) => {
-    setSelected(id)
-  }
+  }, [query, nodes])
 
   const graphNodes = useMemo(() => {
-    if (layout === 'Radial') return radialSpread(architecture.nodes)
-    if (layout === 'Tree') return treeLayout(architecture.nodes, architecture.edges)
-    return architecture.nodes
-  }, [layout, architecture])
+    if (layout === 'Radial') return radialSpread(nodes)
+    if (layout === 'Tree') return treeLayout(nodes, edges)
+    return nodes
+  }, [layout, nodes, edges])
 
-  const graphToolbar = (
+  const matchCount = highlighted ? highlighted.size : null
+
+  const toolbar = (
     <>
-      <div className="graph-search">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="M21 21l-4.3-4.3" />
-        </svg>
+      <label className="rv-search">
+        <IconSearch width={14} height={14} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search nodes..."
+          placeholder="Search nodes…"
           spellCheck={false}
+          aria-label="Search architecture nodes"
         />
         {query ? (
-          <button className="search-clear" onClick={() => setQuery('')}>
+          <button
+            type="button"
+            className="rv-search-clear"
+            onClick={() => setQuery('')}
+            aria-label="Clear search"
+          >
             ×
           </button>
         ) : null}
-      </div>
-      <div className="layout-select">
-        <span>Layout</span>
-        <select value={layout} onChange={(e) => setLayout(e.target.value)}>
-          {LAYOUTS.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
+      </label>
+      {matchCount != null ? (
+        <span className="rv-toolbar-note">
+          {matchCount} match{matchCount === 1 ? '' : 'es'}
+        </span>
+      ) : null}
+      <div className="rv-segmented" role="group" aria-label="Graph layout">
+        {LAYOUTS.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            className={layout === l.id ? 'is-active' : ''}
+            onClick={() => setLayout(l.id)}
+          >
+            {l.label}
+          </button>
+        ))}
       </div>
     </>
   )
 
+  const isEmpty = nodes.length === 0
+
   return (
-    <div className="intel-view">
-      <div className="intel-view-header">
-        <div>
-          <h3>System Architecture</h3>
-          <p className="intel-subtext">High-level structure of the repository</p>
-        </div>
-        <div className="arch-toolbar">
+    <ViewShell>
+      <ViewHeader
+        eyebrow="Architecture"
+        title="System structure"
+        description="Hierarchical decomposition of the repository from top-level areas down to files."
+        actions={
           <button
-            className="tool-btn"
-            title="Toggle full screen"
+            type="button"
+            className="rv-btn rv-btn-ghost"
             onClick={() => setFullscreen((f) => !f)}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
-            </svg>
-            Full screen
+            <IconExpand width={14} height={14} />
+            {fullscreen ? 'Exit full screen' : 'Full screen'}
           </button>
-        </div>
-      </div>
-
-      <div className="arch-legend">
-        <span>
-          <i className="legend-dot" style={{ background: '#9aa8ff' }} /> Repository
-        </span>
-        <span>
-          <i className="legend-dot" style={{ background: '#7aa2f7' }} /> Area
-        </span>
-        <span>
-          <i className="legend-dot" style={{ background: '#67e0c8' }} /> Directory
-        </span>
-        <span>
-          <i className="legend-dot" style={{ background: '#6f9ff2' }} /> Module
-        </span>
-        <span>
-          <i className="legend-dot" style={{ background: '#8f7bf5' }} /> File
-        </span>
-      </div>
-
-      <GraphViewer
-        nodes={graphNodes}
-        edges={architecture.edges}
-        dims={graphDimensions}
-        selected={selected}
-        onSelect={handleSelect}
-        highlight={highlighted}
-        fullscreen={fullscreen}
-        onToggleFullscreen={() => setFullscreen((f) => !f)}
-        toolbar={graphToolbar}
-        className="arch-graph"
-        height={560}
+        }
       />
 
-      <InfoPanel node={selectedNode} />
-    </div>
+      {isEmpty ? (
+        <StatTile
+          label="Nodes"
+          value="0"
+          hint="No architecture graph was produced for this repository."
+        />
+      ) : (
+        <>
+          <div className="rv-toolbar">
+            <div className="rv-toolbar-left">{toolbar}</div>
+            <Legend items={KIND_LEGEND} />
+          </div>
+
+          <GraphViewer
+            nodes={graphNodes}
+            edges={edges}
+            dims={graphDimensions}
+            selected={selected}
+            onSelect={setSelected}
+            highlight={highlighted}
+            fullscreen={fullscreen}
+            onToggleFullscreen={() => setFullscreen((f) => !f)}
+            className="rv-graph rv-graph-architecture"
+            height={560}
+          />
+
+          <InfoPanel node={selectedNode} />
+        </>
+      )}
+
+      {!selected && !isEmpty ? (
+        <div className="rv-hint-strip">
+          <IconGrid width={15} height={15} />
+          Select a node in the graph to inspect its metrics, dependencies and recent changes.
+        </div>
+      ) : null}
+    </ViewShell>
   )
 }
 
-// Very light "radial" remapping so the layout control visibly changes the graph
-// without a graph-layout dependency. Real backend data would supply positions.
+// Light radial remapping so the layout control visibly changes the graph
+// without a graph-layout dependency.
 function radialSpread(nodes) {
   const root = nodes.find((n) => n.kind === 'repo')
   if (!root) return nodes

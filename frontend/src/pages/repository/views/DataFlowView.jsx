@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
+
 import GraphViewer from '../GraphViewer'
 import { repositoryDataFlow } from '../../../services/api'
+import {
+  ViewShell,
+  ViewHeader,
+  Card,
+  Metric,
+  Badge,
+  Legend,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+} from '../ui/primitives'
 
 // Detected execution flow kinds -> label + node colour. Purely data-driven.
 const KIND_META = {
@@ -20,9 +32,7 @@ const KIND_META = {
 
 const GRAPH_DIMS = { width: 1240, height: 860 }
 
-function accentFor(node) {
-  return KIND_META[node.kind]?.color || '#8b94a5'
-}
+const accentFor = (node) => KIND_META[node.kind]?.color || '#8b94a5'
 
 // Layered left-to-right layout: depth (from entry) -> x, sibling index -> y.
 function layoutFlow(nodes, edges) {
@@ -73,52 +83,47 @@ function layoutFlow(nodes, edges) {
 }
 
 function NodeDetails({ node }) {
-  if (!node) return null
+  if (!node) {
+    return (
+      <Card title="Node details">
+        <p className="rv-muted-block">
+          Select a node in the flow to inspect paths, callers and dependencies.
+        </p>
+      </Card>
+    )
+  }
   const kind = KIND_META[node.kind]
   const list = (items) => (items && items.length ? items.join(', ') : '—')
   return (
-    <div className="flow-detail-card">
-      <div className="flow-detail-head">
-        <span className="flow-kind-dot" style={{ background: kind?.color }} />
-        <b>{node.label}</b>
-        <span className="flow-detail-kind">{kind?.label || node.kind}</span>
-      </div>
-      {node.entry ? <div className="flow-detail-badge">Entry point</div> : null}
-      <div className="flow-detail-row">
-        <span>Path</span>
-        <code>{node.path || '—'}</code>
-      </div>
-      <div className="flow-detail-row">
-        <span>Functions</span>
-        <code>{list(node.functions)}</code>
-      </div>
-      <div className="flow-detail-row">
-        <span>Callers</span>
-        <code>{list(node.callers)}</code>
-      </div>
-      <div className="flow-detail-row">
-        <span>Callees</span>
-        <code>{list(node.callees)}</code>
-      </div>
-      <div className="flow-detail-row">
-        <span>Dependencies</span>
-        <code>{list(node.dependencies)}</code>
-      </div>
-      <div className="flow-detail-row">
-        <span>Caller count</span>
-        <b>{node.dependents || 0}</b>
-      </div>
-      <div className="flow-detail-row">
-        <span>Depends on</span>
-        <b>{node.deps || 0}</b>
-      </div>
-      {node.latencyMs != null ? (
-        <div className="flow-detail-row">
-          <span>Measured latency</span>
-          <b>{node.latencyMs.toFixed(1)} ms</b>
+    <Card
+      title="Node details"
+      actions={
+        <div className="rv-inline-badges">
+          <Badge tone="neutral">{kind?.label || node.kind}</Badge>
+          {node.entry ? <Badge tone="teal">Entry point</Badge> : null}
         </div>
-      ) : null}
-    </div>
+      }
+    >
+      <div className="rv-node-head">
+        <span className="rv-node-dot" style={{ background: kind?.color }} />
+        <code className="rv-code-strong">{node.label}</code>
+      </div>
+      <div className="rv-metric-grid">
+        <Metric label="Path" value={<code className="rv-code">{node.path || '—'}</code>} />
+        <Metric label="Functions" value={<code className="rv-code">{list(node.functions)}</code>} />
+        <Metric label="Callers" value={<code className="rv-code">{list(node.callers)}</code>} />
+        <Metric label="Callees" value={<code className="rv-code">{list(node.callees)}</code>} />
+        <Metric
+          label="Dependencies"
+          value={<code className="rv-code">{list(node.dependencies)}</code>}
+        />
+        <Metric label="Caller count" value={node.dependents || 0} />
+        <Metric label="Depends on" value={node.deps || 0} />
+        {node.latencyMs != null ? (
+          <Metric label="Measured latency" value={`${node.latencyMs.toFixed(1)} ms`} />
+        ) : null}
+      </div>
+    </Card>
   )
 }
 
@@ -134,17 +139,12 @@ function FlowGraph({ flow }) {
     const kinds = [...new Set(flow.nodes.map((n) => n.kind))]
     return kinds
       .filter((k) => KIND_META[k])
-      .map((k) => (
-        <span key={k}>
-          <i className="legend-dot" style={{ background: KIND_META[k].color }} />
-          {KIND_META[k].label}
-        </span>
-      ))
+      .map((k) => ({ label: KIND_META[k].label, color: KIND_META[k].color }))
   }, [flow])
 
   return (
-    <div className="flow-graph-wrap">
-      <div className="arch-legend flow-legend">{legend}</div>
+    <>
+      <Legend items={legend} />
       <GraphViewer
         nodes={nodes}
         edges={flow.edges}
@@ -152,38 +152,41 @@ function FlowGraph({ flow }) {
         selected={selected}
         onSelect={setSelected}
         accentFor={accentFor}
-        className="flow-graph"
+        className="rv-graph rv-graph-flow"
         height={520}
       />
-      <div className="flow-bottlenecks">
-        {flow.bottlenecks && flow.bottlenecks.length > 0 ? (
-          <>
-            <div className="fact-title">Coupling hotspots (from code analysis)</div>
-            {flow.bottlenecks.map((b) => (
-              <div className="fact-row" key={b.id}>
-                <span>{b.path || b.label}</span>
-                <b>
-                  {b.dependents} caller{b.dependents === 1 ? '' : 's'}
-                </b>
-              </div>
-            ))}
-          </>
-        ) : null}
+      <div className="rv-grid rv-grid-2">
+        <NodeDetails node={selectedNode} />
+        <Card title="Coupling hotspots" meta="From code analysis">
+          {flow.bottlenecks && flow.bottlenecks.length ? (
+            <div className="rv-fact-list">
+              {flow.bottlenecks.map((b) => (
+                <div className="rv-fact-row" key={b.id}>
+                  <span className="rv-fact-main">{b.path || b.label}</span>
+                  <b>
+                    {b.dependents} caller{b.dependents === 1 ? '' : 's'}
+                  </b>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rv-muted-block is-ok">No coupling hotspots detected in this flow.</p>
+          )}
+        </Card>
       </div>
-      <NodeDetails node={selectedNode} />
-    </div>
+    </>
   )
 }
 
 export default function DataFlowView({ analysisId }) {
-  const [flows, setFlows] = useState(null)
+  const [flows, setFlows] = useState([])
   const [status, setStatus] = useState('loading') // loading | ok | empty | error
   const [error, setError] = useState('')
   const [activeId, setActiveId] = useState(null)
 
   useEffect(() => {
     if (!analysisId) {
-      setFlows({})
+      setFlows([])
       setStatus('empty')
       return
     }
@@ -203,7 +206,7 @@ export default function DataFlowView({ analysisId }) {
       .catch((err) => {
         if (cancelled) return
         setError(err.message || 'Failed to load data flow.')
-        setFlows({})
+        setFlows([])
         setStatus('error')
       })
     return () => {
@@ -211,90 +214,69 @@ export default function DataFlowView({ analysisId }) {
     }
   }, [analysisId])
 
-  const active = useMemo(
-    () => (flows || []).find((f) => f.id === activeId) || (flows || [])[0],
-    [flows, activeId],
+  const active = useMemo(() => flows.find((f) => f.id === activeId) || flows[0], [flows, activeId])
+
+  const header = (
+    <ViewHeader
+      eyebrow="Data Flow"
+      title="Execution paths"
+      description="Directional execution and data flow detected from repository analysis."
+      actions={
+        status === 'ok' && flows.length > 1 ? (
+          <div className="rv-flow-switcher" role="tablist" aria-label="Detected flows">
+            {flows.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                role="tab"
+                aria-selected={f.id === active?.id}
+                className={f.id === active?.id ? 'is-active' : ''}
+                onClick={() => setActiveId(f.id)}
+                title={f.entry}
+              >
+                {f.title || f.id}
+              </button>
+            ))}
+          </div>
+        ) : null
+      }
+    />
   )
 
   if (status === 'loading') {
     return (
-      <div className="intel-view">
-        <div className="intel-view-header">
-          <div>
-            <h3>Data Flow</h3>
-            <p className="intel-subtext">Directional execution flow from repository analysis</p>
-          </div>
-        </div>
-        <div className="intel-state">
-          <div className="intel-spinner" />
-          <p>Analyzing data flow…</p>
-        </div>
-      </div>
+      <ViewShell>
+        {header}
+        <LoadingState label="Analyzing data flow…" />
+      </ViewShell>
     )
   }
 
   if (status === 'error') {
     return (
-      <div className="intel-view">
-        <div className="intel-view-header">
-          <div>
-            <h3>Data Flow</h3>
-            <p className="intel-subtext">Directional execution flow from repository analysis</p>
-          </div>
-        </div>
-        <div className="intel-state">
-          <p className="intel-error">Data flow analysis failed</p>
-          <p className="intel-subtext">{error}</p>
-        </div>
-      </div>
+      <ViewShell>
+        {header}
+        <ErrorState title="Data flow analysis failed" message={error} />
+      </ViewShell>
     )
   }
 
   if (status === 'empty' || !active) {
     return (
-      <div className="intel-view">
-        <div className="intel-view-header">
-          <div>
-            <h3>Data Flow</h3>
-            <p className="intel-subtext">Directional execution flow from repository analysis</p>
-          </div>
-        </div>
-        <div className="intel-state">
-          <p className="intel-subtext">No executable flow detected</p>
-          <span className="intel-empty-hint">
-            No runnable entry points (routes, CLIs, mains) with a call chain were found in this
-            repository.
-          </span>
-        </div>
-      </div>
+      <ViewShell>
+        {header}
+        <EmptyState
+          title="No executable flow detected"
+          hint="No runnable entry points (routes, CLIs, mains) with a call chain were found in this repository."
+        />
+      </ViewShell>
     )
   }
 
   return (
-    <div className="intel-view">
-      <div className="intel-view-header">
-        <div>
-          <h3>Data Flow</h3>
-          <p className="intel-subtext">
-            Directional execution flow detected from repository analysis
-          </p>
-        </div>
-      </div>
-
-      <div className="flow-tabs">
-        {(flows || []).map((f) => (
-          <button
-            key={f.id}
-            className={f.id === active?.id ? 'active' : ''}
-            onClick={() => setActiveId(f.id)}
-            title={f.entry}
-          >
-            {f.title || f.id}
-          </button>
-        ))}
-      </div>
-
+    <ViewShell>
+      {header}
       <FlowGraph key={active?.id} flow={active} />
-    </div>
+    </ViewShell>
   )
 }

@@ -254,11 +254,16 @@ export default function SourceExplorePage() {
         }
         if (repository.error && !repository.analysis) {
           return (
-            <div className="intel-analyzing-card empty-intel">
-              <p className="intel-error">{repository.error}</p>
-              <button className="primary" onClick={() => navigate('/workspace')}>
-                Back to workspace
-              </button>
+            <div className="intel-card intel-enter">
+              <div className="rv-viewport">
+                <div className="rv-state rv-state-error rv-state-full">
+                  <p className="rv-state-title">Repository analysis failed</p>
+                  <p className="rv-state-hint">{repository.error}</p>
+                  <button className="rv-btn rv-btn-primary" onClick={() => navigate('/workspace')}>
+                    Back to workspace
+                  </button>
+                </div>
+              </div>
             </div>
           )
         }

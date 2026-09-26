@@ -1,109 +1,124 @@
 import { useMemo, useState } from 'react'
-import GraphViewer from '../GraphViewer'
 
-const RISK_TONE = {
-  LOW: 'is-low',
-  MEDIUM: 'is-medium',
-  HIGH: 'is-high',
-  CRITICAL: 'is-critical',
-}
+import GraphViewer from '../GraphViewer'
+import { ViewShell, ViewHeader, Card, StatTile, Badge, Legend, EmptyState } from '../ui/primitives'
+
+const RISK_TONE = { LOW: 'ok', MEDIUM: 'caution', HIGH: 'warn', CRITICAL: 'critical' }
+
+const IMPACT_LEGEND = [
+  { label: 'Direct impact', color: '#f0b36e' },
+  { label: 'Indirect impact', color: '#8b94a5' },
+]
 
 export default function ChangeImpactView({
   changeImpact = { nodes: [], blastRadius: { nodes: [], edges: [] }, estimated: {} },
 }) {
   const [selected, setSelected] = useState(null)
 
-  const selectedNode = useMemo(
-    () => changeImpact.nodes.find((n) => n.id === selected) || null,
-    [selected],
-  )
+  const nodes = changeImpact.nodes || []
+  const blast = changeImpact.blastRadius || { nodes: [], edges: [] }
 
-  const estimate = selectedNode || changeImpact.nodes[0]
+  const selectedNode = useMemo(() => nodes.find((n) => n.id === selected) || null, [nodes])
+  const estimate = selectedNode || nodes[0]
   const risk = String(estimate?.risk || changeImpact.risk || 'MEDIUM').toUpperCase()
+  const estimated = changeImpact.estimated || {}
+
+  const estimates = [
+    { label: 'Affected files', value: estimated.affectedFiles },
+    { label: 'Affected modules', value: estimated.affectedModules },
+    { label: 'Affected APIs', value: estimated.affectedApis },
+    { label: 'Affected tests', value: estimated.affectedTests },
+    { label: 'Affected dependencies', value: estimated.affectedDependencies },
+  ]
+
+  const hasBlast = blast.nodes.length > 0
 
   return (
-    <div className="intel-view">
-      <div className="intel-view-header">
-        <div>
-          <h3>Change Impact</h3>
-          <p className="intel-subtext">
-            Blast radius for <code className="inline-code">{changeImpact.selection}</code>
-          </p>
-        </div>
-        <div className={`impact-risk ${RISK_TONE[risk] || 'is-medium'}`}>
-          <span className="impact-risk-dot" />
-          <span>Risk: {risk}</span>
-        </div>
-      </div>
-
-      <div className="impact-estimates">
-        <div className="estimate">
-          <span className="estimate-value">{changeImpact.estimated.affectedFiles}</span>
-          <span className="estimate-label">Affected Files</span>
-        </div>
-        <div className="estimate">
-          <span className="estimate-value">{changeImpact.estimated.affectedModules}</span>
-          <span className="estimate-label">Affected Modules</span>
-        </div>
-        <div className="estimate">
-          <span className="estimate-value">{changeImpact.estimated.affectedApis}</span>
-          <span className="estimate-label">Affected APIs</span>
-        </div>
-        <div className="estimate">
-          <span className="estimate-value">{changeImpact.estimated.affectedTests}</span>
-          <span className="estimate-label">Affected Tests</span>
-        </div>
-        <div className="estimate">
-          <span className="estimate-value">{changeImpact.estimated.affectedDependencies}</span>
-          <span className="estimate-label">Affected Dependencies</span>
-        </div>
-      </div>
-
-      <div className="impact-meta">
-        <span className="impact-legend-item">
-          <i className="legend-dot" style={{ background: '#f0b36e' }} /> Direct impact
-        </span>
-        <span className="impact-legend-item">
-          <i className="legend-dot" style={{ background: '#8b94a5' }} /> Indirect impact
-        </span>
-      </div>
-
-      <GraphViewer
-        nodes={changeImpact.blastRadius.nodes}
-        edges={changeImpact.blastRadius.edges}
-        selected={selected}
-        onSelect={setSelected}
-        accentFor={(n) => (n.direct ? '#f0b36e' : '#8b94a5')}
-        className="blast-graph"
-        height={440}
+    <ViewShell>
+      <ViewHeader
+        eyebrow="Change Impact"
+        title="Blast radius"
+        description={
+          changeImpact.selection ? (
+            <>
+              Estimated downstream impact for a change to{' '}
+              <code className="rv-code">{changeImpact.selection}</code>.
+            </>
+          ) : (
+            'Estimated downstream impact for a proposed change.'
+          )
+        }
+        actions={
+          <span className={`rv-risk-pill is-${RISK_TONE[risk] || 'caution'}`}>
+            <span className="rv-risk-dot" />
+            Risk: {risk}
+          </span>
+        }
       />
 
-      <div className="impact-table">
-        <div className="impact-table-head">
-          <span>Node</span>
-          <span>Files</span>
-          <span>Modules</span>
-          <span>APIs</span>
-          <span>Tests</span>
-          <span>Risk</span>
-        </div>
-        {changeImpact.nodes.map((n) => (
-          <button
-            className={`impact-table-row ${selected === n.id ? 'active' : ''}`}
-            key={n.id}
-            onClick={() => setSelected(n.id)}
-          >
-            <span className="impact-node-label">{n.label}</span>
-            <span>{n.files}</span>
-            <span>{n.modules}</span>
-            <span>{n.apis}</span>
-            <span>{n.tests}</span>
-            <span>
-              <span className={`risk-badge is-${(n.risk || 'Low').toLowerCase()}`}>{n.risk}</span>
-            </span>
-          </button>
+      <div className="rv-grid rv-grid-5">
+        {estimates.map((e) => (
+          <StatTile key={e.label} label={e.label} value={e.value ?? '—'} />
         ))}
       </div>
-    </div>
+
+      {hasBlast ? (
+        <>
+          <div className="rv-toolbar">
+            <div className="rv-toolbar-left">
+              <Legend items={IMPACT_LEGEND} />
+            </div>
+          </div>
+          <GraphViewer
+            nodes={blast.nodes}
+            edges={blast.edges}
+            selected={selected}
+            onSelect={setSelected}
+            accentFor={(n) => (n.direct ? '#f0b36e' : '#8b94a5')}
+            className="rv-graph rv-graph-impact"
+            height={440}
+          />
+        </>
+      ) : (
+        <EmptyState
+          title="No blast radius available"
+          hint="A change-impact graph has not been generated for this repository yet."
+        />
+      )}
+
+      {nodes.length ? (
+        <Card title="Impact by node" padded={false}>
+          <div className="rv-table">
+            <div className="rv-table-head">
+              <span>Node</span>
+              <span>Files</span>
+              <span>Modules</span>
+              <span>APIs</span>
+              <span>Tests</span>
+              <span>Risk</span>
+            </div>
+            {nodes.map((n) => (
+              <button
+                type="button"
+                className={`rv-table-row ${selected === n.id ? 'is-active' : ''}`}
+                key={n.id}
+                onClick={() => setSelected(n.id)}
+              >
+                <span className="rv-table-node">{n.label}</span>
+                <span>{n.files}</span>
+                <span>{n.modules}</span>
+                <span>{n.apis}</span>
+                <span>{n.tests}</span>
+                <span>
+                  <Badge tone={RISK_TONE[String(n.risk || 'LOW').toUpperCase()] || 'neutral'}>
+                    {n.risk}
+                  </Badge>
+                </span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+    </ViewShell>
   )
 }

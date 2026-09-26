@@ -1,21 +1,8 @@
-// Shared node-detail panel shown below the architecture graph.
-// Renders a compact multi-column metric layout for the currently selected node
-// based on the data available in its `meta` object.
+import { Card, Metric, Badge, riskTone } from '../ui/primitives'
+import { IconArrowRight } from '../ui/icons'
 
-function RiskBadge({ risk }) {
-  if (!risk) return null
-  const tone = risk.toLowerCase()
-  return <span className={`risk-badge is-${tone}`}>{risk}</span>
-}
-
-function Metric({ label, value }) {
-  return (
-    <div className="info-metric">
-      <span className="info-metric-label">{label}</span>
-      <span className="info-metric-value">{value ?? '—'}</span>
-    </div>
-  )
-}
+// Shared node-detail panel shown below the architecture graph. Renders a compact
+// metric grid for the selected node from the data available in its `meta`.
 
 function Avatar({ name }) {
   const initials = (name || '?')
@@ -26,7 +13,7 @@ function Avatar({ name }) {
     .join('')
     .toUpperCase()
   return (
-    <span className="mini-avatar" title={name}>
+    <span className="rv-avatar" style={{ width: 26, height: 26 }} title={name}>
       {initials}
     </span>
   )
@@ -35,62 +22,67 @@ function Avatar({ name }) {
 export default function InfoPanel({ node = null }) {
   if (!node) {
     return (
-      <div className="info-panel">
-        <div className="info-empty">
+      <Card title="Node inspector">
+        <p className="rv-muted-block">
           Select a node in the graph to inspect its architecture, dependencies and recent changes.
-        </div>
-      </div>
+        </p>
+      </Card>
     )
   }
 
   const meta = node.meta || {}
   const path = meta.path || 'unknown path'
+  const risk = meta.risk
 
   return (
-    <div className="info-panel">
-      <div className="info-panel-head">
-        <div className="info-title">
-          <span className="info-name">{node.label}</span>
-          <code className="info-path">{path}</code>
+    <Card
+      title="Node inspector"
+      actions={
+        <div className="rv-inline-badges">
+          <Badge tone="neutral">{meta.type || node.kind || 'node'}</Badge>
+          {risk ? <Badge tone={riskTone(risk)}>{risk}</Badge> : null}
         </div>
-        <div className="info-head-right">
-          <span className="info-kind">{meta.type || node.kind || 'node'}</span>
-          <RiskBadge risk={meta.risk} />
-        </div>
+      }
+    >
+      <div className="rv-node-head">
+        <span className="rv-node-name">{node.label}</span>
+        <code className="rv-code">{path}</code>
       </div>
 
-      <div className="info-metrics">
+      <div className="rv-metric-grid">
         <Metric label="Files" value={meta.files} />
         <Metric
-          label="Lines of Code"
+          label="Lines of code"
           value={
             meta.loc != null && meta.loc > 100000 ? `${(meta.loc / 1000).toFixed(1)}k` : meta.loc
           }
         />
         <Metric label="Dependencies" value={meta.deps} />
         <Metric label="Dependents" value={meta.dependents} />
-        <Metric label="Test Coverage" value={meta.coverage != null ? `${meta.coverage}%` : null} />
-        <Metric label="Last Changed" value={meta.changed} />
+        <Metric label="Test coverage" value={meta.coverage != null ? `${meta.coverage}%` : null} />
+        <Metric label="Last changed" value={meta.changed} />
       </div>
 
       {meta.contributors?.length ? (
-        <div className="info-row">
-          <span className="info-row-label">Contributors</span>
-          <div className="info-avatars">
+        <div className="rv-info-row">
+          <span className="rv-info-row-label">Contributors</span>
+          <div className="rv-avatars">
             {meta.contributors.slice(0, 5).map((c) => (
               <Avatar key={c} name={c} />
             ))}
-            <span className="info-avatar-count">+{Math.max(0, meta.contributors.length - 5)}</span>
+            {meta.contributors.length > 5 ? (
+              <span className="rv-avatar-more">+{meta.contributors.length - 5}</span>
+            ) : null}
           </div>
         </div>
       ) : null}
 
       {meta.topDependencies?.length ? (
-        <div className="info-row">
-          <span className="info-row-label">Top Dependencies</span>
-          <div className="info-deps">
+        <div className="rv-info-row">
+          <span className="rv-info-row-label">Top dependencies</span>
+          <div className="rv-chip-list">
             {meta.topDependencies.map((d) => (
-              <code key={d} className="inline-code">
+              <code key={d} className="rv-code">
                 {d}
               </code>
             ))}
@@ -99,24 +91,29 @@ export default function InfoPanel({ node = null }) {
       ) : null}
 
       {meta.recentChanges?.length ? (
-        <div className="info-changes">
-          <div className="info-row-label">Recent Changes</div>
-          {meta.recentChanges.map((c) => (
-            <div className="info-change" key={c.hash}>
-              <code className="commit-hash">{c.hash}</code>
-              <span className="info-change-msg">{c.message}</span>
-              <span className="info-change-time">{c.time}</span>
-            </div>
-          ))}
+        <div className="rv-info-row">
+          <span className="rv-info-row-label">Recent changes</span>
+          <div className="rv-change-list">
+            {meta.recentChanges.map((c) => (
+              <div className="rv-change-row" key={c.hash}>
+                <code className="rv-hash">{c.hash}</code>
+                <span className="rv-change-msg" title={c.message}>
+                  {c.message}
+                </span>
+                <span className="rv-change-time">{c.time}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 
       <button
-        className="change-impact-link"
+        type="button"
+        className="rv-btn rv-btn-link"
         onClick={() => window.dispatchEvent(new CustomEvent('repo-intel:change-impact'))}
       >
-        View Change Impact <span className="arrow">→</span>
+        View change impact <IconArrowRight width={14} height={14} />
       </button>
-    </div>
+    </Card>
   )
 }

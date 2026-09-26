@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
-const RANGES = ['7 days', '30 days', '90 days', 'full history']
+import { ViewShell, ViewHeader, Card, StatTile, ProgressBar, Badge } from '../ui/primitives'
+
+const RANGES = ['7 days', '30 days', '90 days', 'Full history']
 
 function fmtTime(iso) {
   try {
@@ -14,125 +16,142 @@ function fmtTime(iso) {
   }
 }
 
-export default function GitHistoryView({
-  gitHistory = { timeline: [], fileChurn: [], branches: [], commits: [] },
-}) {
+const EMPTY_HISTORY = { timeline: [], fileChurn: [], branches: [], commits: [] }
+
+export default function GitHistoryView({ gitHistory = EMPTY_HISTORY }) {
   const [range, setRange] = useState('30 days')
-  const maxTimeline = Math.max(1, ...gitHistory.timeline.map((t) => t.commits))
-  const maxChurn = Math.max(1, ...gitHistory.fileChurn.map((f) => f.value))
+
+  const timeline = useMemo(() => gitHistory.timeline || [], [gitHistory])
+  const fileChurn = useMemo(() => gitHistory.fileChurn || [], [gitHistory])
+  const branches = useMemo(() => gitHistory.branches || [], [gitHistory])
+  const commits = useMemo(() => gitHistory.commits || [], [gitHistory])
+
+  const maxTimeline = useMemo(() => Math.max(1, ...timeline.map((t) => t.commits)), [timeline])
+  const maxChurn = useMemo(() => Math.max(1, ...fileChurn.map((f) => f.value)), [fileChurn])
+  const totalCommits = useMemo(() => timeline.reduce((s, t) => s + t.commits, 0), [timeline])
 
   return (
-    <div className="intel-view">
-      <div className="intel-view-header">
-        <div>
-          <h3>Git History</h3>
-          <p className="intel-subtext">Repository evolution across branches and files</p>
-        </div>
-        <div className="range-toggle">
-          {RANGES.map((r) => (
-            <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>
-              {r}
-            </button>
-          ))}
-        </div>
+    <ViewShell>
+      <ViewHeader
+        eyebrow="Git History"
+        title="Repository evolution"
+        description="Commit activity, file churn, branches and recent contributors."
+        actions={
+          <div className="rv-segmented" role="group" aria-label="Time range">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={range === r ? 'is-active' : ''}
+                onClick={() => setRange(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        }
+      />
+
+      <div className="rv-grid rv-grid-3">
+        <StatTile label="Commits" value={totalCommits} hint={`Across ${timeline.length} buckets`} />
+        <StatTile label="Branches" value={branches.length} hint="Detected in repository" />
+        <StatTile
+          label="Active branch"
+          value={branches.find((b) => b.active)?.name || gitHistory.range || '—'}
+          hint="Current HEAD"
+        />
       </div>
 
-      <div className="git-grid">
-        <div className="git-main">
-          <div className="git-card">
-            <div className="git-card-head">
-              <span>Commit activity</span>
-              <span className="git-card-meta">
-                {gitHistory.range === 'all' ? 'Full history' : gitHistory.range}
-              </span>
-            </div>
-            {gitHistory.timeline.length ? (
-              <div className="commit-bars">
-                {gitHistory.timeline.map((t) => (
-                  <div className="commit-col" key={t.week}>
-                    <div className="commit-bar-wrap">
-                      <div
-                        className="commit-bar"
-                        style={{ height: `${(t.commits / maxTimeline) * 100}%` }}
+      <div className="rv-grid rv-grid-main-side">
+        <div className="rv-stack">
+          <Card
+            title="Commit activity"
+            meta={gitHistory.range === 'all' ? 'Full history' : gitHistory.range}
+          >
+            {timeline.length ? (
+              <div className="rv-commit-bars">
+                {timeline.map((t) => (
+                  <div className="rv-commit-col" key={t.week}>
+                    <div className="rv-commit-bar-wrap" title={`${t.commits} commits`}>
+                      <span
+                        className="rv-commit-bar"
+                        style={{ height: `${Math.max(4, (t.commits / maxTimeline) * 100)}%` }}
                       />
                     </div>
-                    <span className="commit-week">{t.week}</span>
-                    <span className="commit-num">{t.commits}</span>
+                    <span className="rv-commit-week">{t.week}</span>
+                    <span className="rv-commit-num">{t.commits}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="intel-empty">No commit activity in this period.</p>
+              <p className="rv-muted-block">No commit activity in this period.</p>
             )}
-          </div>
+          </Card>
 
-          <div className="git-card">
-            <div className="git-card-head">
-              <span>File churn</span>
-            </div>
-            {gitHistory.fileChurn.length ? (
-              <div className="churn-list">
-                {gitHistory.fileChurn.map((f) => (
-                  <div className="churn-row" key={f.name}>
-                    <code className="churn-path">{f.name}</code>
-                    <div className="churn-bar">
-                      <i style={{ width: `${(f.value / maxChurn) * 100}%` }} />
-                    </div>
-                    <span className="churn-val">{f.value}</span>
+          <Card title="File churn" meta={`${fileChurn.length} files`}>
+            {fileChurn.length ? (
+              <div className="rv-churn-list">
+                {fileChurn.map((f) => (
+                  <div className="rv-churn-row" key={f.name}>
+                    <code className="rv-churn-path" title={f.name}>
+                      {f.name}
+                    </code>
+                    <ProgressBar value={f.value} max={maxChurn} trailing={f.value} />
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="intel-empty">No file churn recorded.</p>
+              <p className="rv-muted-block">No file churn recorded.</p>
             )}
-          </div>
+          </Card>
         </div>
 
-        <div className="git-side">
-          <div className="git-card">
-            <div className="git-card-head">
-              <span>Branches</span>
-            </div>
-            {gitHistory.branches.length ? (
-              <div className="branch-list">
-                {gitHistory.branches.map((b) => (
-                  <div className="branch-row" key={b.name}>
-                    <span className="branch-dot" style={{ background: b.color }} />
-                    <code className="branch-name">{b.name}</code>
-                    <span className="branch-count">{b.commits}</span>
-                    {b.active ? <span className="branch-active">HEAD</span> : null}
+        <div className="rv-stack">
+          <Card title="Branches">
+            {branches.length ? (
+              <div className="rv-branch-list">
+                {branches.map((b) => (
+                  <div className="rv-branch-row" key={b.name}>
+                    <span className="rv-branch-dot" style={{ background: b.color }} />
+                    <code className="rv-branch-name">{b.name}</code>
+                    <span className="rv-branch-count">{b.commits}</span>
+                    {b.active ? <Badge tone="accent">HEAD</Badge> : null}
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="intel-empty">No branches detected.</p>
+              <p className="rv-muted-block">No branches detected.</p>
             )}
-          </div>
+          </Card>
 
-          <div className="git-card">
-            <div className="git-card-head">
-              <span>Recent commits</span>
-            </div>
-            {gitHistory.commits.length ? (
-              <div className="recent-commits">
-                {gitHistory.commits.map((c) => (
-                  <button className="commit-row" key={c.hash}>
-                    <code className="commit-hash">{c.hash}</code>
-                    <span className="commit-msg">{c.message}</span>
-                    <span className="commit-author">{c.author}</span>
-                    <span className="commit-time">{fmtTime(c.time)}</span>
-                    <span className="commit-diff">
-                      +{c.inserts} −{c.deletes}
-                    </span>
-                  </button>
+          <Card title="Recent commits" meta={`${commits.length} shown`}>
+            {commits.length ? (
+              <div className="rv-commit-list">
+                {commits.map((c) => (
+                  <div className="rv-commit-row" key={c.hash}>
+                    <div className="rv-commit-row-main">
+                      <code className="rv-hash">{c.hash}</code>
+                      <span className="rv-commit-msg" title={c.message}>
+                        {c.message}
+                      </span>
+                    </div>
+                    <div className="rv-commit-row-meta">
+                      <span className="rv-commit-author">{c.author}</span>
+                      <span className="rv-commit-time">{fmtTime(c.time)}</span>
+                      <span className="rv-commit-diff">
+                        <b className="is-add">+{c.inserts}</b>{' '}
+                        <b className="is-del">−{c.deletes}</b>
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
-              <p className="intel-empty">No commits in this window.</p>
+              <p className="rv-muted-block">No commits in this window.</p>
             )}
-          </div>
+          </Card>
         </div>
       </div>
-    </div>
+    </ViewShell>
   )
 }

@@ -56,11 +56,16 @@ export default function RepositoryIntelligencePage() {
     )
   } else if (repository.error && !repository.analysis) {
     main = (
-      <div className="intel-analyzing-card empty-intel">
-        <p className="intel-error">{repository.error}</p>
-        <button className="primary" onClick={() => navigate('/workspace')}>
-          Back to workspace
-        </button>
+      <div className="intel-card intel-enter">
+        <div className="rv-viewport">
+          <div className="rv-state rv-state-error rv-state-full">
+            <p className="rv-state-title">Repository analysis failed</p>
+            <p className="rv-state-hint">{repository.error}</p>
+            <button className="rv-btn rv-btn-primary" onClick={() => navigate('/workspace')}>
+              Back to workspace
+            </button>
+          </div>
+        </div>
       </div>
     )
   } else {
@@ -98,7 +103,7 @@ export default function RepositoryIntelligencePage() {
         ) : (
           <section className="panel">
             <div className="panel-head">
-              <h3>Loading</h3>
+              <h3>Insights</h3>
             </div>
             <div className="empty" style={{ padding: '20px 0' }}>
               Analyzing repository…

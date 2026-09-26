@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
 import GraphViewer from '../GraphViewer'
 import { getRepositoryDependencies } from '../../../services/api'
+import {
+  ViewShell,
+  ViewHeader,
+  Card,
+  StatTile,
+  Badge,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+} from '../ui/primitives'
 
 const COUPLE_LIMIT = 3
 const RISK_LIMIT = 3
@@ -13,8 +24,8 @@ export default function DependencyView({ analysisId, dependencyGraph = { nodes: 
   const [error, setError] = useState('')
   const lastAnalysisId = useRef(null)
 
-  // Reset the selection whenever a new analysis is loaded so we never point at
-  // a node that does not exist in the fresh graph.
+  // Reset the selection whenever a new analysis loads so we never point at a
+  // node that does not exist in the fresh graph.
   useEffect(() => {
     if (lastAnalysisId.current && lastAnalysisId.current !== analysisId) {
       setSelected(null)
@@ -22,7 +33,6 @@ export default function DependencyView({ analysisId, dependencyGraph = { nodes: 
     lastAnalysisId.current = analysisId
   }, [analysisId])
 
-  // Fetch the dependency subgraph from the backend for the current selection.
   useEffect(() => {
     if (!analysisId) {
       setGraph(dependencyGraph || { nodes: [], edges: [] })
@@ -49,27 +59,26 @@ export default function DependencyView({ analysisId, dependencyGraph = { nodes: 
     }
   }, [analysisId, selected, dependencyGraph])
 
-  const nodes = graph?.nodes || []
-  const edges = graph?.edges || []
+  const nodes = useMemo(() => graph?.nodes || [], [graph])
+  const edges = useMemo(() => graph?.edges || [], [graph])
   const nodeById = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
   const label = useCallback(
     (id) => nodeById.get(id)?.label || nodeById.get(id)?.meta?.path || id,
     [nodeById],
   )
 
-  const selectedMeta = useMemo(() => {
-    const n = nodeById.get(selected)
-    return {
-      deps: n?.meta?.deps ?? 0,
-      dependents: n?.meta?.dependents ?? 0,
-    }
-  }, [selected, nodeById])
+  const selectedNode = nodeById.get(selected)
+  const selectedMeta = {
+    deps: selectedNode?.meta?.deps ?? 0,
+    dependents: selectedNode?.meta?.dependents ?? 0,
+  }
 
   const summary = useMemo(() => {
     const linkEdges = edges.filter((e) => e.kind !== 'contains')
-    const outgoing = linkEdges.filter((e) => e.source === selected)
-    const incoming = linkEdges.filter((e) => e.target === selected)
-    return { outgoing, incoming }
+    return {
+      outgoing: linkEdges.filter((e) => e.source === selected),
+      incoming: linkEdges.filter((e) => e.target === selected),
+    }
   }, [selected, edges])
 
   const facts = useMemo(
@@ -81,180 +90,174 @@ export default function DependencyView({ analysisId, dependencyGraph = { nodes: 
     [nodes, edges, label],
   )
 
-  const empty = !loading && !error && nodes.length === 0
+  const isEmpty = !loading && !error && nodes.length === 0
+  const linkCount = edges.filter((e) => e.kind !== 'contains').length
 
   return (
-    <div className="intel-view">
-      <div className="intel-view-header">
-        <div>
-          <h3>Dependencies</h3>
-          <p className="intel-subtext">Incoming, outgoing and coupling between modules</p>
-        </div>
-        <div className="dep-breakdown">
-          {selected ? (
-            <>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#7aa2f7' }} /> Fan-in{' '}
-                <b>{selectedMeta.dependents}</b>
-              </span>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#67e0c8' }} /> Fan-out{' '}
-                <b>{selectedMeta.deps}</b>
-              </span>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#8f7bf5' }} /> Incoming{' '}
-                <b>{summary.incoming.length}</b>
-              </span>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#f0b36e' }} /> Outgoing{' '}
-                <b>{summary.outgoing.length}</b>
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#7aa2f7' }} /> Source files{' '}
-                <b>{nodes.length}</b>
-              </span>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#67e0c8' }} /> Edges{' '}
-                <b>{edges.length}</b>
-              </span>
-              <span className="dep-chip">
-                <i className="legend-dot" style={{ background: '#f0b36e' }} /> Cycles{' '}
-                <b>{facts.cycles.length}</b>
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+    <ViewShell>
+      <ViewHeader
+        eyebrow="Dependencies"
+        title="Module coupling"
+        description="Incoming, outgoing and circular relationships between the repository's modules."
+        actions={
+          <div className="rv-inline-stats">
+            <span className="rv-inline-stat">
+              <b>{nodes.length}</b> nodes
+            </span>
+            <span className="rv-inline-stat">
+              <b>{linkCount}</b> edges
+            </span>
+            <span className="rv-inline-stat">
+              <b>{facts.cycles.length}</b> cycles
+            </span>
+          </div>
+        }
+      />
 
       {loading ? (
-        <div className="dep-state">
-          <div className="intel-spinner" />
-          <p>Building dependency graph…</p>
-        </div>
+        <LoadingState label="Building dependency graph…" />
       ) : error ? (
-        <div className="dep-state is-error">
-          <p>{error}</p>
-        </div>
-      ) : empty ? (
-        <div className="dep-state">
-          <p>No source dependencies could be extracted from this repository.</p>
-        </div>
-      ) : (
-        <GraphViewer
-          nodes={nodes}
-          edges={edges}
-          selected={selected}
-          onSelect={setSelected}
-          className="dep-graph"
-          height={460}
+        <ErrorState title="Dependency analysis failed" message={error} />
+      ) : isEmpty ? (
+        <EmptyState
+          title="No source dependencies found"
+          hint="No import relationships could be extracted from this repository."
         />
-      )}
+      ) : (
+        <>
+          <GraphViewer
+            nodes={nodes}
+            edges={edges}
+            selected={selected}
+            onSelect={setSelected}
+            className="rv-graph rv-graph-dependency"
+            height={440}
+          />
 
-      <div className="dep-panel-strip">
-        <div className="dep-left">
-          <div className="dep-block-title">Incoming dependencies</div>
-          {summary.incoming.length ? (
-            <div className="dep-tag-list">
-              {summary.incoming.map((e) => (
-                <button
-                  key={`in-${e.source}-${e.kind}`}
-                  className="dep-tag is-in"
-                  onClick={() => setSelected(e.source)}
-                >
-                  {label(e.source)}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="dep-empty">{selected ? 'No incoming deps' : 'Select a node'}</div>
-          )}
-        </div>
-        <div className="dep-right">
-          <div className="dep-block-title">Outgoing dependencies</div>
-          {summary.outgoing.length ? (
-            <div className="dep-tag-list">
-              {summary.outgoing.map((e) => (
-                <button
-                  key={`out-${e.target}-${e.kind}`}
-                  className="dep-tag is-out"
-                  onClick={() => setSelected(e.target)}
-                >
-                  {label(e.target)}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="dep-empty">{selected ? 'No outgoing deps' : 'Select a node'}</div>
-          )}
-        </div>
-      </div>
+          <div className="rv-grid rv-grid-2">
+            <Card
+              title="Incoming"
+              meta={selected ? label(selected) : 'Select a node'}
+              actions={<Badge tone="accent">{summary.incoming.length}</Badge>}
+            >
+              <DepTagList
+                empty={selected ? 'No incoming dependencies' : 'Select a node in the graph'}
+                edges={summary.incoming}
+                direction="in"
+                label={label}
+                onSelect={setSelected}
+              />
+            </Card>
 
-      <div className="dep-facts">
-        <div className="fact-card">
-          <div className="fact-title">Highly coupled modules</div>
-          <div className="fact-list">
-            {facts.coupled.length ? (
-              facts.coupled.map((c) => (
-                <div className="fact-row" key={`${c.a}-${c.b}`}>
-                  <span>
-                    {label(c.a)} ↔ {label(c.b)}
+            <Card
+              title="Outgoing"
+              meta={selected ? label(selected) : 'Select a node'}
+              actions={<Badge tone="teal">{summary.outgoing.length}</Badge>}
+            >
+              <DepTagList
+                empty={selected ? 'No outgoing dependencies' : 'Select a node in the graph'}
+                edges={summary.outgoing}
+                direction="out"
+                label={label}
+                onSelect={setSelected}
+              />
+            </Card>
+          </div>
+
+          {selected ? (
+            <div className="rv-grid rv-grid-3">
+              <StatTile
+                label="Fan-in"
+                value={selectedMeta.dependents}
+                hint="Modules that depend on this"
+              />
+              <StatTile label="Fan-out" value={selectedMeta.deps} hint="Modules this depends on" />
+              <StatTile
+                label="Risk"
+                value={selectedNode?.meta?.risk || 'Low'}
+                tone={riskStatTone(selectedNode?.meta?.risk)}
+                hint="Heuristic coupling risk"
+              />
+            </div>
+          ) : null}
+
+          <div className="rv-grid rv-grid-3">
+            <FactCard title="Highly coupled modules" empty="No significant coupling detected">
+              {facts.coupled.map((c) => (
+                <div className="rv-fact-row" key={`${c.a}-${c.b}`}>
+                  <span className="rv-fact-main">
+                    {label(c.a)} <span className="rv-fact-arrow">↔</span> {label(c.b)}
                   </span>
                   <b>{c.count} links</b>
                 </div>
-              ))
-            ) : (
-              <div className="fact-row">
-                <span className="ok-text">No significant couples detected</span>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="fact-card">
-          <div className="fact-title">Circular dependencies</div>
-          <div className="fact-list">
-            {facts.cycles.length ? (
-              facts.cycles.map((cycle, i) => (
-                <div className="fact-row" key={`cycle-${i}`}>
-                  <span className="has-warn">{cycle.map((id) => label(id)).join(' → ')}</span>
-                  <b className="warn-text">detected</b>
+              ))}
+            </FactCard>
+
+            <FactCard
+              title="Circular dependencies"
+              empty="No cycles found"
+              tone={facts.cycles.length ? 'warn' : 'ok'}
+            >
+              {facts.cycles.map((cycle, i) => (
+                <div className="rv-fact-row" key={`cycle-${i}`}>
+                  <span className="rv-fact-main is-warn">
+                    {cycle.map((id) => label(id)).join(' → ')}
+                  </span>
+                  <Badge tone="warn">cycle</Badge>
                 </div>
-              ))
-            ) : (
-              <div className="fact-row">
-                <span className="ok-text">No cycles found</span>
-                <b className="ok-text">stable</b>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="fact-card">
-          <div className="fact-title">Risky dependencies</div>
-          <div className="fact-list">
-            {facts.risky.length ? (
-              facts.risky.map((r) => (
-                <div className="fact-row" key={`risk-${r.id}`}>
-                  <span>{label(r.id)}</span>
-                  <b
-                    className={r.risk === 'Critical' || r.risk === 'High' ? 'warn-text' : 'ok-text'}
-                  >
+              ))}
+            </FactCard>
+
+            <FactCard title="Risky dependencies" empty="No high-risk modules">
+              {facts.risky.map((r) => (
+                <div className="rv-fact-row" key={`risk-${r.id}`}>
+                  <span className="rv-fact-main">{label(r.id)}</span>
+                  <Badge tone={r.risk === 'Critical' || r.risk === 'High' ? 'warn' : 'neutral'}>
                     {r.risk}
-                  </b>
+                  </Badge>
                 </div>
-              ))
-            ) : (
-              <div className="fact-row">
-                <span className="ok-text">No high-risk modules</span>
-                <b className="ok-text">stable</b>
-              </div>
-            )}
+              ))}
+            </FactCard>
           </div>
-        </div>
-      </div>
+        </>
+      )}
+    </ViewShell>
+  )
+}
+
+function DepTagList({ edges, direction, label, onSelect, empty }) {
+  if (!edges.length) return <p className="rv-muted-block">{empty}</p>
+  const keyName = direction === 'in' ? 'source' : 'target'
+  return (
+    <div className="rv-tag-list">
+      {edges.map((e) => (
+        <button
+          key={`${direction}-${e.source}-${e.target}-${e.kind}`}
+          type="button"
+          className={`rv-tag is-${direction}`}
+          onClick={() => onSelect(e[keyName])}
+        >
+          {label(e[keyName])}
+        </button>
+      ))}
     </div>
   )
+}
+
+function FactCard({ title, children, empty, tone = 'default' }) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children)
+  return (
+    <Card title={title} className={`rv-fact-card is-${tone}`}>
+      {hasChildren ? children : <p className="rv-muted-block is-ok">{empty}</p>}
+    </Card>
+  )
+}
+
+function riskStatTone(risk) {
+  const v = String(risk || '').toLowerCase()
+  if (v === 'critical' || v === 'high') return 'warn'
+  if (v === 'medium') return 'caution'
+  return 'ok'
 }
 
 // Top module pairs by number of edges between them (both directions).
@@ -262,8 +265,7 @@ function coupledModules(nodes, edges, label, limit) {
   const pairs = new Map()
   edges.forEach((e) => {
     if (e.kind === 'contains') return
-    const a = e.source,
-      b = e.target
+    const { source: a, target: b } = e
     if (a === b) return
     const key = a < b ? `${a}|${b}` : `${b}|${a}`
     pairs.set(key, (pairs.get(key) || 0) + 1)
@@ -317,8 +319,7 @@ function findCycles(nodes, edges) {
   return cycles
 }
 
-// Highest-risk modules/files by dependency weight (risk from meta, weight from
-// deps + dependents). Falls back to low-confidence edges when no node risk set.
+// Highest-risk modules by dependency weight; falls back to low-confidence edges.
 function riskyDependencies(nodes, edges, limit) {
   const withRisk = nodes
     .map((n) => ({

@@ -1,3 +1,6 @@
+import { Card } from '../ui/primitives'
+import { IconArrowRight, IconCommit } from '../ui/icons'
+
 function timeAgo(iso) {
   try {
     const d = new Date(iso)
@@ -15,49 +18,40 @@ function timeAgo(iso) {
   }
 }
 
-function kindIcon(kind) {
-  if (kind === 'commit') {
-    return (
-      <svg
-        width="13"
-        height="13"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 3v5M12 16v5M3 12h5M16 12h5" />
-      </svg>
-    )
-  }
-  return null
-}
-
 export default function RepositoryActivity({ activity = [], onViewHistory }) {
   return (
-    <section className="sidebar-section">
-      <div className="sidebar-section-title">Recent Activity</div>
-      <div className="activity-list">
-        {activity.map((a) => (
-          <div className="activity-row" key={a.id}>
-            <span className="activity-icon">{kindIcon(a.kind)}</span>
-            <div className="activity-body">
-              <div className="activity-msg">{a.message}</div>
-              <div className="activity-meta">
-                <code className="commit-hash">{a.hash}</code>
-                <span className="activity-author">{a.author}</span>
+    <Card title="Recent Activity" meta={`${activity.length} events`} className="rv-rail-card">
+      {activity.length ? (
+        <div className="rv-activity-list">
+          {activity.map((a) => (
+            <div className="rv-activity-row" key={a.id}>
+              <span className="rv-activity-icon">
+                <IconCommit width={13} height={13} />
+              </span>
+              <div className="rv-activity-body">
+                <div className="rv-activity-msg" title={a.message}>
+                  {a.message}
+                </div>
+                <div className="rv-activity-meta">
+                  <code className="rv-hash">{a.hash}</code>
+                  <span className="rv-activity-author">{a.author}</span>
+                </div>
               </div>
+              <span className="rv-activity-time">{timeAgo(a.time)}</span>
             </div>
-            <span className="activity-time">{timeAgo(a.time)}</span>
-          </div>
-        ))}
-      </div>
-      <button className="ghost wide" onClick={onViewHistory}>
-        View Full Commit History →
+          ))}
+        </div>
+      ) : (
+        <p className="rv-muted-block">No recent activity recorded.</p>
+      )}
+
+      <button
+        type="button"
+        className="rv-btn rv-btn-secondary rv-btn-block"
+        onClick={onViewHistory}
+      >
+        View full commit history <IconArrowRight width={14} height={14} />
       </button>
-    </section>
+    </Card>
   )
 }

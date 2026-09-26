@@ -82,7 +82,12 @@ export default function GraphViewer({
   const isFullscreen = isControlled ? !!fullscreenProp : fullscreen
   const setFull = isControlled ? onToggleFullscreen : setFullscreen
 
-  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
+  // Guard against partial backend payloads: nodes may arrive without x/y. Rather
+  // than render `translate(null,null)`, give unpositioned nodes a deterministic
+  // circular layout so the graph always renders.
+  const nodesWithPos = useMemo(() => ensurePositions(nodes), [nodes])
+
+  const nodeMap = useMemo(() => new Map(nodesWithPos.map((n) => [n.id, n])), [nodesWithPos])
 
   // Unique node colors drive per-color radial gradient defs.
   const nodeColors = useMemo(() => {
@@ -93,12 +98,12 @@ export default function GraphViewer({
 
   const fitScale = useCallback(
     (w, h) => {
-      if (!nodes.length) return { scale: 1, x: 40, y: 40 }
+      if (!nodesWithPos.length) return { scale: 1, x: 40, y: 40 }
       let minX = Infinity,
         minY = Infinity,
         maxX = -Infinity,
         maxY = -Infinity
-      nodes.forEach((n) => {
+      nodesWithPos.forEach((n) => {
         minX = Math.min(minX, n.x)
         minY = Math.min(minY, n.y)
         maxX = Math.max(maxX, n.x)
@@ -114,7 +119,7 @@ export default function GraphViewer({
         y: (h - (maxY - minY) * scale) / 2 - minY * scale,
       }
     },
-    [nodes],
+    [nodesWithPos],
   )
 
   const autoFit = useCallback(() => {
@@ -139,7 +144,7 @@ export default function GraphViewer({
     const raf = requestAnimationFrame(() => autoFit())
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey, nodes.length, isFullscreen])
+  }, [fitKey, nodesWithPos.length, isFullscreen])
 
   // Escape closes the fullscreen overlay.
   useEffect(() => {
@@ -215,13 +220,13 @@ export default function GraphViewer({
   // Adjacency sets used to dim unrelated nodes when a node is selected.
   const adjacency = useMemo(() => {
     const adj = new Map()
-    nodes.forEach((n) => adj.set(n.id, new Set()))
+    nodesWithPos.forEach((n) => adj.set(n.id, new Set()))
     edges.forEach((e) => {
       adj.get(e.source)?.add(e.target)
       adj.get(e.target)?.add(e.source)
     })
     return adj
-  }, [nodes, edges])
+  }, [nodesWithPos, edges])
 
   const isDimmed = useCallback(
     (id) => {
@@ -300,7 +305,7 @@ export default function GraphViewer({
                 </g>
               )
             })}
-            {nodes.map((node) => {
+            {nodesWithPos.map((node) => {
               const dimmed = isDimmed(node.id)
               const isSel = selected === node.id
               const color = kindColor(node.kind, accentFor?.(node))
@@ -388,7 +393,7 @@ export default function GraphViewer({
           </defs>
         </svg>
         <div className="graph-view-footer">
-          {nodes.length} nodes · {edges.length} connections
+          {nodesWithPos.length} nodes · {edges.length} connections
         </div>
       </div>
 
@@ -494,6 +499,28 @@ export default function GraphViewer({
 
 function clampZoom(z) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
+}
+
+// Guarantee finite coordinates for every node. Nodes that already carry numeric
+// x/y are passed through untouched; unpositioned nodes are laid out on a
+// circle around the origin (or centred when alone) so the SVG never receives a
+// `translate(null,null)`.
+function ensurePositions(nodes) {
+  if (!nodes.length) return nodes
+  const unresolved = nodes.filter((n) => !Number.isFinite(n.x) || !Number.isFinite(n.y))
+  if (!unresolved.length) return nodes
+
+  const radius = Math.max(240, unresolved.length * 34)
+  const cx = 620
+  const cy = 430
+  let i = 0
+  return nodes.map((n) => {
+    if (Number.isFinite(n.x) && Number.isFinite(n.y)) return n
+    if (unresolved.length === 1) return { ...n, x: cx, y: cy }
+    const angle = (i / unresolved.length) * Math.PI * 2 - Math.PI / 2
+    i += 1
+    return { ...n, x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius }
+  })
 }
 
 // Lighten (amt > 0) or darken (amt < 0) a hex color, amt in [-1, 1].
