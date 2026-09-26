@@ -1,10 +1,8 @@
-// The ContextForge brand mark: a faceted "layered anvil" — a knowledge stack
-// (faceted cube) seated on a retrieval node, fusing the forge metaphor with
-// grounded retrieval. Pure inline SVG so it inherits currentColor, scales
-// crisply at any size and needs no network request.
+// The ContextForge brand mark: a knowledge stack (three faceted bars) on a
+// gradient badge with a spark accent. Pure inline SVG so it scales crisply at
+// any size and needs no network request.
 
-const GRAD_ID = 'cf-mark-face'
-const TOP_GRAD_ID = 'cf-mark-top'
+const GRAD_ID = 'cf-mark-badge'
 
 export default function ContextForgeMark({
   size = 40,
@@ -17,54 +15,32 @@ export default function ContextForgeMark({
       className={className}
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox="0 0 140 140"
       fill="none"
       role="img"
       aria-label={title}
     >
       <defs>
-        <linearGradient id={GRAD_ID} x1="14" y1="12" x2="50" y2="54" gradientUnits="userSpaceOnUse">
-          <stop stopColor="var(--primary-soft, #6b92ff)" />
-          <stop offset="1" stopColor="var(--primary, #4377FD)" />
-        </linearGradient>
-        <linearGradient id={TOP_GRAD_ID} x1="16" y1="10" x2="48" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#8fadff" />
-          <stop offset="1" stopColor="var(--primary, #4377FD)" />
+        <linearGradient id={GRAD_ID} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#8F87ED" />
+          <stop offset="100%" stopColor="#332C77" />
         </linearGradient>
       </defs>
 
-      {withPlate && (
-        <>
-          <rect x="3" y="3" width="58" height="58" rx="16" fill="var(--canvas, #101010)" />
-          <rect
-            x="3.75"
-            y="3.75"
-            width="56.5"
-            height="56.5"
-            rx="15.25"
-            stroke="var(--primary, #4377FD)"
-            strokeOpacity="0.35"
-            strokeWidth="1.5"
-          />
-        </>
-      )}
+      {withPlate && <rect x="0" y="0" width="140" height="140" rx="32" fill={`url(#${GRAD_ID})`} />}
 
-      {/* knowledge stack — the faceted top of the anvil */}
-      <path d="M18 24.5 32 16l14 8.5-14 8.5-14-8.5Z" fill={`url(#${TOP_GRAD_ID})`} />
-      <path d="M18 24.5 32 33v7l-14-8.5v-7Z" fill={`url(#${GRAD_ID})`} />
-      <path d="M46 24.5 32 33v7l14-8.5v-7Z" fill="var(--primary, #4377FD)" fillOpacity="0.72" />
-
-      {/* retrieval paths converging on a grounded source */}
-      <path
-        d="M23 38.5 32 44l9-5.5"
-        stroke="var(--ink, #f2f2f2)"
-        strokeOpacity="0.9"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <rect x="30" y="34" width="80" height="16" rx="4" fill="#FFFFFF" />
+      <rect x="57" y="50" width="26" height="34" rx="3" fill="#FFFFFF" />
+      <rect x="38" y="84" width="64" height="20" rx="4" fill="#FFFFFF" />
+      <rect
+        x="112"
+        y="16"
+        width="16"
+        height="16"
+        rx="3"
+        fill="#EF9F27"
+        transform="rotate(45 120 24)"
       />
-      <circle cx="32" cy="46.5" r="3.1" fill="var(--primary-soft, #6b92ff)" />
-      <circle cx="32" cy="46.5" r="6.4" stroke="var(--primary-soft, #6b92ff)" strokeOpacity="0.4" strokeWidth="1.4" />
     </svg>
   )
 }

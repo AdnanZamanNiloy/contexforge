@@ -242,7 +242,7 @@ function SectionHeading({ eyebrow, title, lede, align = 'start' }) {
 }
 
 function BrandMark({ size = 30 }) {
-  return <ContextForgeMark size={size} withPlate={false} className="lp-mark" />
+  return <ContextForgeMark size={size} withPlate className="lp-mark" />
 }
 
 // ---------------------------------------------------------------------------
