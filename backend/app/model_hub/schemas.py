@@ -19,7 +19,6 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 __all__ = [
     "ChainCreate",
-    "ChainMember",
     "ChainResponse",
     "ChainUpdate",
     "ModelCreate",
@@ -199,10 +198,6 @@ class TestResponse(BaseModel):
     model_id: str | None = None
 
     model_config = {"frozen": True}
-
-
-class ChainMember(BaseModel):
-    model_id: str = Field(..., min_length=1)
 
 
 class ChainCreate(BaseModel):

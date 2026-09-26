@@ -152,21 +152,6 @@ export function sourceIconClass(type) {
   }
 }
 
-export function chunkIconClass(type) {
-  switch (type) {
-    case 'pdf':
-      return 'chunk-icon is-pdf'
-    case 'web':
-      return 'chunk-icon is-web'
-    case 'github':
-      return 'chunk-icon is-github'
-    case 'youtube':
-      return 'chunk-icon is-youtube'
-    default:
-      return 'chunk-icon'
-  }
-}
-
 export function formatFileSize(bytes) {
   if (!bytes) return '0 KB'
   if (bytes < 1024) return `${bytes} B`
@@ -206,15 +191,6 @@ export function normalizeSource(raw) {
     chunks: raw.chunks || 0,
     url: raw.url || '',
     meta: raw.metadata || {},
-  }
-}
-
-export function extractDomain(url) {
-  if (!url) return null
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return null
   }
 }
 

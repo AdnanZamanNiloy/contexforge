@@ -17,8 +17,6 @@ from observability.tracer import observe
 
 __all__ = [
     "build_dependency_subgraph",
-    "dependencies_of",
-    "dependents_of",
     "derive_calls",
     "enrich_nodes_with_degree",
     "ranked_modules",
@@ -181,11 +179,3 @@ def build_dependency_subgraph(
 
     sub_nodes = [node_by_id[nid] for nid in visited_nodes if nid in node_by_id]
     return {"nodes": sub_nodes, "edges": visited_edges}
-
-
-def dependents_of(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], node_id: str) -> list[str]:
-    return [e["source"] for e in edges if e["target"] == node_id]
-
-
-def dependencies_of(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], node_id: str) -> list[str]:
-    return [e["target"] for e in edges if e["source"] == node_id]

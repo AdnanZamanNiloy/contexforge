@@ -29,30 +29,6 @@ export function IconExpand(props) {
   )
 }
 
-export function IconCollapse(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4 8h4V4M20 8h-4V4M4 16h4v4M20 16h-4v4" />
-    </svg>
-  )
-}
-
-export function IconBranch(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9" />
-    </svg>
-  )
-}
-
-export function IconSync(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-    </svg>
-  )
-}
-
 export function IconGitMerge(props) {
   return (
     <svg {...base} {...props}>
@@ -69,33 +45,6 @@ export function IconCommit(props) {
     <svg {...base} {...props}>
       <circle cx="12" cy="12" r="4" />
       <path d="M12 3v5M12 16v5M3 12h5M16 12h5" />
-    </svg>
-  )
-}
-
-export function IconLock(props) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  )
-}
-
-export function IconGlobe(props) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-    </svg>
-  )
-}
-
-export function IconFile(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
     </svg>
   )
 }
@@ -160,32 +109,6 @@ export function IconCheck(props) {
   return (
     <svg {...base} {...props}>
       <path d="M20 6L9 17l-5-5" />
-    </svg>
-  )
-}
-
-export function IconAlert(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-      <path d="M12 9v4M12 17h.01" />
-    </svg>
-  )
-}
-
-export function IconClock(props) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
-    </svg>
-  )
-}
-
-export function IconActivity(props) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
     </svg>
   )
 }

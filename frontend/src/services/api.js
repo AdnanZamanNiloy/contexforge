@@ -289,10 +289,6 @@ export async function reanalyzeRepository(analysisId) {
   return request(`/repository/${analysisId}/reanalyze`, { method: 'POST' })
 }
 
-export function repositoryAsk(analysisId, question, handlers = {}) {
-  return streamQuery({ question }, handlers, `/repository/${analysisId}/ask`)
-}
-
 // --- Mind Map ---------------------------------------------------------------
 
 export async function createMindMap(sourceId) {
@@ -336,10 +332,6 @@ export async function createModel(payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   })
-}
-
-export async function getModel(modelId) {
-  return request(`/models/${encodeURIComponent(modelId)}`, { method: 'GET' })
 }
 
 export async function updateModel(modelId, payload) {

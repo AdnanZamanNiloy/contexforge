@@ -37,7 +37,6 @@ __all__ = [
     "AnalysisStatus",
     "AnalysisSummary",
     "AnalyzeRequest",
-    "AnalyzeResponse",
     "BlastRadius",
     "ChangeImpact",
     "CommitItem",
@@ -51,7 +50,6 @@ __all__ = [
     "HealthDimension",
     "ImpactEstimated",
     "ImpactNode",
-    "ModuleDetails",
     "ModuleOwner",
     "NodeKind",
     "Ownership",
@@ -66,7 +64,6 @@ __all__ = [
     "RepositoryNode",
     "RiskExplanations",
     "RiskLevel",
-    "SuggestedQuestions",
     "TimelineBucket",
 ]
 
@@ -183,12 +180,6 @@ class ActivityItem(BaseModel):
     time: datetime
     author: str
     kind: str = "commit"
-
-    model_config = _CAMEL
-
-
-class SuggestedQuestions(BaseModel):
-    questions: list[str]
 
     model_config = _CAMEL
 
@@ -392,23 +383,6 @@ class RiskExplanations(BaseModel):
     model_config = _CAMEL
 
 
-class ModuleDetails(BaseModel):
-    path: str
-    type: str
-    files: int = 0
-    loc: int = 0
-    deps: int = 0
-    dependents: int = 0
-    risk: RiskLevel = "Low"
-    coverage: float = 0.0
-    changed: str = ""
-    contributors: list[str] = Field(default_factory=list)
-    top_dependencies: list[str] = Field(default_factory=list)
-    recent_changes: list[ActivityItem] = Field(default_factory=list)
-
-    model_config = _CAMEL
-
-
 class AnalysisStatus(BaseModel):
     id: str
     repo_url: str
@@ -432,15 +406,6 @@ class AnalysisSummary(BaseModel):
     repository: Repository
     generated_at: datetime
     sha256: str
-
-    model_config = _CAMEL
-
-
-class AnalyzeResponse(BaseModel):
-    analysis_id: str
-    status: AnalysisStatus
-    incremental: bool = False
-    reused_commit: str | None = None
 
     model_config = _CAMEL
 

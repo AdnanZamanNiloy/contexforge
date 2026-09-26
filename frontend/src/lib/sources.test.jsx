@@ -5,7 +5,6 @@ import {
   formatTypeLabel,
   normalizeSource,
   sourceRepoUrl,
-  extractDomain,
 } from './sources'
 
 describe('formatFileSize', () => {
@@ -88,16 +87,5 @@ describe('sourceRepoUrl', () => {
   it('returns empty for non-GitHub or unparseable titles', () => {
     expect(sourceRepoUrl({ type: 'pdf' })).toBe('')
     expect(sourceRepoUrl({ type: 'github', title: 'no-slash' })).toBe('')
-  })
-})
-
-describe('extractDomain', () => {
-  it('strips the scheme and www prefix', () => {
-    expect(extractDomain('https://www.example.com/path')).toBe('example.com')
-  })
-
-  it('returns null for invalid urls', () => {
-    expect(extractDomain('not a url')).toBe(null)
-    expect(extractDomain('')).toBe(null)
   })
 })

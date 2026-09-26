@@ -52,8 +52,6 @@ export function useSources() {
     setSources(next)
   }, [])
 
-  const getById = useCallback((id) => sources.find((s) => s.id === id) || null, [sources])
-
   return {
     sources,
     loading,
@@ -62,6 +60,5 @@ export function useSources() {
     updateSource,
     removeSource,
     replaceAll,
-    getById,
   }
 }

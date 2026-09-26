@@ -114,12 +114,6 @@ class RepositoryStore:
     async def get_latest_run(self, owner: str, name: str, exclude_run_id: str | None = None) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._get_latest_run_sync, owner, name, exclude_run_id)
 
-    async def get_run_overview(self, analysis_id: str) -> dict[str, Any] | None:
-        return await asyncio.to_thread(self._get_run_overview_sync, analysis_id)
-
-    async def list_runs(self, owner: str, name: str, limit: int = 20) -> list[dict[str, Any]]:
-        return await asyncio.to_thread(self._list_runs_sync, owner, name, limit)
-
     async def get_nodes(self, analysis_id: str) -> list[dict[str, Any]]:
         return await asyncio.to_thread(self._get_nodes_sync, analysis_id)
 
@@ -291,40 +285,6 @@ class RepositoryStore:
             query += " ORDER BY created_at DESC LIMIT 1"
             row = conn.execute(query, params).fetchone()
             return dict(row) if row else None
-        finally:
-            conn.close()
-
-    def _get_run_overview_sync(self, analysis_id: str) -> dict[str, Any] | None:
-        run = self._get_run_sync(analysis_id)
-        if run is None:
-            return None
-        conn = self._connect()
-        try:
-            node_count = conn.execute(
-                "SELECT COUNT(*) AS c FROM analysis_nodes WHERE analysis_id = ?",
-                (analysis_id,),
-            ).fetchone()["c"]
-            edge_count = conn.execute(
-                "SELECT COUNT(*) AS c FROM analysis_edges WHERE analysis_id = ?",
-                (analysis_id,),
-            ).fetchone()["c"]
-            run["node_count"] = node_count
-            run["edge_count"] = edge_count
-            return run
-        finally:
-            conn.close()
-
-    def _list_runs_sync(self, owner: str, name: str, limit: int) -> list[dict[str, Any]]:
-        conn = self._connect()
-        try:
-            rows = conn.execute(
-                """SELECT id, owner, name, full_name, branch, commit_sha, status,
-                          progress, created_at, finished_at, error
-                   FROM analysis_runs WHERE owner = ? AND name = ?
-                   ORDER BY created_at DESC LIMIT ?""",
-                (owner, name, limit),
-            ).fetchall()
-            return [dict(r) for r in rows]
         finally:
             conn.close()
 

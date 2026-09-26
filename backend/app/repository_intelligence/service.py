@@ -384,10 +384,6 @@ class RepositoryIntelligenceService:
         bundle = await self._summary_bundle(analysis_id)
         return bundle.get("repository", {})
 
-    async def get_ranked_modules(self, analysis_id: str) -> list[dict[str, Any]]:
-        bundle = await self._summary_bundle(analysis_id)
-        return bundle.get("ranked_modules", [])
-
     async def get_risk_explanations(self, analysis_id: str) -> dict[str, str]:
         bundle = await self._summary_bundle(analysis_id)
         return bundle.get("risk_explanations", {})

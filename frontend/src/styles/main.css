@@ -2371,17 +2371,6 @@ h3 {
   text-align: right;
 }
 
-.rv-stacked {
-  display: flex;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
-}
-.rv-stacked-seg {
-  height: 100%;
-}
-
 /* Badges */
 .rv-badge {
   display: inline-flex;

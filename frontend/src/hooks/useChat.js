@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { queryAnswer, streamQuery } from '../services/api'
 
@@ -25,12 +25,6 @@ function saveState(sourceId, state) {
   }
 }
 
-const SUGGESTIONS = [
-  'Explain positional encoding',
-  'How does self-attention work?',
-  'Show code example in PyTorch',
-]
-
 const DEFAULT_CONFIDENCE = {
   answer_confidence: 0,
   source_coverage: 'Weak',
@@ -50,8 +44,6 @@ export function useChat({ sourceId = null } = {}) {
   const [showUploadHint, setShowUploadHint] = useState(false)
   const abortRef = useRef(null)
   const lastQuestionRef = useRef('')
-
-  const suggestions = useMemo(() => SUGGESTIONS, [])
 
   // Persist chat state so history survives page refresh.
   useEffect(() => {
@@ -227,13 +219,10 @@ export function useChat({ sourceId = null } = {}) {
     sendMessage,
     isStreaming,
     error,
-    setError,
     sources,
     latency,
     confidence,
-    suggestions,
     retryLast,
-    stopStream,
     showUploadHint,
     resetChat,
   }

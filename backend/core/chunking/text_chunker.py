@@ -10,7 +10,7 @@ from app.config.settings import settings
 from core.types import Chunk, Document, validate_documents
 from observability.tracer import observe
 
-__all__ = ["TextChunker", "default_chunker", "get_token_len"]
+__all__ = ["TextChunker", "get_token_len"]
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +98,3 @@ class TextChunker:
         if not text.strip():
             return []
         return [chunk for chunk in self._splitter.split_text(text) if chunk.strip()]
-
-
-default_chunker = TextChunker()

@@ -37,10 +37,6 @@ export function Card({ title, meta, actions, children, className = '', padded = 
   )
 }
 
-export function Grid({ columns = 'auto', className = '', children }) {
-  return <div className={`rv-grid rv-grid-${columns} ${className}`.trim()}>{children}</div>
-}
-
 // --- Data display -----------------------------------------------------------
 
 export function StatTile({ label, value, hint, tone = 'default', icon }) {
@@ -59,22 +55,6 @@ export function Metric({ label, value }) {
     <div className="rv-metric">
       <span className="rv-metric-label">{label}</span>
       <span className="rv-metric-value">{value ?? '—'}</span>
-    </div>
-  )
-}
-
-export function StackedBar({ segments = [], className = '' }) {
-  const total = segments.reduce((sum, s) => sum + (s.value || 0), 0) || 1
-  return (
-    <div className={`rv-stacked ${className}`.trim()}>
-      {segments.map((s) => (
-        <span
-          key={s.label}
-          className="rv-stacked-seg"
-          style={{ width: `${((s.value || 0) / total) * 100}%`, background: s.color }}
-          title={`${s.label}: ${s.value}`}
-        />
-      ))}
     </div>
   )
 }
@@ -179,13 +159,6 @@ export function ErrorState({ title = 'Something went wrong', message, action }) 
 export function formatNumber(value) {
   if (value == null) return '—'
   return Number(value).toLocaleString()
-}
-
-export function formatCompact(value) {
-  if (value == null) return '—'
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`
-  return String(value)
 }
 
 export function riskTone(risk) {
