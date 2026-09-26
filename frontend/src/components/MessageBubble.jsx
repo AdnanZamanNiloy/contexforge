@@ -1,5 +1,62 @@
+import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label={copied ? 'Copied' : 'Copy answer'}
+      title={copied ? 'Copied' : 'Copy answer'}
+      className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-1 text-xs
+        text-[#8b949e] border border-transparent
+        transition-colors hover:text-[#f2f2f2] hover:border-[#3d3a39] hover:bg-[#1a1a1a]"
+    >
+      {copied ? (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+      <span>{copied ? 'Copied' : 'Copy'}</span>
+    </button>
+  )
+}
 
 function MarkdownRenderer({ content }) {
   return (
@@ -48,6 +105,12 @@ export default function MessageBubble({ role, text, status }) {
           <MarkdownRenderer content={text || ''} />
         </div>
       )}
+
+      {!isStreamingEmpty && text && status !== 'streaming' ? (
+        <div className="mt-2 flex">
+          <CopyButton text={text} />
+        </div>
+      ) : null}
     </div>
   )
 }
