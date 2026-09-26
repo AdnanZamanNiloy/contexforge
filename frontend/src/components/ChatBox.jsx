@@ -60,9 +60,8 @@ export default function ChatBox({
     'text-[#f2f2f2] placeholder-[#8b949e] ' +
     'text-base leading-relaxed outline-none ' +
     'transition-all duration-200 ' +
-    'focus:border-[rgba(47,214,161,0.6)] ' +
+    'focus:border-[rgba(67,119,253,0.6)] ' +
     'focus:bg-[#1a1a1a] ' +
-    'focus:shadow-[0_0_0_3px_rgba(47,214,161,0.15)] ' +
     'disabled:opacity-60 disabled:cursor-not-allowed'
 
   const sendBtnBase =
@@ -71,7 +70,7 @@ export default function ChatBox({
     'text-[#101010] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
     'transition-all duration-200 ' +
-    'hover:shadow-[0_0_15px_rgba(0,217,146,0.35)] ' +
+    'hover:brightness-110 ' +
     'cursor-pointer'
 
   const inputArea = (
@@ -181,7 +180,7 @@ export default function ChatBox({
             bg-[#1a1a1a] text-[#f2f2f2]
             border border-[#3d3a39]
             cursor-pointer shrink-0
-            hover:bg-[rgba(0,217,146,0.12)] hover:border-[rgba(0,217,146,0.45)]
+            hover:bg-[rgba(67,119,253,0.12)] hover:border-[rgba(67,119,253,0.45)]
             hover:text-[#6b92ff]
             disabled:opacity-40 disabled:cursor-not-allowed
             transition-all duration-200"
