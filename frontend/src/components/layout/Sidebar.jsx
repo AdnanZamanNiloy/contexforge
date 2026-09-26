@@ -59,28 +59,28 @@ export default function Sidebar({
       id: 'all',
       label: 'All Documents',
       count: sources.length,
-      icon: <SourceGlyph type="text" size={16} />,
+      icon: <SourceGlyph type="text" size={14} />,
     },
-    { id: 'pdf', label: 'PDFs', count: pdfCount, icon: <SourceGlyph type="pdf" size={16} /> },
+    { id: 'pdf', label: 'PDFs', count: pdfCount, icon: <SourceGlyph type="pdf" size={14} /> },
     {
       id: 'docx',
       label: 'Word Docs',
       count: docxCount,
-      icon: <SourceGlyph type="docx" size={16} />,
+      icon: <SourceGlyph type="docx" size={14} />,
     },
-    { id: 'web', label: 'Web Pages', count: webCount, icon: <SourceGlyph type="web" size={16} /> },
-    { id: 'github', label: 'GitHub Repos', count: githubCount, icon: <GithubMark size={16} /> },
+    { id: 'web', label: 'Web Pages', count: webCount, icon: <SourceGlyph type="web" size={14} /> },
+    { id: 'github', label: 'GitHub Repos', count: githubCount, icon: <GithubMark size={14} /> },
     {
       id: 'youtube',
       label: 'YouTube Videos',
       count: youtubeCount,
-      icon: <SourceGlyph type="youtube" size={16} />,
+      icon: <SourceGlyph type="youtube" size={14} />,
     },
     {
       id: 'text',
       label: 'Text',
       count: textCount,
-      icon: <SourceGlyph type="text" size={16} />,
+      icon: <SourceGlyph type="text" size={14} />,
     },
   ]
 
@@ -205,7 +205,6 @@ export default function Sidebar({
       <div className="sidebar-spacer" />
 
       <div className="status-card">
-        <div className="status-card-header">Processing Status</div>
         <div className="status-card-body">
           <div className="status-card-row">
             <span className="status-dot is-indexed" />

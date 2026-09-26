@@ -68,30 +68,52 @@ body {
   padding: 16px;
 }
 
+/* The sidebar is a fixed-height flex column that never scrolls as a whole.
+   Header, Add Source, the category list and the status card stay pinned; only
+   the source list scrolls.  min-height: 0 at each flex level is what allows the
+   inner list to shrink instead of forcing the panel to overflow. */
 .sidebar-shell {
   position: sticky;
   top: 16px;
+  max-height: calc(100vh - 32px);
   height: calc(100vh - 32px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   border-radius: 14px;
   background: var(--panel);
   border: 1px solid var(--stroke);
   box-shadow: var(--shadow);
-  padding: 16px 12px 12px;
+  padding: 16px 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 9px;
 }
 
-/* Scrollbar */
-.sidebar-shell::-webkit-scrollbar {
+.sidebar-shell > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* Header/actions block at the top is intentionally non-shrinking. */
+.sidebar-shell .brand,
+.sidebar-shell .add-knowledge-btn,
+.sidebar-shell .kb-section {
+  flex-shrink: 0;
+}
+
+/* Scrollbar (shared by the source list) */
+.sidebar-shell::-webkit-scrollbar,
+.sources-section::-webkit-scrollbar,
+.source-list::-webkit-scrollbar {
   width: 4px;
 }
-.sidebar-shell::-webkit-scrollbar-track {
+.sidebar-shell::-webkit-scrollbar-track,
+.sources-section::-webkit-scrollbar-track,
+.source-list::-webkit-scrollbar-track {
   background: transparent;
 }
-.sidebar-shell::-webkit-scrollbar-thumb {
+.sidebar-shell::-webkit-scrollbar-thumb,
+.sources-section::-webkit-scrollbar-thumb,
+.source-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.06);
   border-radius: 99px;
 }
@@ -99,7 +121,7 @@ body {
 .add-knowledge-btn {
   border: 1px solid rgba(154, 168, 255, 0.5);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 9px 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,7 +156,7 @@ body {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .section-title .count {
@@ -152,7 +174,7 @@ body {
 .kb-rows {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
 }
 
 .kb-row {
@@ -160,9 +182,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 3px 8px;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--text);
   cursor: pointer;
   transition: background 0.15s ease;
@@ -207,17 +229,46 @@ body {
   margin-left: auto;
 }
 
-/* My Sources */
+/* My Sources — the single scroll region.  flex: 1 1 auto + min-height: 0 lets it
+   absorb the leftover height and scroll internally, so a long source list never
+   pushes the header or the status card out of view. */
 .sources-section {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sources-section > .section-title {
+  flex: 0 0 auto;
+  padding-bottom: 3px;
+  background: linear-gradient(var(--panel) 70%, transparent);
 }
 
 .source-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  /* Room for focus rings / hover borders so they are not clipped by the scroller. */
+  padding: 2px 4px 6px 2px;
+  margin-right: -4px;
+  scrollbar-gutter: stable;
+}
+
+/* Revert-proofing: rows keep their natural height in EVERY container mode.
+   Without this, a height-starved flex container shrinks rows (overflow: hidden
+   makes their automatic minimum 0) and a grid fallback locks tracks at the
+   same 14px padding-only floor — both clip every row's text while the
+   scrollbar still works. */
+.source-list > * {
+  flex-shrink: 0;
+  min-height: max-content;
 }
 
 .empty-source {
@@ -362,34 +413,31 @@ body {
   color: var(--warning);
 }
 
-/* Sidebar spacer */
+/* Sidebar spacer — must NOT grow, otherwise it steals the height the source
+   list needs and collapses the scroll region. */
 .sidebar-spacer {
-  flex: 1;
-  min-height: 4px;
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
-/* Status card */
+/* Status card — pinned to the bottom of the flex column. */
 .status-card {
+  flex: 0 0 auto;
+  margin-top: auto;
   border-radius: 10px;
   border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.03);
-  padding: 10px 12px;
+  padding: 7px 9px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.status-card-header {
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
+  gap: 5px;
 }
 
 .status-card-body {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
 }
 
 .status-card-row {
@@ -424,9 +472,9 @@ body {
 }
 
 .clear-kb-btn {
-  margin-top: 8px;
+  margin-top: 2px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
   font-size: 0.72rem;
   font-weight: 550;
@@ -858,10 +906,11 @@ body {
   overflow-y: auto;
 }
 
-.source-list {
-  display: grid;
-  gap: 12px;
-}
+/* LEGACY RULE — DO NOT ADD `.source-list` HERE.
+   A duplicate `.source-list { display: grid }` once lived here and won the
+   cascade, locking row tracks at their 14px padding-only minimum (every
+   row's text was clipped while the list still "scrolled").  The sidebar
+   scroller is defined once near the top of this file. */
 
 .source-item {
   display: grid;
@@ -1414,6 +1463,24 @@ body {
   .main-card,
   .evidence {
     border-radius: 12px;
+  }
+
+  /* Single-column layout: the sidebar is no longer a sticky viewport panel, so
+     release the fixed height and let the page scroll normally. */
+  .sidebar-shell {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .sources-section {
+    overflow: visible;
+  }
+
+  .source-list {
+    max-height: 320px;
+    overflow-y: auto;
   }
 
   .evidence-shell {
@@ -4635,6 +4702,47 @@ body {
   flex-shrink: 0;
 }
 
+/* Single-row explore top bar: the identity header and the capability tabs
+   share one line so the tab row's height is reclaimed by the content below.
+   The title ellipsizes (full text via [title] hover) instead of wrapping, and
+   at very narrow widths the tab track wraps onto its own line as a fallback. */
+.explore-topbar {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 0 22px 0 26px;
+  border-bottom: 1px solid var(--stroke);
+}
+.explore-topbar .source-header {
+  border-bottom: none;
+  padding: 10px 0;
+  /* flex-basis 0 keeps the tab track on the SAME line during wrap math;
+     the header then grows and the title ellipsizes instead of wrapping. */
+  flex: 1 1 0;
+  min-width: 0;
+}
+.explore-topbar .source-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Keep the type pill inline with the title — letting it wrap below would add
+   a second line to the identity block and grow the whole row again. */
+.explore-topbar .source-line {
+  flex-wrap: nowrap;
+}
+.explore-topbar .source-type-pill {
+  flex-shrink: 0;
+}
+.explore-topbar .capability-tabs {
+  border-bottom: none;
+  padding: 0;
+  display: flex;
+  align-items: stretch;
+}
+
 /* Capability tabs (Overview / Chat / Repository Intelligence / Mind Map). */
 .capability-tabs {
   border-bottom: 1px solid var(--stroke);
@@ -4659,9 +4767,9 @@ body {
   background: transparent;
   border: none;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 550;
-  padding: 12px 14px;
+  padding: 12px 12px;
   cursor: pointer;
   white-space: nowrap;
   transition: color 0.15s ease;

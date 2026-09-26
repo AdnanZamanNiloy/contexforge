@@ -9,3 +9,7 @@ backend/data/
 frontend/node_modules/
 frontend/dist/
 /mindmap/
+
+# Visual-testing artifacts (screenshots + harness scripts)
+frontend/scripts/
+frontend/*.png

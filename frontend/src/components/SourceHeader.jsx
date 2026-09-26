@@ -54,7 +54,9 @@ export default function SourceHeader({ source = {}, onBack, actions }) {
         </div>
         <div className="source-identity">
           <div className="source-line">
-            <span className="source-name">{source.title || 'Untitled source'}</span>
+            <span className="source-name" title={source.title || 'Untitled source'}>
+              {source.title || 'Untitled source'}
+            </span>
             <span className={`source-type-pill is-${type}`}>{formatTypeLabel(type)}</span>
           </div>
           <div className="source-sub">{formatSourceMetaExtended(source)}</div>
