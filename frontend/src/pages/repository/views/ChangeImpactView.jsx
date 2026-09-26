@@ -6,7 +6,7 @@ import { ViewShell, Card, StatTile, Badge, Legend, EmptyState } from '../ui/prim
 const RISK_TONE = { LOW: 'ok', MEDIUM: 'caution', HIGH: 'warn', CRITICAL: 'critical' }
 
 const IMPACT_LEGEND = [
-  { label: 'Direct impact', color: '#00d992' },
+  { label: 'Direct impact', color: '#4377FD' },
   { label: 'Indirect impact', color: '#8b949e' },
 ]
 
@@ -59,7 +59,7 @@ export default function ChangeImpactView({
             edges={blast.edges}
             selected={selected}
             onSelect={setSelected}
-            accentFor={(n) => (n.direct ? '#00d992' : '#8b949e')}
+            accentFor={(n) => (n.direct ? '#4377FD' : '#8b949e')}
             className="rv-graph rv-graph-impact"
             height={440}
           />

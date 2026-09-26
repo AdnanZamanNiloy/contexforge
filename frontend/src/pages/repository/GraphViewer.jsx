@@ -22,32 +22,32 @@ function kindColor(kind, accentOverride) {
   if (accentOverride) return accentOverride
   switch (kind) {
     case 'repo':
-      return '#2fd6a1'
+      return '#6b92ff'
     case 'area':
-      return '#00d992'
+      return '#4377FD'
     case 'directory':
-      return '#10b981'
+      return '#2f5fe0'
     case 'module':
-      return '#00d992'
+      return '#4377FD'
     case 'file':
-      return '#2fd6a1'
+      return '#6b92ff'
     case 'func':
-      return '#10b981'
+      return '#2f5fe0'
     case 'route':
       return '#8b949e'
     case 'input':
     case 'output':
-      return '#10b981'
+      return '#2f5fe0'
     case 'service':
-      return '#00d992'
+      return '#4377FD'
     case 'llm':
-      return '#2fd6a1'
+      return '#6b92ff'
     case 'storage':
-      return '#10b981'
+      return '#2f5fe0'
     case 'transport':
       return '#8b949e'
     case 'core':
-      return '#00d992'
+      return '#4377FD'
     default:
       return '#8b949e'
   }

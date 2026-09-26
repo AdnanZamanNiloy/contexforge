@@ -67,7 +67,7 @@ export default function ChatBox({
 
   const sendBtnBase =
     'absolute right-2 bottom-2 p-2.5 rounded-[6px] ' +
-    'bg-[#00d992] ' +
+    'bg-[#4377FD] ' +
     'text-[#101010] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
     'transition-all duration-200 ' +
@@ -182,7 +182,7 @@ export default function ChatBox({
             border border-[#3d3a39]
             cursor-pointer shrink-0
             hover:bg-[rgba(0,217,146,0.12)] hover:border-[rgba(0,217,146,0.45)]
-            hover:text-[#2fd6a1]
+            hover:text-[#6b92ff]
             disabled:opacity-40 disabled:cursor-not-allowed
             transition-all duration-200"
         >
@@ -253,8 +253,8 @@ export default function ChatBox({
 
         {uploadHint ? (
           <div
-            className="rounded-[8px] border border-[rgba(0,217,146,0.3)]
-              bg-[rgba(0,217,146,0.06)] p-4 space-y-2"
+            className="rounded-[8px] border border-[#3d3a39]
+              bg-[#1a1a1a] p-4 space-y-2"
           >
             <div className="font-semibold text-sm text-white">
               No sources were used for this answer.
@@ -267,8 +267,8 @@ export default function ChatBox({
                 <span
                   key={tag}
                   className="px-2.5 py-1 rounded-[9999px] text-[10px] font-mono
-                    bg-[rgba(0,217,146,0.12)] text-[#2fd6a1]
-                    border border-[rgba(0,217,146,0.3)]"
+                    bg-[#242424] text-[#bdbdbd]
+                    border border-[#3d3a39]"
                 >
                   {tag}
                 </span>

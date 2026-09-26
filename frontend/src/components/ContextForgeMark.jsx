@@ -24,12 +24,12 @@ export default function ContextForgeMark({
     >
       <defs>
         <linearGradient id={GRAD_ID} x1="14" y1="12" x2="50" y2="54" gradientUnits="userSpaceOnUse">
-          <stop stopColor="var(--primary-soft, #2fd6a1)" />
-          <stop offset="1" stopColor="var(--primary, #00d992)" />
+          <stop stopColor="var(--primary-soft, #6b92ff)" />
+          <stop offset="1" stopColor="var(--primary, #4377FD)" />
         </linearGradient>
         <linearGradient id={TOP_GRAD_ID} x1="16" y1="10" x2="48" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#7ef0c4" />
-          <stop offset="1" stopColor="var(--primary, #00d992)" />
+          <stop stopColor="#8fadff" />
+          <stop offset="1" stopColor="var(--primary, #4377FD)" />
         </linearGradient>
       </defs>
 
@@ -42,7 +42,7 @@ export default function ContextForgeMark({
             width="56.5"
             height="56.5"
             rx="15.25"
-            stroke="var(--primary, #00d992)"
+            stroke="var(--primary, #4377FD)"
             strokeOpacity="0.35"
             strokeWidth="1.5"
           />
@@ -52,7 +52,7 @@ export default function ContextForgeMark({
       {/* knowledge stack — the faceted top of the anvil */}
       <path d="M18 24.5 32 16l14 8.5-14 8.5-14-8.5Z" fill={`url(#${TOP_GRAD_ID})`} />
       <path d="M18 24.5 32 33v7l-14-8.5v-7Z" fill={`url(#${GRAD_ID})`} />
-      <path d="M46 24.5 32 33v7l14-8.5v-7Z" fill="var(--primary, #00d992)" fillOpacity="0.72" />
+      <path d="M46 24.5 32 33v7l14-8.5v-7Z" fill="var(--primary, #4377FD)" fillOpacity="0.72" />
 
       {/* retrieval paths converging on a grounded source */}
       <path
@@ -63,8 +63,8 @@ export default function ContextForgeMark({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx="32" cy="46.5" r="3.1" fill="var(--primary-soft, #2fd6a1)" />
-      <circle cx="32" cy="46.5" r="6.4" stroke="var(--primary-soft, #2fd6a1)" strokeOpacity="0.4" strokeWidth="1.4" />
+      <circle cx="32" cy="46.5" r="3.1" fill="var(--primary-soft, #6b92ff)" />
+      <circle cx="32" cy="46.5" r="6.4" stroke="var(--primary-soft, #6b92ff)" strokeOpacity="0.4" strokeWidth="1.4" />
     </svg>
   )
 }

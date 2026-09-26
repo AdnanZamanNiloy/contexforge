@@ -17,17 +17,17 @@ import {
 // Detected execution flow kinds -> label + node colour. Purely data-driven.
 const KIND_META = {
   route: { label: 'API / route', color: '#8b949e' },
-  input: { label: 'Entry point', color: '#10b981' },
-  output: { label: 'Output', color: '#10b981' },
-  service: { label: 'Service', color: '#00d992' },
-  storage: { label: 'Storage / data', color: '#10b981' },
+  input: { label: 'Entry point', color: '#2f5fe0' },
+  output: { label: 'Output', color: '#2f5fe0' },
+  service: { label: 'Service', color: '#4377FD' },
+  storage: { label: 'Storage / data', color: '#2f5fe0' },
   external: { label: 'External API', color: '#8b949e' },
-  llm: { label: 'LLM / model', color: '#2fd6a1' },
-  core: { label: 'Core pipeline', color: '#00d992' },
+  llm: { label: 'LLM / model', color: '#6b92ff' },
+  core: { label: 'Core pipeline', color: '#4377FD' },
   transport: { label: 'Transport', color: '#8b949e' },
-  module: { label: 'Module', color: '#00d992' },
-  file: { label: 'File', color: '#2fd6a1' },
-  func: { label: 'Function', color: '#10b981' },
+  module: { label: 'Module', color: '#4377FD' },
+  file: { label: 'File', color: '#6b92ff' },
+  func: { label: 'Function', color: '#2f5fe0' },
 }
 
 const GRAPH_DIMS = { width: 1240, height: 860 }

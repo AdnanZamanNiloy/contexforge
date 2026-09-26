@@ -383,8 +383,8 @@ export default function Home() {
                 <div className="option-head">
                   <div className="option-icon">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <rect x="2" y="2" width="20" height="20" rx="4" fill="#EF4444" />
-                      <rect x="2" y="2" width="13" height="7" rx="4" fill="#DC2626" />
+                      <rect x="2" y="2" width="20" height="20" rx="4" fill="#3d3a39" />
+                      <rect x="2" y="2" width="13" height="7" rx="4" fill="#8b949e" />
                       <text
                         x="12"
                         y="16"
@@ -466,8 +466,8 @@ export default function Home() {
                 <div className="option-head">
                   <div className="option-icon">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <rect x="2" y="4" width="20" height="16" rx="4" fill="#FF0000" />
-                      <path d="M10 9l6 3-6 3z" fill="#FFFFFF" />
+                      <rect x="2" y="4" width="20" height="16" rx="4" fill="#3d3a39" />
+                      <path d="M10 9l6 3-6 3z" fill="#f2f2f2" />
                     </svg>
                   </div>
                   <div>
