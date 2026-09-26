@@ -1797,152 +1797,6 @@ body {
   overflow: hidden;
 }
 
-/* Repository identity bar */
-.rv-repo-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 24px;
-  padding: 14px 26px;
-  border-bottom: 1px solid var(--rv-stroke);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
-  flex-wrap: wrap;
-}
-.rv-repo-identity {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  min-width: 0;
-}
-.rv-repo-mark {
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  color: #eaf1ff;
-  background: linear-gradient(150deg, rgba(122, 162, 247, 0.22), rgba(154, 168, 255, 0.06));
-  border: 1px solid rgba(122, 162, 247, 0.26);
-}
-.rv-repo-name-block {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.rv-repo-name-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-.rv-repo-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
-  font-family: 'Space Mono', monospace;
-  letter-spacing: -0.01em;
-  max-width: 460px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rv-visibility {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.58rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.rv-visibility.is-public {
-  background: rgba(103, 224, 200, 0.13);
-  color: var(--rv-teal);
-}
-.rv-visibility.is-private {
-  background: rgba(240, 179, 110, 0.13);
-  color: var(--rv-amber);
-}
-.rv-language {
-  font-size: 0.68rem;
-  color: var(--rv-text-dim);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--rv-stroke);
-  border-radius: 999px;
-  padding: 2px 9px;
-  flex-shrink: 0;
-}
-.rv-repo-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 0.72rem;
-  color: var(--rv-text-dim);
-  flex-wrap: wrap;
-}
-.rv-repo-branch {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: 'Space Mono', monospace;
-  color: #cdd3dc;
-}
-.rv-meta-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.28);
-}
-.rv-repo-analyzed {
-  color: var(--rv-text-faint);
-}
-.rv-repo-header-right {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-left: auto;
-}
-.rv-repo-facts {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  margin: 0;
-}
-.rv-repo-fact {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 0 14px;
-  border-left: 1px solid var(--rv-stroke);
-}
-.rv-repo-fact:first-child {
-  border-left: none;
-  padding-left: 0;
-}
-.rv-repo-fact:last-child {
-  padding-right: 0;
-}
-.rv-repo-fact dt {
-  font-size: 0.58rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--rv-text-dim);
-  margin: 0;
-}
-.rv-repo-fact dd {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--rv-text);
-  font-family: 'Space Mono', monospace;
-}
-
 /* Capability tabs */
 .rv-tabs {
   display: flex;
@@ -2131,48 +1985,6 @@ body {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-}
-
-/* View header */
-.rv-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-.rv-header-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.rv-eyebrow {
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--rv-accent);
-  font-weight: 600;
-}
-.rv-title {
-  margin: 0;
-  font-size: 1.18rem;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: -0.01em;
-}
-.rv-description {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--rv-text-dim);
-  line-height: 1.5;
-  max-width: 72ch;
-}
-.rv-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 /* Grids */
@@ -2541,6 +2353,17 @@ body {
   min-width: 0;
   flex: 1 1 auto;
 }
+.rv-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+.rv-toolbar-right .rv-legend {
+  margin-left: 0;
+}
 .rv-toolbar > .rv-legend {
   flex: 0 1 auto;
   margin-left: auto;
@@ -2583,18 +2406,6 @@ body {
   font-size: 0.9rem;
   line-height: 1;
   cursor: pointer;
-}
-
-/* Hint strip */
-.rv-hint-strip {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 0.74rem;
-  color: var(--rv-text-dim);
-  border: 1px dashed var(--rv-stroke);
-  border-radius: var(--rv-radius-sm);
-  padding: 10px 14px;
 }
 
 /* Fact rows / lists */
@@ -3828,11 +3639,6 @@ body {
 
 /* ---------- 8. Responsive + motion --------------------------------------- */
 
-@media (max-width: 1500px) {
-  .rv-repo-name {
-    max-width: 320px;
-  }
-}
 @media (max-width: 1200px) {
   .rv-grid-3,
   .rv-grid-5 {
@@ -3843,11 +3649,6 @@ body {
   }
 }
 @media (max-width: 980px) {
-  .rv-repo-header-right {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
-  }
   .rv-grid-2,
   .rv-grid-3,
   .rv-grid-5 {
@@ -3858,18 +3659,9 @@ body {
   .rv-viewport {
     padding: 16px 16px 22px;
   }
-  .rv-repo-header,
   .rv-tabs {
     padding-left: 16px;
     padding-right: 16px;
-  }
-  .rv-repo-facts {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .rv-repo-fact {
-    border-left: none;
-    padding: 0;
   }
   .rv-contrib-name,
   .rv-share-name {

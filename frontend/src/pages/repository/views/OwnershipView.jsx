@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { ViewShell, ViewHeader, Card, StatTile, ProgressBar, riskTone } from '../ui/primitives'
+import { ViewShell, ViewToolbar, Card, StatTile, ProgressBar, riskTone } from '../ui/primitives'
 
 function Avatar({ name, color, size = 24 }) {
   const initials = (name || '?')
@@ -46,11 +46,8 @@ export default function OwnershipView({ ownership = EMPTY_OWNERSHIP }) {
 
   return (
     <ViewShell>
-      <ViewHeader
-        eyebrow="Ownership"
-        title="Contributors & stewardship"
-        description="Who owns the code, how concentrated that ownership is, and where the bus-factor risk lies."
-        actions={
+      <ViewToolbar
+        right={
           <div className="rv-inline-stats">
             <span className="rv-inline-stat">
               <b>{contributors.length}</b> contributors

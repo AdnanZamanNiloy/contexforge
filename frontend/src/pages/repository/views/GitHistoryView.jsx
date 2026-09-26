@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 
-import { ViewShell, ViewHeader, Card, StatTile, ProgressBar, Badge } from '../ui/primitives'
+import { ViewShell, ViewToolbar, Card, StatTile, ProgressBar, Badge } from '../ui/primitives'
 
 const RANGES = ['7 days', '30 days', '90 days', 'Full history']
 
@@ -32,11 +32,8 @@ export default function GitHistoryView({ gitHistory = EMPTY_HISTORY }) {
 
   return (
     <ViewShell>
-      <ViewHeader
-        eyebrow="Git History"
-        title="Repository evolution"
-        description="Commit activity, file churn, branches and recent contributors."
-        actions={
+      <ViewToolbar
+        right={
           <div className="rv-segmented" role="group" aria-label="Time range">
             {RANGES.map((r) => (
               <button

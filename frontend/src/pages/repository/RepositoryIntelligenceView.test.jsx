@@ -46,16 +46,20 @@ const analysis = {
   architecture: {
     nodes: [
       { id: 'repo', label: 'acme/widgets', kind: 'repo', x: 0, y: 0 },
+      { id: 'area', label: 'core/', kind: 'area', x: 60, y: 80 },
       {
         id: 'mod',
         label: 'engine',
         kind: 'module',
         x: 100,
-        y: 0,
+        y: 160,
         meta: { path: 'core/engine.py', files: 3, deps: 2, dependents: 4, risk: 'High', loc: 1200 },
       },
     ],
-    edges: [{ source: 'repo', target: 'mod', kind: 'contains' }],
+    edges: [
+      { source: 'repo', target: 'area', kind: 'contains' },
+      { source: 'area', target: 'mod', kind: 'contains' },
+    ],
   },
   dependencies: { nodes: [], edges: [] },
   gitHistory: {
@@ -123,23 +127,25 @@ const analysis = {
 }
 
 describe('RepositoryIntelligenceView', () => {
-  it('renders the repository header with identity and counts', () => {
-    const { container } = render(
-      <RepositoryIntelligenceView analysis={analysis} analysisId="r1" reanalyze={() => {}} />,
-    )
-    const header = container.querySelector('.rv-repo-header')
-    expect(header).toBeTruthy()
-    expect(header.textContent).toContain('acme/widgets')
-    expect(header.textContent).toContain('128')
-    expect(header.textContent).toContain('940')
-    expect(header.textContent).toMatch(/Analyzed/)
-  })
-
   it('renders all six capability tabs and the default architecture view', () => {
     render(<RepositoryIntelligenceView analysis={analysis} analysisId="r1" reanalyze={() => {}} />)
     const tablist = screen.getByRole('tablist', { name: /repository intelligence views/i })
     expect(tablist.querySelectorAll('[role="tab"]')).toHaveLength(6)
-    expect(screen.getByRole('heading', { name: /system structure/i })).toBeInTheDocument()
+    expect(screen.getByText('Node inspector')).toBeInTheDocument()
+  })
+
+  it('flattens the architecture to two rows: repository root and files', () => {
+    const { container } = render(
+      <RepositoryIntelligenceView analysis={analysis} analysisId="r1" reanalyze={() => {}} />,
+    )
+    const nodeEls = [...container.querySelectorAll('.graph-node')]
+    const labels = nodeEls.map((n) => n.querySelector('.graph-node-label')?.textContent)
+    expect(labels).toEqual(['acme/widgets', 'engine'])
+    // Exactly two distinct y positions: root row + file row.
+    const rows = new Set(nodeEls.map((n) => n.getAttribute('transform')?.match(/,[^)]+/)?.[0]))
+    expect(rows.size).toBe(2)
+    // Legend names only the two layers.
+    expect(container.querySelector('.rv-legend')?.textContent).toBe('RepositoryFile')
   })
 
   it('surfaces a retry affordance on error', () => {
@@ -155,19 +161,21 @@ describe('RepositoryIntelligenceView', () => {
     expect(screen.getByRole('button', { name: /retry analysis/i })).toBeInTheDocument()
   })
 
+  // Each tab is identified by content unique to that view rather than a title
+  // block, since the views no longer render their own headers.
   const TABS = [
-    ['Architecture', /system structure/i],
-    ['Dependencies', /module coupling/i],
-    ['Data Flow', /execution paths/i],
-    ['Git History', /repository evolution/i],
-    ['Ownership', /contributors & stewardship/i],
-    ['Change Impact', /blast radius/i],
+    ['Architecture', /node inspector/i],
+    ['Dependencies', /no source dependencies found/i],
+    ['Data Flow', /no executable flow detected/i],
+    ['Git History', /commit activity/i],
+    ['Ownership', /bus factor/i],
+    ['Change Impact', /blast radius|risk:/i],
   ]
 
-  it.each(TABS)('renders the %s view without crashing', async (tabLabel, heading) => {
+  it.each(TABS)('renders the %s view without crashing', async (tabLabel, marker) => {
     render(<RepositoryIntelligenceView analysis={analysis} analysisId="r1" reanalyze={() => {}} />)
     fireEvent.click(screen.getByRole('tab', { name: tabLabel }))
-    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
+    expect(await screen.findByText(marker)).toBeInTheDocument()
   })
 
   it('lays out graph nodes that arrive without coordinates', () => {

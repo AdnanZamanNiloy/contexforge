@@ -4,7 +4,6 @@ import GraphViewer from '../GraphViewer'
 import { getRepositoryDependencies } from '../../../services/api'
 import {
   ViewShell,
-  ViewHeader,
   Card,
   StatTile,
   Badge,
@@ -95,24 +94,17 @@ export default function DependencyView({ analysisId, dependencyGraph = { nodes: 
 
   return (
     <ViewShell>
-      <ViewHeader
-        eyebrow="Dependencies"
-        title="Module coupling"
-        description="Incoming, outgoing and circular relationships between the repository's modules."
-        actions={
-          <div className="rv-inline-stats">
-            <span className="rv-inline-stat">
-              <b>{nodes.length}</b> nodes
-            </span>
-            <span className="rv-inline-stat">
-              <b>{linkCount}</b> edges
-            </span>
-            <span className="rv-inline-stat">
-              <b>{facts.cycles.length}</b> cycles
-            </span>
-          </div>
-        }
-      />
+      <div className="rv-inline-stats">
+        <span className="rv-inline-stat">
+          <b>{nodes.length}</b> nodes
+        </span>
+        <span className="rv-inline-stat">
+          <b>{linkCount}</b> edges
+        </span>
+        <span className="rv-inline-stat">
+          <b>{facts.cycles.length}</b> cycles
+        </span>
+      </div>
 
       {loading ? (
         <LoadingState label="Building dependency graph…" />

@@ -1,9 +1,9 @@
 // Shared UI primitives for Repository Intelligence.
 //
 // Every repository sub-view is built from this small, opinionated kit so the
-// six capabilities read as one product: the same card chrome, the same section
-// header rhythm, the same metric tiles, bars, badges and empty/error states.
-// Pure presentational components — no data fetching, no view logic.
+// six capabilities read as one product: the same toolbar rhythm, card chrome,
+// metric tiles, bars, badges and empty/error states. Pure presentational
+// components — no data fetching, no view logic.
 
 // --- Layout -----------------------------------------------------------------
 
@@ -11,16 +11,12 @@ export function ViewShell({ children, className = '' }) {
   return <div className={`intel-view ${className}`.trim()}>{children}</div>
 }
 
-export function ViewHeader({ eyebrow, title, description, actions }) {
+export function ViewToolbar({ left, right, className = '' }) {
   return (
-    <header className="rv-header">
-      <div className="rv-header-copy">
-        {eyebrow ? <span className="rv-eyebrow">{eyebrow}</span> : null}
-        <h2 className="rv-title">{title}</h2>
-        {description ? <p className="rv-description">{description}</p> : null}
-      </div>
-      {actions ? <div className="rv-header-actions">{actions}</div> : null}
-    </header>
+    <div className={`rv-toolbar ${className}`.trim()}>
+      {left ? <div className="rv-toolbar-left">{left}</div> : null}
+      {right ? <div className="rv-toolbar-right">{right}</div> : null}
+    </div>
   )
 }
 

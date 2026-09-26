@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import GraphViewer from '../GraphViewer'
-import { ViewShell, ViewHeader, Card, StatTile, Badge, Legend, EmptyState } from '../ui/primitives'
+import { ViewShell, Card, StatTile, Badge, Legend, EmptyState } from '../ui/primitives'
 
 const RISK_TONE = { LOW: 'ok', MEDIUM: 'caution', HIGH: 'warn', CRITICAL: 'critical' }
 
@@ -35,27 +35,6 @@ export default function ChangeImpactView({
 
   return (
     <ViewShell>
-      <ViewHeader
-        eyebrow="Change Impact"
-        title="Blast radius"
-        description={
-          changeImpact.selection ? (
-            <>
-              Estimated downstream impact for a change to{' '}
-              <code className="rv-code">{changeImpact.selection}</code>.
-            </>
-          ) : (
-            'Estimated downstream impact for a proposed change.'
-          )
-        }
-        actions={
-          <span className={`rv-risk-pill is-${RISK_TONE[risk] || 'caution'}`}>
-            <span className="rv-risk-dot" />
-            Risk: {risk}
-          </span>
-        }
-      />
-
       <div className="rv-grid rv-grid-5">
         {estimates.map((e) => (
           <StatTile key={e.label} label={e.label} value={e.value ?? '—'} />
@@ -67,6 +46,12 @@ export default function ChangeImpactView({
           <div className="rv-toolbar">
             <div className="rv-toolbar-left">
               <Legend items={IMPACT_LEGEND} />
+            </div>
+            <div className="rv-toolbar-right">
+              <span className={`rv-risk-pill is-${RISK_TONE[risk] || 'caution'}`}>
+                <span className="rv-risk-dot" />
+                Risk: {risk}
+              </span>
             </div>
           </div>
           <GraphViewer

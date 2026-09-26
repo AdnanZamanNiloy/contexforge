@@ -4,7 +4,7 @@ import GraphViewer from '../GraphViewer'
 import { repositoryDataFlow } from '../../../services/api'
 import {
   ViewShell,
-  ViewHeader,
+  ViewToolbar,
   Card,
   Metric,
   Badge,
@@ -216,37 +216,28 @@ export default function DataFlowView({ analysisId }) {
 
   const active = useMemo(() => flows.find((f) => f.id === activeId) || flows[0], [flows, activeId])
 
-  const header = (
-    <ViewHeader
-      eyebrow="Data Flow"
-      title="Execution paths"
-      description="Directional execution and data flow detected from repository analysis."
-      actions={
-        status === 'ok' && flows.length > 1 ? (
-          <div className="rv-flow-switcher" role="tablist" aria-label="Detected flows">
-            {flows.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                role="tab"
-                aria-selected={f.id === active?.id}
-                className={f.id === active?.id ? 'is-active' : ''}
-                onClick={() => setActiveId(f.id)}
-                title={f.entry}
-              >
-                {f.title || f.id}
-              </button>
-            ))}
-          </div>
-        ) : null
-      }
-    />
+  const flowSwitcher = (
+    <div className="rv-flow-switcher" role="tablist" aria-label="Detected flows">
+      {flows.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          role="tab"
+          aria-selected={f.id === active?.id}
+          className={f.id === active?.id ? 'is-active' : ''}
+          onClick={() => setActiveId(f.id)}
+          title={f.entry}
+        >
+          {f.title || f.id}
+        </button>
+      ))}
+    </div>
   )
+  const showSwitcher = status === 'ok' && flows.length > 1
 
   if (status === 'loading') {
     return (
       <ViewShell>
-        {header}
         <LoadingState label="Analyzing data flow…" />
       </ViewShell>
     )
@@ -255,7 +246,6 @@ export default function DataFlowView({ analysisId }) {
   if (status === 'error') {
     return (
       <ViewShell>
-        {header}
         <ErrorState title="Data flow analysis failed" message={error} />
       </ViewShell>
     )
@@ -264,7 +254,6 @@ export default function DataFlowView({ analysisId }) {
   if (status === 'empty' || !active) {
     return (
       <ViewShell>
-        {header}
         <EmptyState
           title="No executable flow detected"
           hint="No runnable entry points (routes, CLIs, mains) with a call chain were found in this repository."
@@ -275,7 +264,7 @@ export default function DataFlowView({ analysisId }) {
 
   return (
     <ViewShell>
-      {header}
+      {showSwitcher ? <ViewToolbar left={flowSwitcher} /> : null}
       <FlowGraph key={active?.id} flow={active} />
     </ViewShell>
   )

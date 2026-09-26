@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 
-import RepositoryHeader from './components/RepositoryHeader'
 import RepositoryTabs from './components/RepositoryTabs'
 
 import ArchitectureView from './views/ArchitectureView'
@@ -22,18 +21,10 @@ const TABS = {
 const GRAPH_DIMENSIONS = { width: 1240, height: 860 }
 
 // Repository Intelligence as a first-class ContextForge capability. Pure content
-// view: it renders inside the shared product shell and owns only its header,
-// capability tabs and the active sub-view.
-export default function RepositoryIntelligenceView({
-  analysis,
-  analysisId,
-  reanalyze,
-  loading,
-  error,
-}) {
+// view: it renders inside the shared product shell and owns only the capability
+// tabs and the active sub-view.
+export default function RepositoryIntelligenceView({ analysis, analysisId, reanalyze, error }) {
   const [activeTab, setActiveTab] = useState('architecture')
-
-  const repo = analysis?.repository || {}
 
   // Cross-view navigation emitted by views / the insight rail.
   useEffect(() => {
@@ -67,7 +58,6 @@ export default function RepositoryIntelligenceView({
 
   return (
     <div className="intel-card intel-enter">
-      <RepositoryHeader repo={repo} onSync={reanalyze} syncing={loading} />
       <RepositoryTabs active={activeTab} onChange={setActiveTab} />
       <div className="rv-viewport" role="tabpanel">
         <ActiveView

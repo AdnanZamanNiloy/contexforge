@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 
 import GraphViewer from '../GraphViewer'
 import InfoPanel from '../components/InfoPanel'
-import { ViewShell, ViewHeader, Legend, StatTile } from '../ui/primitives'
-import { IconExpand, IconGrid, IconSearch } from '../ui/icons'
+import { ViewShell, Legend, StatTile } from '../ui/primitives'
+import { IconExpand, IconSearch } from '../ui/icons'
 
 const LAYOUTS = [
   { id: 'Hierarchical', label: 'Hierarchy' },
@@ -13,9 +13,6 @@ const LAYOUTS = [
 
 const KIND_LEGEND = [
   { label: 'Repository', color: '#9aa8ff' },
-  { label: 'Area', color: '#7aa2f7' },
-  { label: 'Directory', color: '#67e0c8' },
-  { label: 'Module', color: '#6f9ff2' },
   { label: 'File', color: '#8f7bf5' },
 ]
 
@@ -28,8 +25,15 @@ export default function ArchitectureView({
   const [query, setQuery] = useState('')
   const [fullscreen, setFullscreen] = useState(false)
 
-  const nodes = useMemo(() => architecture.nodes || [], [architecture])
-  const edges = useMemo(() => architecture.edges || [], [architecture])
+  const sourceNodes = useMemo(() => architecture.nodes || [], [architecture])
+  const sourceEdges = useMemo(() => architecture.edges || [], [architecture])
+
+  // The backend emits repo → area → directory → module → file. Collapse that to
+  // two layers — the repository root and its files hanging directly beneath it.
+  const { nodes, edges } = useMemo(
+    () => flattenHierarchy(sourceNodes, sourceEdges),
+    [sourceNodes, sourceEdges],
+  )
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selected) || null,
@@ -54,8 +58,8 @@ export default function ArchitectureView({
   const graphNodes = useMemo(() => {
     if (layout === 'Radial') return radialSpread(nodes)
     if (layout === 'Tree') return treeLayout(nodes, edges)
-    return nodes
-  }, [layout, nodes, edges])
+    return twoLayerLayout(nodes, graphDimensions)
+  }, [layout, nodes, edges, graphDimensions])
 
   const matchCount = highlighted ? highlighted.size : null
 
@@ -105,22 +109,6 @@ export default function ArchitectureView({
 
   return (
     <ViewShell>
-      <ViewHeader
-        eyebrow="Architecture"
-        title="System structure"
-        description="Hierarchical decomposition of the repository from top-level areas down to files."
-        actions={
-          <button
-            type="button"
-            className="rv-btn rv-btn-ghost"
-            onClick={() => setFullscreen((f) => !f)}
-          >
-            <IconExpand width={14} height={14} />
-            {fullscreen ? 'Exit full screen' : 'Full screen'}
-          </button>
-        }
-      />
-
       {isEmpty ? (
         <StatTile
           label="Nodes"
@@ -131,7 +119,17 @@ export default function ArchitectureView({
         <>
           <div className="rv-toolbar">
             <div className="rv-toolbar-left">{toolbar}</div>
-            <Legend items={KIND_LEGEND} />
+            <div className="rv-toolbar-right">
+              <Legend items={KIND_LEGEND} />
+              <button
+                type="button"
+                className="rv-btn rv-btn-ghost"
+                onClick={() => setFullscreen((f) => !f)}
+              >
+                <IconExpand width={14} height={14} />
+                {fullscreen ? 'Exit full screen' : 'Full screen'}
+              </button>
+            </div>
           </div>
 
           <GraphViewer
@@ -150,15 +148,47 @@ export default function ArchitectureView({
           <InfoPanel node={selectedNode} />
         </>
       )}
-
-      {!selected && !isEmpty ? (
-        <div className="rv-hint-strip">
-          <IconGrid width={15} height={15} />
-          Select a node in the graph to inspect its metrics, dependencies and recent changes.
-        </div>
-      ) : null}
     </ViewShell>
   )
+}
+
+// Collapse the backend's multi-level hierarchy (repo → area → directory →
+// module → file) down to two layers: the repository root plus every leaf
+// (file), re-parented straight to the root. Intermediate containers only add
+// rows and labels the graph doesn't need.
+function flattenHierarchy(nodes, edges) {
+  if (!nodes.length) return { nodes: [], edges: [] }
+  const root = nodes.find((n) => n.kind === 'repo') || nodes[0]
+  const hasChildren = new Set(edges.filter((e) => e.kind === 'contains').map((e) => e.source))
+  const leaves = nodes
+    .filter((n) => n.id !== root.id && !hasChildren.has(n.id))
+    .sort((a, b) =>
+      (a.path || a.meta?.path || a.label || '').localeCompare(
+        b.path || b.meta?.path || b.label || '',
+      ),
+    )
+  return {
+    nodes: [root, ...leaves],
+    edges: leaves.map((n) => ({ source: root.id, target: n.id, kind: 'contains' })),
+  }
+}
+
+// Two-row arrangement: the root centred on the top row, its files evenly
+// spaced on the row beneath it.
+function twoLayerLayout(nodes, dims) {
+  const root = nodes.find((n) => n.kind === 'repo') || nodes[0]
+  if (!root) return nodes
+  const children = nodes.filter((n) => n.id !== root.id)
+  const width = dims?.width || 1240
+  const cx = width / 2
+  if (!children.length) return [{ ...root, x: cx, y: 260 }]
+
+  const gap = Math.min(200, Math.max(96, (width - 160) / Math.max(1, children.length - 1)))
+  const startX = cx - (gap * (children.length - 1)) / 2
+  return [
+    { ...root, x: cx, y: 130 },
+    ...children.map((n, i) => ({ ...n, x: startX + i * gap, y: 440 })),
+  ]
 }
 
 // Light radial remapping so the layout control visibly changes the graph
@@ -177,8 +207,8 @@ function radialSpread(nodes) {
   return [{ ...root, x: cx, y: cy }, ...spread]
 }
 
-// Tidy rooted tree from the "contains" hierarchy (repo -> area -> dir ->
-// module -> file). Depth grows left-to-right; siblings stack vertically.
+// Tidy rooted tree from the "contains" hierarchy (root on the left, files
+// stacked to its right). Depth grows left-to-right; siblings stack vertically.
 function treeLayout(nodes, edges) {
   if (!nodes.length) return nodes
   const label = (id) => nodes.find((n) => n.id === id)?.label || id
