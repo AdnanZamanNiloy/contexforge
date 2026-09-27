@@ -220,12 +220,15 @@ export default function SourceViewer({
           </div>
         ) : null}
         <div className="panel-head">
-          <h3 className="chunks-label">Top Retrieved Chunks</h3>
-          <span className="muted">
+          <div className="ev-head-text">
+            <span className="ev-eyebrow">Evidence</span>
+            <h3>Top Retrieved Chunks</h3>
+          </div>
+          <span className="ev-count">
             {isLoading ? (
               <Skeleton width="80px" height="14px" />
             ) : hasSources ? (
-              `${sources.length} sources`
+              `${sources.length} source${sources.length === 1 ? '' : 's'}`
             ) : null}
           </span>
         </div>
@@ -260,7 +263,27 @@ export default function SourceViewer({
               )
             })
           ) : (
-            <div className="empty">Ask a question to populate sources.</div>
+            <div className="ev-empty">
+              <span className="ev-empty-icon" aria-hidden="true">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+              </span>
+              <p className="ev-empty-title">No evidence yet</p>
+              <p className="ev-empty-hint">
+                Ask a question and the retrieved passages will appear here with relevance scores.
+              </p>
+            </div>
           )}
         </div>
         {hasSources && hasMoreChunks && (
@@ -272,7 +295,10 @@ export default function SourceViewer({
 
       <section className="panel panel-confidence">
         <div className="panel-head">
-          <h3>Confidence & Coverage</h3>
+          <div className="ev-head-text">
+            <span className="ev-eyebrow">Trust</span>
+            <h3>Confidence & Coverage</h3>
+          </div>
         </div>
         {isLoading || showEmpty ? (
           <div className="confidence">
@@ -298,8 +324,26 @@ export default function SourceViewer({
                 </div>
               </div>
             ) : (
-              <div className="empty" style={{ textAlign: 'center', padding: '20px 0' }}>
-                No retrieval data
+              <div className="ev-empty">
+                <span className="ev-empty-icon" aria-hidden="true">
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z" />
+                    <path d="M9 12l2 2 4-4" />
+                  </svg>
+                </span>
+                <p className="ev-empty-title">Awaiting retrieval</p>
+                <p className="ev-empty-hint">
+                  Confidence, coverage and timing land here after your first grounded answer.
+                </p>
               </div>
             )}
           </div>

@@ -114,7 +114,10 @@ export default function CreateMindMapButton({ sourceId }) {
           <circle cx="8" cy="19" r="2.2" />
           <path d="M8.2 5.8l7.6 1M7 7.1l.8 9.7M17 9.2l-7 8" />
         </svg>
-        <span>{label}</span>
+        <span className="mindmap-cta-text">
+          <span>{label}</span>
+          <small>Map the key ideas visually</small>
+        </span>
       </button>
       {state === 'error' && error ? <p className="mindmap-error">{error}</p> : null}
       {showPrompt &&

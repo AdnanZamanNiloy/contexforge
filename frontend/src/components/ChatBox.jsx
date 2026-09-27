@@ -12,6 +12,7 @@ export default function ChatBox({
   onRetry,
   uploadHint,
   onNewChat,
+  sourceCount = null,
 }) {
   const MAX_TEXTAREA_HEIGHT = 200
   const textareaRef = useRef(null)
@@ -54,18 +55,14 @@ export default function ChatBox({
   }, [messages])
 
   const textareaBase =
-    'w-full resize-none rounded-[24px] px-6 py-4 pr-16 overflow-y-hidden ' +
-    'bg-[#1a1a1a] ' +
-    'border border-[#3d3a39] ' +
+    'chat-composer-input flex-1 min-w-0 resize-none bg-transparent border-none outline-none ' +
+    'focus:outline-none focus-visible:outline-none focus:ring-0 ' +
     'text-[#f2f2f2] placeholder-[#8b949e] ' +
-    'text-base leading-relaxed outline-none ' +
-    'transition-all duration-200 ' +
-    'focus:border-[rgba(67,119,253,0.6)] ' +
-    'focus:bg-[#1e1e1e] ' +
+    'text-[0.95rem] leading-relaxed py-2 ' +
     'disabled:opacity-60 disabled:cursor-not-allowed'
 
   const sendBtnBase =
-    'absolute right-3 bottom-3 p-2.5 rounded-full ' +
+    'flex-none p-2.5 rounded-full ' +
     'bg-[#4377FD] ' +
     'text-[#101010] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
@@ -76,24 +73,38 @@ export default function ChatBox({
   const inputArea = (
     <>
       <form onSubmit={handleSubmit}>
-        <div className="relative">
+        <div
+          className="flex items-center gap-3 rounded-full pl-6 pr-2 py-2
+            bg-[#1a1a1a]
+            border border-[#3d3a39]
+            transition-all duration-200
+            focus-within:border-[rgba(67,119,253,0.6)]
+            focus-within:bg-[#1e1e1e]"
+        >
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything about your documents..."
+            placeholder="Ask a question or create something"
             rows={1}
             className={textareaBase}
             style={{ overflowY: isOverflowing ? 'auto' : 'hidden' }}
             disabled={isStreaming}
+            aria-label="Ask a question or create something"
           />
+          {sourceCount !== null && sourceCount !== undefined ? (
+            <span className="flex-none text-xs text-[#8b949e] whitespace-nowrap">
+              {sourceCount} source{sourceCount === 1 ? '' : 's'}
+            </span>
+          ) : null}
           <motion.button
             type="submit"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             disabled={isStreaming || !input.trim()}
             className={sendBtnBase}
+            aria-label="Send message"
           >
             <svg
               width="18"
@@ -105,7 +116,7 @@ export default function ChatBox({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M5 12h14M12 5l7 7-7 7" />
+              <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
           </motion.button>
         </div>
@@ -149,7 +160,7 @@ export default function ChatBox({
 
         <div className="flex-1" />
 
-        <div className="w-full max-w-[720px] mx-auto px-2 pb-8">{inputArea}</div>
+        <div className="w-full max-w-[768px] mx-auto px-2 pb-8">{inputArea}</div>
       </motion.section>
     )
   }
@@ -277,7 +288,9 @@ export default function ChatBox({
         ) : null}
       </div>
 
-      <div className="sticky bottom-0 pr-6">{inputArea}</div>
+      <div className="sticky bottom-0 pr-6">
+        <div className="mx-auto w-full max-w-[768px]">{inputArea}</div>
+      </div>
     </motion.section>
   )
 }

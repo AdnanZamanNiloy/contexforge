@@ -225,6 +225,7 @@ export default function SourceExplorePage() {
               onRetry={chat.retryLast}
               uploadHint={chat.showUploadHint}
               onNewChat={chat.resetChat}
+              sourceCount={1}
             />
           </div>
         )

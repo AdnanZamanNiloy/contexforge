@@ -15,7 +15,6 @@ import {
   touchProject,
   attachSourceToProject,
 } from '../services/api'
-import { sourceRepoUrl } from '../lib/sources'
 import { ingestScopeFor, sidebarTypesFor, sourceCategoryLabel } from '../lib/projects'
 import { useChat } from '../hooks/useChat'
 import { useSources } from '../hooks/useSources'
@@ -106,28 +105,6 @@ export default function Home() {
     showUploadHint,
     resetChat,
   } = useChat()
-
-  // The dominant source of the current query determines whether Repository
-  // Intelligence can be launched from the main chat interface.
-  const { dominantSourceId, dominantRepoUrl } = useMemo(() => {
-    const counts = {}
-    for (const item of querySources) {
-      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1
-    }
-    let best = null
-    let bestCount = 0
-    for (const [id, count] of Object.entries(counts)) {
-      if (count > bestCount) {
-        best = id
-        bestCount = count
-      }
-    }
-    const dominant = sources.find((s) => s.id === best) || null
-    return {
-      dominantSourceId: best,
-      dominantRepoUrl: dominant?.type === 'github' ? sourceRepoUrl(dominant) : undefined,
-    }
-  }, [querySources, sources])
 
   const pushNotification = useCallback((type, text) => {
     const id = `${type}-${Date.now()}`
@@ -384,7 +361,7 @@ export default function Home() {
   )
 
   const main = (
-    <div className="main-card">
+    <div className="main-card is-bare">
       {projectId ? (
         <div
           style={{
@@ -396,22 +373,6 @@ export default function Home() {
             color: 'var(--mute)',
           }}
         >
-          <button
-            onClick={() => navigate('/projects')}
-            style={{
-              background: 'none',
-              border: '1px solid var(--hairline)',
-              color: 'var(--ink)',
-              borderRadius: 999,
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-            }}
-            aria-label="Back to Projects"
-          >
-            ← Projects
-          </button>
           {projectMissing ? (
             <span>This project could not be found.</span>
           ) : (
@@ -436,6 +397,7 @@ export default function Home() {
         onRetry={retryLast}
         uploadHint={showUploadHint}
         onNewChat={resetChat}
+        sourceCount={visibleSources.length}
       />
     </div>
   )
@@ -447,12 +409,6 @@ export default function Home() {
       isStreaming={isStreaming}
       confidence={confidence}
       showQuickActions
-      repoUrl={dominantRepoUrl}
-      onOpenIntel={() => {
-        if (dominantSourceId) {
-          navigate(`/sources/${encodeURIComponent(dominantSourceId)}?tab=intelligence`)
-        }
-      }}
     />
   )
 

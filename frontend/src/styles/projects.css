@@ -676,7 +676,7 @@
   color: #101010;
   border: 1px solid var(--ink-strong);
   border-radius: var(--radius-pill);
-  padding: 11px 22px;
+  padding: 10px 20px;
   font-weight: 650;
   font-size: 0.88rem;
   cursor: pointer;
@@ -692,7 +692,7 @@
   color: var(--ink);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-pill);
-  padding: 11px 22px;
+  padding: 10px 20px;
   font-weight: 600;
   font-size: 0.88rem;
   cursor: pointer;
@@ -785,7 +785,7 @@
   background: #131313;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 22px;
-  padding: 28px;
+  padding: 22px 24px;
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
   animation: pg-rise 0.22s ease;
 }
@@ -810,20 +810,20 @@
 
 .pg-modal-head h2 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   letter-spacing: -0.02em;
 }
 
 .pg-modal-head p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--mute);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
 }
 
 .pg-field {
   display: grid;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 6px;
+  margin-top: 12px;
 }
 
 .pg-field label {
@@ -837,9 +837,9 @@
   background: #1a1a1a;
   border: 1px solid var(--hairline);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   color: var(--ink);
-  font-size: 0.9rem;
+  font-size: 0.87rem;
   font-family: inherit;
   width: 100%;
   transition: border-color 0.18s ease;
@@ -852,16 +852,16 @@
 }
 
 .pg-import-grid {
-  margin-top: 12px;
+  margin-top: 8px;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .pg-import-card {
   border: 1px solid var(--hairline);
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 10px 14px;
   background: #161616;
   color: var(--ink);
   width: 100%;
@@ -899,10 +899,10 @@
 }
 
 .pg-family-icon {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   flex: none;
-  border-radius: 12px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.05);
@@ -944,7 +944,7 @@
 }
 
 .pg-modal-foot {
-  margin-top: 22px;
+  margin-top: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;

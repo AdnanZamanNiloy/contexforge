@@ -88,6 +88,17 @@ select:focus-visible {
   border-radius: var(--radius-sm);
 }
 
+/* The chat composer pill carries its own glow via focus-within — never draw
+   a second ring on the inner textarea.  The class selector beats the element
+   rule above (and any layered utility), so no inner box can appear. */
+.chat-composer-input:focus,
+.chat-composer-input:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+
 ::selection {
   background: rgba(67, 119, 253, 0.28);
   color: var(--ink-strong);
@@ -161,9 +172,9 @@ h3 {
   max-height: calc(100vh - 32px);
   height: calc(100vh - 32px);
   overflow: hidden;
-  border-radius: var(--radius-md);
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
+  border-radius: 24px;
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: none;
   padding: 16px 10px 12px;
   display: flex;
@@ -234,11 +245,12 @@ h3 {
   justify-content: space-between;
   align-items: center;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-weight: 650;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--mute);
-  margin-bottom: 2px;
+  padding: 4px 10px 0;
+  margin-bottom: 6px;
 }
 
 .section-title .count {
@@ -256,17 +268,18 @@ h3 {
 .kb-rows {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
 }
 
 .kb-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 3px 8px;
+  gap: 8px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--text);
   cursor: pointer;
   transition: background 0.15s ease;
@@ -324,14 +337,14 @@ h3 {
 
 .sources-section > .section-title {
   flex: 0 0 auto;
-  padding-bottom: 3px;
+  padding-bottom: 0;
   background: linear-gradient(var(--panel) 70%, transparent);
 }
 
 .source-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -354,10 +367,11 @@ h3 {
 }
 
 .empty-source {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--muted);
-  padding: 8px;
+  padding: 8px 12px;
   text-align: left;
+  line-height: 1.5;
 }
 
 .source-item-compact {
@@ -502,17 +516,18 @@ h3 {
   min-height: 0;
 }
 
-/* Status card — pinned to the bottom of the flex column. */
+/* Status footer — borderless, separated by a hairline divider only. */
 .status-card {
   flex: 0 0 auto;
   margin-top: auto;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--hairline);
-  background: var(--canvas-soft);
-  padding: 7px 9px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 12px 6px 2px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .status-card-body {
@@ -556,13 +571,13 @@ h3 {
 .clear-kb-btn {
   margin-top: 2px;
   width: 100%;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 0.72rem;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 0.74rem;
   font-weight: 600;
-  color: var(--body-color);
+  color: var(--mute);
   background: transparent;
-  border: 1px solid var(--hairline);
+  border: 1px solid transparent;
   cursor: pointer;
   transition:
     color 0.16s ease,
@@ -571,9 +586,9 @@ h3 {
 }
 
 .clear-kb-btn:hover {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--hairline-soft);
+  color: #f0a3a3;
+  background: rgba(240, 163, 163, 0.07);
+  border-color: rgba(240, 163, 163, 0.25);
 }
 
 .main-shell {
@@ -1298,16 +1313,37 @@ h3 {
 /* --- Chat styles now use Tailwind in ChatBox.jsx & MessageBubble.jsx --- */
 
 .evidence {
-  padding: 20px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
   box-shadow: none;
+}
+
+/* Inside the rail card, sections are borderless with a hairline divider —
+   one outer box only, never box-in-box. */
+.evidence .panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.evidence .panel + .panel {
+  border-top: 1px solid var(--hairline);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.evidence .mindmap-cta-row {
+  margin-bottom: 20px;
 }
 
 @media (min-width: 1201px) {
@@ -1344,38 +1380,47 @@ h3 {
   text-align: center;
 }
 
-.panel .chunks-label {
+.panel-chunks .panel-head {
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.ev-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ev-head-text h3 {
   margin: 0;
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.ev-eyebrow {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--primary-soft);
-  background: var(--accent-soft);
-  border: 1px solid rgba(67, 119, 253, 0.28);
-  border-radius: var(--radius-sm);
-  padding: 6px 14px;
-  flex-shrink: 0;
+  color: var(--mute);
+}
+
+.ev-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--mute);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
   white-space: nowrap;
 }
 
-.panel-chunks .panel-head {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.panel-chunks .chunks-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  text-align: center;
-  box-sizing: border-box;
-}
-
-.panel-chunks .muted {
-  text-align: center;
+.ev-count:empty {
+  display: none;
 }
 
 .panel-head {
@@ -1499,17 +1544,8 @@ h3 {
 }
 
 .panel-confidence .panel-head {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.panel-confidence .panel-head h3 {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  text-align: center;
+  align-items: flex-start;
+  margin-bottom: 16px;
 }
 
 .confidence {
@@ -1518,10 +1554,10 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 18px;
-  padding: 18px 14px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 2px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .donut {
@@ -1576,19 +1612,76 @@ h3 {
 
 .confidence-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
   width: 100%;
 }
 
 .confidence-list div {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
   color: var(--muted);
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.confidence-list div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.confidence-list div:first-child {
+  padding-top: 0;
 }
 
 .confidence-list strong {
   color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+/* Illustrated empty states shared by the evidence rail.  Borderless by design:
+   the panel card is the only surface — empties float as icon + text. */
+.ev-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+  padding: 24px 12px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ev-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(67, 119, 253, 0.1);
+  border: 1px solid rgba(67, 119, 253, 0.28);
+  color: var(--primary-soft);
+  margin-bottom: 14px;
+}
+
+.ev-empty-title {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.ev-empty-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--mute);
+  max-width: 26ch;
 }
 
 .ghost,
@@ -1687,7 +1780,7 @@ h3 {
   .sidebar-shell,
   .main-card,
   .evidence {
-    border-radius: var(--radius-md);
+    border-radius: 20px;
   }
 
   /* Single-column layout: the sidebar is no longer a sticky viewport panel, so
@@ -3915,7 +4008,79 @@ h3 {
   gap: 10px;
 }
 
-.mindmap-cta,
+.mindmap-cta {
+  order: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(67, 119, 253, 0.12), rgba(67, 119, 253, 0.03));
+  border: 1px solid rgba(67, 119, 253, 0.3);
+  color: var(--ink);
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.mindmap-cta:hover:not(:disabled) {
+  border-color: rgba(67, 119, 253, 0.55);
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: none;
+}
+
+.mindmap-cta:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.mindmap-cta > svg {
+  width: 36px;
+  height: 36px;
+  padding: 10px;
+  flex: none;
+  border-radius: 12px;
+  background: rgba(67, 119, 253, 0.16);
+  color: var(--primary-soft);
+}
+
+.mindmap-cta-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mindmap-cta-text small {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--mute);
+}
+
+.mindmap-cta::after {
+  content: '→';
+  flex: none;
+  color: var(--mute);
+  font-size: 0.9rem;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mindmap-cta:hover:not(:disabled)::after {
+  color: var(--primary-soft);
+  transform: translateX(2px);
+}
+
 .repo-intel-cta {
   order: 0;
   flex: 1 1 0;
@@ -3930,22 +4095,6 @@ h3 {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.mindmap-cta {
-  background: var(--primary);
-  color: var(--on-primary);
-  border: 1px solid var(--primary);
-}
-
-.mindmap-cta:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: none;
-}
-
-.mindmap-cta:disabled {
-  opacity: 0.6;
-  cursor: default;
 }
 
 /* Repository Intelligence launch button. Always carries the brand accent so it
@@ -7223,16 +7372,17 @@ select.mh-input {
 /* Shell columns (sidebar scoped as a compound selector: main.test.js guards
    the single top-level `.sidebar-shell` block as the scroll architecture) */
 .app-shell .sidebar-shell {
-  border-radius: 20px;
   padding: 18px 12px 14px;
 }
 .main-card {
   border-radius: 20px;
   padding: 28px 8px 24px 28px;
 }
-.evidence {
-  border-radius: 20px;
-  padding: 22px;
+/* Borderless workspace chat: blends into the page, keeps spacing. The chat
+   input pill and all inner content keep their own styling. */
+.main-card.is-bare {
+  background: transparent;
+  border-color: transparent;
 }
 
 /* Sidebar */
@@ -7241,7 +7391,7 @@ select.mh-input {
 }
 .add-knowledge-btn {
   border-radius: var(--radius-pill);
-  padding: 11px 14px;
+  padding: 7px 14px;
 }
 .kb-row {
   border-radius: 10px;
@@ -7258,14 +7408,6 @@ select.mh-input {
 }
 .source-item-linked {
   border-radius: 50%;
-}
-.status-card {
-  border-radius: 18px;
-  padding: 10px 12px;
-}
-.clear-kb-btn {
-  border-radius: 12px;
-  padding: 8px 10px;
 }
 
 /* Panels, cards, evidence */
@@ -7379,10 +7521,12 @@ select.mh-input {
   .source-item-compact,
   .add-knowledge-btn,
   .mh-back,
-  .modal-card .option-card {
+  .modal-card .option-card,
+  .mindmap-cta {
     transition: none;
   }
-  .modal-card .option-card:hover {
+  .modal-card .option-card:hover,
+  .mindmap-cta:hover:not(:disabled) {
     transform: none;
   }
 }
