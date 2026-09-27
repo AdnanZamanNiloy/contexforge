@@ -608,22 +608,12 @@ h3 {
   flex: 1;
 }
 
-.main-card .main-header h1 {
-  margin: 6px 0 0;
-  font-size: 1.8rem;
-}
-
 .eyebrow {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--mute);
-}
-
-.evidence-shell {
-  display: flex;
-  flex-direction: column;
 }
 
 .modal-backdrop {
@@ -780,15 +770,6 @@ h3 {
   border-radius: var(--radius-pill);
   background: var(--primary);
   animation: shimmer 1.4s infinite;
-}
-
-.empty-card {
-  border-radius: var(--radius-md);
-  border: 1px dashed rgba(79, 93, 117, 0.4);
-  padding: 16px;
-  color: var(--mute);
-  font-size: 0.85rem;
-  background: var(--canvas-soft);
 }
 
 /* ==========================================================================
@@ -1060,14 +1041,6 @@ h3 {
   cursor: pointer;
 }
 
-.cta-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: none;
-}
-
 .nav h3,
 .panel h3,
 .status h3 {
@@ -1122,19 +1095,6 @@ h3 {
   overflow-y: auto;
 }
 
-/* LEGACY RULE — DO NOT ADD `.source-list` HERE.
-   A duplicate `.source-list { display: grid }` once lived here and won the
-   cascade, locking row tracks at their 14px padding-only minimum (every
-   row's text was clipped while the list still "scrolled").  The sidebar
-   scroller is defined once near the top of this file. */
-
-.source-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  align-items: center;
-}
-
 .badge {
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -1163,10 +1123,6 @@ h3 {
   color: var(--text);
 }
 
-.source-title {
-  font-size: 0.92rem;
-}
-
 .source-meta {
   font-size: 0.75rem;
   color: var(--muted);
@@ -1178,13 +1134,6 @@ h3 {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: none;
-}
-
-.input-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
 }
 
 .text-input {
@@ -1212,22 +1161,6 @@ h3 {
   box-shadow: none;
 }
 
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.pill {
-  font-size: 0.72rem;
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  background: var(--canvas);
-  color: var(--ink);
-  border: 1px solid var(--hairline);
-}
-
 .status {
   display: grid;
   gap: 10px;
@@ -1245,11 +1178,6 @@ h3 {
   background: var(--primary);
 }
 
-.status-meta {
-  font-size: 0.78rem;
-  color: var(--body-color);
-}
-
 .profile {
   margin-top: auto;
   display: flex;
@@ -1259,23 +1187,8 @@ h3 {
   border-top: 1px solid var(--stroke);
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(67, 119, 253, 0.2);
-  display: grid;
-  place-items: center;
-  font-weight: 600;
-}
-
 .name {
   font-weight: 600;
-}
-
-.plan {
-  color: var(--muted);
-  font-size: 0.75rem;
 }
 
 .main {
@@ -1283,22 +1196,6 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.main-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.main-header h1 {
-  font-size: 1.6rem;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
 }
 
 /* --- Chat styles now use Tailwind in ChatBox.jsx & MessageBubble.jsx --- */
@@ -1355,9 +1252,7 @@ h3 {
   .app-layout {
     height: calc(100vh - 32px);
   }
-
-  .main-shell,
-  .evidence-shell {
+  .main-shell {
     height: 100%;
     min-height: 0;
     display: flex;
@@ -1748,10 +1643,6 @@ h3 {
     max-height: 320px;
     overflow-y: auto;
   }
-
-  .evidence-shell {
-    display: none;
-  }
 }
 
 /* Toast Notifications */
@@ -1993,27 +1884,6 @@ h3 {
   border-top: 1px solid var(--hairline);
   margin: 1em 0;
 }
-
-/* ==========================================================================
-   Repository Intelligence
-   --------------------------------------------------------------------------
-   A self-contained design layer for the Repository Intelligence capability.
-   Built on the shared ContextForge tokens (dark surfaces, thin strokes,
-   blue/cyan accents, Space Mono technical type) and organised as:
-
-     1.  Design tokens (local overrides)
-     2.  Shell — header, tabs, viewport
-     3.  UI kit — buttons, cards, stats, bars, badges, states
-     4.  Graph surfaces
-     5.  View-specific compositions
-     6.  Insight rail
-     7.  Analysis loading
-     8.  Responsive + motion
-   ========================================================================== */
-
-/* ---------- 1. Design tokens --------------------------------------------- */
-
-.rv-scope,
 .intel-card,
 .rv-analyzing-shell {
   --rv-surface: #101010;
@@ -3655,9 +3525,6 @@ h3 {
   gap: 20px;
   padding: 32px 20px;
 }
-.rv-analyzing.is-embedded {
-  min-height: 60vh;
-}
 .rv-analyzing-card,
 .rv-analyzing-skeleton {
   width: min(560px, 100%);
@@ -4201,44 +4068,10 @@ h3 {
   margin: auto;
 }
 
-/* Make the library's `.mindmap-container` fill every available pixel of the
- * shell regardless of flex quirks or layout-timing. `position: absolute; inset: 0`
- * is bulletproof: it sizes to the (relative) shell directly, so the SVG inside
- * always matches the visible area. */
-.mindmap-container-shell .mindmap-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.mindmap-container-shell .mindmap-container .mindmap-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
 .mindmap-footer {
   display: flex;
   justify-content: center;
   padding: 0 4px;
-}
-
-/* Blend the library's floating controls with the ContextForge dark theme. */
-.mindmap-container-shell .mindmap-zoom-controls,
-.mindmap-container-shell .mindmap-extra-controls,
-.mindmap-container-shell .mindmap-search-controls {
-  background: var(--canvas-soft);
-  color: var(--text);
-  border: 1px solid var(--hairline);
-}
-
-.mindmap-container-shell .mindmap-ctrl-btn {
-  color: var(--text);
-}
-
-.mindmap-container-shell .mindmap-search-input {
-  color: var(--text);
 }
 
 /* ---------------------------------------------------------------------------
@@ -4704,17 +4537,6 @@ h3 {
   width: 100%;
   height: 100%;
   min-height: 0;
-}
-.mindmap-canvas .mindmap-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.mindmap-canvas .mindmap-container .mindmap-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
 }
 .mindmap-canvas > .empty {
   position: absolute;
@@ -6006,21 +5828,6 @@ body:has(.mh-standalone) #root {
   }
 }
 
-/* ==========================================================================
-   Model Center — model registry, fallback chains, serving configuration
-   ========================================================================== */
-
-.mh-page {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  padding: 28px 32px 0;
-  gap: 20px;
-}
-
 .mh-header {
   flex: 0 0 auto;
   display: flex;
@@ -6132,14 +5939,6 @@ body:has(.mh-standalone) #root {
   color: var(--ink);
 }
 
-.mh-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 40px;
-  scrollbar-gutter: stable;
-}
-
 /* ---------- shared form / button primitives ---------- */
 
 .mh-form,
@@ -6150,12 +5949,6 @@ body:has(.mh-standalone) #root {
   border: 1px solid var(--hairline);
   border-radius: 18px;
   padding: 22px;
-}
-
-.mh-form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
 }
 
 .mh-field {
@@ -6772,47 +6565,6 @@ select.mh-input {
   background: var(--mute);
   opacity: 0.5;
 }
-.mh-live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  flex: none;
-}
-
-.mh-side-panel .mh-side-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 0;
-  padding: 0 4px;
-}
-.mh-side-stats div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.82rem;
-}
-.mh-side-stats dt {
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.mh-side-stats dd {
-  margin: 0;
-  font-weight: 650;
-  color: var(--ink);
-}
-.mh-side-note {
-  margin: 14px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--hairline);
-  color: var(--mute);
-  font-size: 0.74rem;
-  line-height: 1.5;
-}
 
 .mh-empty {
   display: flex;
@@ -7293,9 +7045,6 @@ select.mh-input {
 }
 
 @media (max-width: 640px) {
-  .mh-page {
-    padding: 20px 16px 32px;
-  }
   .mh-header h1 {
     font-size: 1.4rem;
   }
@@ -7376,9 +7125,6 @@ select.mh-input {
 .source-detail-tile {
   border-radius: 14px;
 }
-.empty-card {
-  border-radius: 16px;
-}
 .badge {
   border-radius: var(--radius-pill);
   padding: 4px 10px;
@@ -7394,9 +7140,6 @@ select.mh-input {
 }
 .icon-button {
   border-radius: 12px;
-}
-.pill {
-  padding: 5px 14px;
 }
 
 /* Explore tabs read as a soft segmented control */
