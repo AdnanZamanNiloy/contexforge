@@ -4,6 +4,7 @@ import { deleteModel, testModel, updateModel } from '../../services/api'
 import {
   DEVICES,
   LOCAL_BACKENDS,
+  providerDisplayName,
   providerLabel,
   runtimeLabel,
   STATUS_LABEL,
@@ -20,6 +21,7 @@ function ModelCard({ model, onChanged, onDeleted }) {
     model_id: model.model_id,
     base_url: model.base_url || '',
     api_key: '',
+    provider_label: model.provider_label || '',
     device: model.device || 'auto',
     local_backend: model.local_backend || 'sentence_transformers',
   })
@@ -67,6 +69,7 @@ function ModelCard({ model, onChanged, onDeleted }) {
         if (draft.base_url.trim()) payload.base_url = draft.base_url.trim()
         else payload.base_url = ''
         if (draft.api_key) payload.api_key = draft.api_key
+        if (model.provider === 'custom') payload.provider_label = draft.provider_label
       }
       await updateModel(model.id, payload)
       setEditing(false)
@@ -120,7 +123,9 @@ function ModelCard({ model, onChanged, onDeleted }) {
           <div className="mh-card-tags">
             <span className={`mh-tag is-${model.model_type}`}>{typeLabel(model)}</span>
             <span className="mh-tag">{runtimeLabel(model)}</span>
-            <span className="mh-tag">{providerLabel(model.provider)}</span>
+            <span className="mh-tag" title={providerLabel(model.provider)}>
+              {providerDisplayName(model)}
+            </span>
           </div>
         </div>
         <span className={`mh-status ${statusClass(model.status)}`}>
@@ -229,6 +234,18 @@ function ModelCard({ model, onChanged, onDeleted }) {
                   onChange={(e) => setDraft({ ...draft, base_url: e.target.value })}
                 />
               </label>
+              {model.provider === 'custom' ? (
+                <label>
+                  Custom provider name
+                  <input
+                    className="mh-input"
+                    value={draft.provider_label}
+                    onChange={(e) => setDraft({ ...draft, provider_label: e.target.value })}
+                    placeholder="e.g. My vLLM server"
+                    maxLength={60}
+                  />
+                </label>
+              ) : null}
               <label>
                 API Key
                 <input

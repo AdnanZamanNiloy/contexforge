@@ -8,6 +8,7 @@ const EMPTY = {
   model_type: 'llm',
   runtime: 'api',
   provider: 'openai',
+  provider_label: '',
   model_id: '',
   base_url: '',
   api_key: '',
@@ -157,6 +158,9 @@ export default function AddModelTab({ onCreated }) {
     } else {
       if (form.base_url.trim()) payload.base_url = form.base_url.trim()
       if (form.api_key) payload.api_key = form.api_key
+      if (form.provider === 'custom' && form.provider_label.trim()) {
+        payload.provider_label = form.provider_label.trim()
+      }
     }
     return payload
   }
@@ -427,6 +431,23 @@ export default function AddModelTab({ onCreated }) {
                         </button>
                       ))}
                     </div>
+                    {form.provider === 'custom' ? (
+                      <div className="mh-field" style={{ marginTop: '12px' }}>
+                        <label htmlFor="mh-custom-provider">Custom provider name</label>
+                        <input
+                          id="mh-custom-provider"
+                          className="mh-input"
+                          value={form.provider_label}
+                          onChange={(e) => update('provider_label', e.target.value)}
+                          placeholder="e.g. My vLLM server"
+                          maxLength={60}
+                        />
+                        <small className="mh-hint">
+                          Shown across the Model Center instead of “Custom”. Routing still uses your
+                          Base URL.
+                        </small>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="mh-field">
                     <label htmlFor="mh-model-id">Model ID</label>
@@ -486,7 +507,10 @@ export default function AddModelTab({ onCreated }) {
                     {isLocal
                       ? LOCAL_BACKENDS.find((b) => b.id === form.local_backend)?.label ||
                         form.local_backend
-                      : providerOptions.find((p) => p.id === form.provider)?.label || form.provider}
+                      : form.provider === 'custom' && form.provider_label.trim()
+                        ? form.provider_label.trim()
+                        : providerOptions.find((p) => p.id === form.provider)?.label ||
+                          form.provider}
                   </dd>
                 </div>
                 <div>

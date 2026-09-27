@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS hub_models (
     model_type    TEXT NOT NULL,
     runtime       TEXT NOT NULL,
     provider      TEXT NOT NULL DEFAULT 'custom',
+    provider_label TEXT,
     model_id      TEXT NOT NULL,
     base_url      TEXT,
     api_key       TEXT,
@@ -151,7 +152,21 @@ class ModelHubStore:
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.executescript(_SCHEMA)
         conn.commit()
+        self._migrate_sync(conn)
         return conn
+
+    @staticmethod
+    def _migrate_sync(conn: sqlite3.Connection) -> None:
+        """Add columns missing from databases created by an older schema.
+
+        ``CREATE TABLE IF NOT EXISTS`` never alters an existing table.
+        """
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(hub_models)").fetchall()}
+        for name, ddl in (("provider_label", "TEXT"),):
+            if name not in existing:
+                conn.execute(f"ALTER TABLE hub_models ADD COLUMN {name} {ddl}")
+                logger.info("model hub: migrated database (added column %s)", name)
+        conn.commit()
 
     # --- models ---
 
@@ -162,9 +177,7 @@ class ModelHubStore:
     def _list_models_sync(self) -> list[dict[str, Any]]:
         conn = self._connect()
         try:
-            rows = conn.execute(
-                "SELECT * FROM hub_models ORDER BY created_at ASC"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM hub_models ORDER BY created_at ASC").fetchall()
             return [self._model_row_to_dict(r) for r in rows]
         finally:
             conn.close()
@@ -172,9 +185,7 @@ class ModelHubStore:
     def _get_model_sync(self, model_id: str) -> dict[str, Any] | None:
         conn = self._connect()
         try:
-            row = conn.execute(
-                "SELECT * FROM hub_models WHERE id = ?", (model_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM hub_models WHERE id = ?", (model_id,)).fetchone()
             return self._model_row_to_dict(row) if row else None
         finally:
             conn.close()
@@ -187,10 +198,10 @@ class ModelHubStore:
                 conn.execute(
                     """
                     INSERT INTO hub_models (
-                        id, name, model_type, runtime, provider, model_id,
+                        id, name, model_type, runtime, provider, provider_label, model_id,
                         base_url, api_key, dimension, local_backend, device,
                         status, status_detail, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         model_id,
@@ -198,6 +209,7 @@ class ModelHubStore:
                         fields["model_type"],
                         fields["runtime"],
                         fields.get("provider", "custom"),
+                        fields.get("provider_label"),
                         fields["model_id"],
                         fields.get("base_url"),
                         fields.get("api_key"),
@@ -252,8 +264,7 @@ class ModelHubStore:
                             (json.dumps(pruned), _now(), row["id"]),
                         )
                 conn.execute(
-                    "UPDATE hub_serving SET mode = 'disabled', target = NULL, updated_at = ? "
-                    "WHERE target = ?",
+                    "UPDATE hub_serving SET mode = 'disabled', target = NULL, updated_at = ? WHERE target = ?",
                     (_now(), model_id),
                 )
                 self._clear_chain_serving_refs(conn, model_id)
@@ -269,8 +280,7 @@ class ModelHubStore:
         for row in serving:
             if row["target"] and row["target"] not in chain_ids and row["target"] == model_id:
                 conn.execute(
-                    "UPDATE hub_serving SET mode = 'disabled', target = NULL, updated_at = ? "
-                    "WHERE tier = ?",
+                    "UPDATE hub_serving SET mode = 'disabled', target = NULL, updated_at = ? WHERE tier = ?",
                     (_now(), row["tier"]),
                 )
 
@@ -286,9 +296,7 @@ class ModelHubStore:
     def _list_chains_sync(self) -> list[dict[str, Any]]:
         conn = self._connect()
         try:
-            rows = conn.execute(
-                "SELECT * FROM hub_chains ORDER BY created_at ASC"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM hub_chains ORDER BY created_at ASC").fetchall()
             return [self._chain_row_to_dict(r) for r in rows]
         finally:
             conn.close()
@@ -296,9 +304,7 @@ class ModelHubStore:
     def _get_chain_sync(self, chain_id: str) -> dict[str, Any] | None:
         conn = self._connect()
         try:
-            row = conn.execute(
-                "SELECT * FROM hub_chains WHERE id = ?", (chain_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM hub_chains WHERE id = ?", (chain_id,)).fetchone()
             return self._chain_row_to_dict(row) if row else None
         finally:
             conn.close()
@@ -370,8 +376,7 @@ class ModelHubStore:
                 if cur.rowcount == 0:
                     return False
                 conn.execute(
-                    "UPDATE hub_serving SET mode = 'disabled', target = NULL, updated_at = ? "
-                    "WHERE target = ?",
+                    "UPDATE hub_serving SET mode = 'disabled', target = NULL, updated_at = ? WHERE target = ?",
                     (_now(), chain_id),
                 )
             return True

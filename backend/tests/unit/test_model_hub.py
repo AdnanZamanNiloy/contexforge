@@ -71,6 +71,69 @@ async def test_api_key_is_never_returned(service):
 
 
 @pytest.mark.asyncio
+async def test_provider_label_round_trips_and_clears(service):
+    created = await service.create_model(_api_model(provider="custom", provider_label="My vLLM server"))
+    assert created["provider"] == "custom"
+    assert created["provider_label"] == "My vLLM server"
+
+    renamed = await service.update_model(created["id"], ModelUpdate(provider_label="  Renamed Rig  "))
+    assert renamed["provider_label"] == "Renamed Rig"
+
+    cleared = await service.update_model(created["id"], ModelUpdate(provider_label=""))
+    assert cleared["provider_label"] is None
+
+
+def test_provider_label_blank_collapses_to_none():
+    assert ModelCreate(**{**_api_model_kwargs(), "provider_label": "   "}).provider_label is None
+
+
+def _api_model_kwargs():
+    return {
+        "name": "GPT test",
+        "model_type": "llm",
+        "runtime": "api",
+        "provider": "openai",
+        "model_id": "gpt-4o-mini",
+    }
+
+
+@pytest.mark.asyncio
+async def test_legacy_database_without_provider_label_column(tmp_path):
+    """A database created before ``provider_label`` existed must keep working."""
+    import sqlite3
+
+    db_path = tmp_path / "model_hub.db"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        with conn:
+            conn.execute(
+                "CREATE TABLE hub_models (id TEXT PRIMARY KEY, name TEXT NOT NULL,"
+                " model_type TEXT NOT NULL, runtime TEXT NOT NULL,"
+                " provider TEXT NOT NULL DEFAULT 'custom', model_id TEXT NOT NULL,"
+                " base_url TEXT, api_key TEXT, dimension INTEGER, local_backend TEXT,"
+                " device TEXT, status TEXT NOT NULL DEFAULT 'untested', status_detail TEXT,"
+                " created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "CREATE TABLE hub_chains (id TEXT PRIMARY KEY, chain_type TEXT NOT NULL,"
+                " model_ids TEXT NOT NULL DEFAULT '[]', enabled INTEGER NOT NULL DEFAULT 1,"
+                " created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "CREATE TABLE hub_serving (tier TEXT PRIMARY KEY, mode TEXT NOT NULL"
+                " DEFAULT 'disabled', target TEXT, updated_at TEXT NOT NULL)"
+            )
+    finally:
+        conn.close()
+
+    legacy = ModelHubService(store=ModelHubStore(db_path=db_path))
+    created = await legacy.create_model(_api_model(provider="custom"))
+    assert created["provider_label"] is None
+    listed = await legacy.list_models()
+    assert listed[0]["provider_label"] is None
+
+
+@pytest.mark.asyncio
 async def test_update_can_clear_and_replace_key(service):
     created = await service.create_model(_api_model())
 
@@ -105,20 +168,14 @@ async def test_chain_type_isolation(service):
 
     # LLM in an embedding chain → rejected.
     with pytest.raises(ModelHubError):
-        await service.create_chain(
-            ChainCreate(name="bad", chain_type="embedding", model_ids=[llm["id"]])
-        )
+        await service.create_chain(ChainCreate(name="bad", chain_type="embedding", model_ids=[llm["id"]]))
 
     # Embedding in an LLM chain → rejected.
     with pytest.raises(ModelHubError):
-        await service.create_chain(
-            ChainCreate(name="bad", chain_type="llm", model_ids=[emb["id"]])
-        )
+        await service.create_chain(ChainCreate(name="bad", chain_type="llm", model_ids=[emb["id"]]))
 
     # Valid chains succeed.
-    chain = await service.create_chain(
-        ChainCreate(name="good", chain_type="llm", model_ids=[llm["id"]])
-    )
+    chain = await service.create_chain(ChainCreate(name="good", chain_type="llm", model_ids=[llm["id"]]))
     assert chain["chain_type"] == "llm"
 
 
@@ -150,9 +207,7 @@ async def test_embedding_chain_dimension_compatibility(service):
 @pytest.mark.asyncio
 async def test_serving_single_and_chain(service):
     llm = await service.create_model(_api_model())
-    chain = await service.create_chain(
-        ChainCreate(name="llm chain", chain_type="llm", model_ids=[llm["id"]])
-    )
+    chain = await service.create_chain(ChainCreate(name="llm chain", chain_type="llm", model_ids=[llm["id"]]))
 
     await service.update_serving("llm", "single", llm["id"])
     cfg = await service.resolve_llm_configs()
@@ -177,9 +232,7 @@ async def test_serving_single_and_chain(service):
 @pytest.mark.asyncio
 async def test_delete_model_prunes_chains_and_serving(service):
     llm = await service.create_model(_api_model())
-    chain = await service.create_chain(
-        ChainCreate(name="llm chain", chain_type="llm", model_ids=[llm["id"]])
-    )
+    chain = await service.create_chain(ChainCreate(name="llm chain", chain_type="llm", model_ids=[llm["id"]]))
     await service.update_serving("llm", "single", llm["id"])
 
     await service.delete_model(llm["id"])
@@ -222,7 +275,5 @@ def test_factory_requires_base_url_for_unknown_provider():
 
 
 def test_factory_builds_local_embedder():
-    embedder = factory.build_embedder(
-        {"runtime": "local", "model_id": "BAAI/bge-small-en-v1.5", "device": "cpu"}
-    )
+    embedder = factory.build_embedder({"runtime": "local", "model_id": "BAAI/bge-small-en-v1.5", "device": "cpu"})
     assert embedder.__class__.__name__ == "LocalEmbedder"

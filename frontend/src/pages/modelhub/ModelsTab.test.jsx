@@ -59,4 +59,22 @@ describe('ModelsTab', () => {
     expect(screen.getByText('Small embeddings')).toBeInTheDocument()
     expect(screen.queryByText('GPT-4o mini')).not.toBeInTheDocument()
   })
+
+  it('shows a custom provider name instead of the generic Custom label', async () => {
+    const { userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    const custom = {
+      ...BASE_MODEL,
+      id: 'm9',
+      name: 'Local 70B',
+      provider: 'custom',
+      provider_label: 'My vLLM server',
+    }
+    render(<ModelsTab models={[custom]} onChanged={vi.fn()} onDeleted={vi.fn()} />)
+    expect(screen.getByText('My vLLM server')).toBeInTheDocument()
+    expect(screen.queryByText('Custom (OpenAI-compatible)')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(screen.getByLabelText(/custom provider name/i)).toHaveValue('My vLLM server')
+  })
 })

@@ -83,6 +83,41 @@ describe('AddModelTab wizard', () => {
     expect(await screen.findByText(/connected in 42 ms/i)).toBeInTheDocument()
   })
 
+  it('sends the custom provider name when one is written', async () => {
+    const capture = {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, options = {}) => {
+        const path = String(url)
+        const method = (options.method || 'GET').toUpperCase()
+        if (path.endsWith('/models') && method === 'POST') {
+          capture.body = JSON.parse(options.body)
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({ id: 'm9', name: capture.body.name }),
+          }
+        }
+        return { ok: true, status: 200, json: async () => ({ ok: true, latency_ms: 10 }) }
+      }),
+    )
+    const onCreated = vi.fn()
+    const u = await user()
+    render(<AddModelTab onCreated={onCreated} />)
+
+    await u.click(screen.getByRole('button', { name: /^continue$/i }))
+    await u.click(screen.getByRole('button', { name: /^continue$/i }))
+    await u.click(screen.getByRole('radio', { name: /custom \(openai-compatible\)/i }))
+    await u.type(screen.getByLabelText(/custom provider name/i), 'My vLLM server')
+    await u.type(screen.getByLabelText(/model name/i), 'Local 70B')
+    await u.type(screen.getByLabelText(/^model id$/i), 'llama-3-70b')
+    await u.click(screen.getByRole('button', { name: /^add model$/i }))
+
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1))
+    expect(capture.body.provider).toBe('custom')
+    expect(capture.body.provider_label).toBe('My vLLM server')
+  })
+
   it('resets an invalid Google provider when switching to embedding', async () => {
     const u = await user()
     render(<AddModelTab onCreated={vi.fn()} />)

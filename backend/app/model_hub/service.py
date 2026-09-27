@@ -40,6 +40,7 @@ _MODEL_FIELDS = (
     "model_type",
     "runtime",
     "provider",
+    "provider_label",
     "model_id",
     "base_url",
     "api_key",
@@ -243,8 +244,7 @@ class ModelHubService:
                 raise ModelHubError(f"Model '{model_id}' not found.")
             if row["model_type"] != chain_type:
                 raise ModelHubError(
-                    f"Model '{row['name']}' is a {row['model_type']} model and cannot "
-                    f"be used in a {chain_type} chain."
+                    f"Model '{row['name']}' is a {row['model_type']} model and cannot be used in a {chain_type} chain."
                 )
             if chain_type == "embedding":
                 dims.append((row["name"], row.get("dimension")))
@@ -286,8 +286,7 @@ class ModelHubService:
                 raise ModelHubError(f"Model '{target}' not found.")
             if row["model_type"] != tier:
                 raise ModelHubError(
-                    f"Model '{row['name']}' is a {row['model_type']} model and cannot "
-                    f"be served as the {tier} model."
+                    f"Model '{row['name']}' is a {row['model_type']} model and cannot be served as the {tier} model."
                 )
             await self._store.set_serving(tier, "single", target)
         elif mode == "chain":
@@ -358,6 +357,7 @@ class ModelHubService:
             "model_type": row["model_type"],
             "runtime": row["runtime"],
             "provider": row.get("provider") or "custom",
+            "provider_label": row.get("provider_label"),
             "model_id": row["model_id"],
             "base_url": row.get("base_url"),
             "dimension": row.get("dimension"),

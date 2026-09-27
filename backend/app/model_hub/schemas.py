@@ -81,6 +81,10 @@ class _ModelBase(BaseModel):
     model_type: ModelType
     runtime: RuntimeKind
     provider: str = Field(default="custom", max_length=60)
+    # Optional display name for the provider (used with "custom" so users can
+    # label their own endpoint).  Routing always uses ``provider`` + base_url,
+    # so a label can never break model building.  Blank collapses to None.
+    provider_label: str | None = Field(default=None, max_length=60)
     model_id: str = Field(..., min_length=1, max_length=240)
     base_url: str | None = None
     # Embedding dimension is auto-detected on test; a manual override is only
@@ -100,6 +104,13 @@ class _ModelBase(BaseModel):
     @classmethod
     def _normalise_provider(cls, v: str) -> str:
         return (v or "custom").strip().lower()
+
+    @field_validator("provider_label")
+    @classmethod
+    def _blank_label_to_none(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return v.strip() or None
 
     @field_validator("base_url")
     @classmethod
@@ -130,6 +141,7 @@ class ModelUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=120)
     provider: str | None = Field(default=None, max_length=60)
+    provider_label: str | None = Field(default=None, max_length=60)
     model_id: str | None = Field(default=None, min_length=1, max_length=240)
     base_url: str | None = None
     api_key: str | None = Field(default=None, max_length=4096)
@@ -148,6 +160,15 @@ class ModelUpdate(BaseModel):
     @classmethod
     def _normalise_provider(cls, v: str | None) -> str | None:
         return v.strip().lower() if v is not None else None
+
+    @field_validator("provider_label")
+    @classmethod
+    def _blank_label_to_none(cls, v: str | None) -> str | None:
+        # Omitted fields never reach here (exclude_unset); an explicit null
+        # or blank clears the stored label, like ``base_url``.
+        if v is None:
+            return None
+        return v.strip() or None
 
     @field_validator("base_url")
     @classmethod
@@ -168,6 +189,7 @@ class ModelResponse(BaseModel):
     model_type: ModelType
     runtime: RuntimeKind
     provider: str
+    provider_label: str | None = None
     model_id: str
     base_url: str | None = None
     dimension: int | None = None

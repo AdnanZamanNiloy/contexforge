@@ -44,6 +44,14 @@ export function providerLabel(id) {
   return PROVIDERS.find((p) => p.id === id)?.label || id
 }
 
+// Display name for a stored model: a custom label if the user wrote one,
+// otherwise the known-provider label.
+export function providerDisplayName(model) {
+  const custom = model?.provider_label?.trim()
+  if (custom) return custom
+  return providerLabel(model?.provider)
+}
+
 export function statusClass(status) {
   if (status === 'ready') return 'is-ready'
   if (status === 'error') return 'is-error'
