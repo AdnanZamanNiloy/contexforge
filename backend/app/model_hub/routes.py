@@ -47,10 +47,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["model-hub"])
 
 
-def _get_service() -> ModelHubService:
-    return get_model_hub_service()
-
-
 def _handle(exc: ModelHubError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
@@ -68,7 +64,7 @@ def _not_found(model_id: str) -> HTTPException:
 
 
 @router.get("/models", response_model=list[ModelResponse], summary="List configured models")
-async def list_models(service: ModelHubService = Depends(_get_service)) -> list[ModelResponse]:
+async def list_models(service: ModelHubService = Depends(get_model_hub_service)) -> list[ModelResponse]:
     return [ModelResponse(**m) for m in await service.list_models()]
 
 
@@ -80,7 +76,7 @@ async def list_models(service: ModelHubService = Depends(_get_service)) -> list[
 )
 async def create_model(
     payload: ModelCreate,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ModelResponse:
     try:
         model = await service.create_model(payload)
@@ -92,7 +88,7 @@ async def create_model(
 @router.get("/models/{model_id}", response_model=ModelResponse, summary="Get a model")
 async def get_model(
     model_id: str,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ModelResponse:
     try:
         model = await service.get_model(model_id)
@@ -105,7 +101,7 @@ async def get_model(
 async def update_model(
     model_id: str,
     payload: ModelUpdate,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ModelResponse:
     try:
         model = await service.update_model(model_id, payload)
@@ -121,7 +117,7 @@ async def update_model(
 )
 async def delete_model(
     model_id: str,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> dict:
     try:
         await service.delete_model(model_id)
@@ -137,7 +133,7 @@ async def delete_model(
 )
 async def test_model(
     model_id: str,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> TestResponse:
     try:
         result = await service.test_model(model_id)
@@ -152,7 +148,7 @@ async def test_model(
 
 
 @router.get("/chains", response_model=list[ChainResponse], summary="List fallback chains")
-async def list_chains(service: ModelHubService = Depends(_get_service)) -> list[ChainResponse]:
+async def list_chains(service: ModelHubService = Depends(get_model_hub_service)) -> list[ChainResponse]:
     return [ChainResponse(**c) for c in await service.list_chains()]
 
 
@@ -164,7 +160,7 @@ async def list_chains(service: ModelHubService = Depends(_get_service)) -> list[
 )
 async def create_chain(
     payload: ChainCreate,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ChainResponse:
     try:
         chain = await service.create_chain(payload)
@@ -176,7 +172,7 @@ async def create_chain(
 @router.get("/chains/{chain_id}", response_model=ChainResponse, summary="Get a chain")
 async def get_chain(
     chain_id: str,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ChainResponse:
     try:
         chain = await service.get_chain(chain_id)
@@ -189,7 +185,7 @@ async def get_chain(
 async def update_chain(
     chain_id: str,
     payload: ChainUpdate,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ChainResponse:
     try:
         chain = await service.update_chain(chain_id, payload)
@@ -205,7 +201,7 @@ async def update_chain(
 )
 async def delete_chain(
     chain_id: str,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> dict:
     try:
         await service.delete_chain(chain_id)
@@ -217,7 +213,7 @@ async def delete_chain(
 @router.post("/chains/{chain_id}/test", summary="Test a chain")
 async def test_chain(
     chain_id: str,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> dict:
     try:
         return await service.test_chain(chain_id)
@@ -231,14 +227,14 @@ async def test_chain(
 
 
 @router.get("/serving", response_model=ServingResponse, summary="Get serving configuration")
-async def get_serving(service: ModelHubService = Depends(_get_service)) -> ServingResponse:
+async def get_serving(service: ModelHubService = Depends(get_model_hub_service)) -> ServingResponse:
     return ServingResponse(**await service.get_serving())
 
 
 @router.put("/serving", response_model=ServingResponse, summary="Update serving configuration")
 async def update_serving(
     payload: ServingUpdate,
-    service: ModelHubService = Depends(_get_service),
+    service: ModelHubService = Depends(get_model_hub_service),
 ) -> ServingResponse:
     try:
         result = await service.update_serving(payload.tier, payload.mode, payload.target)

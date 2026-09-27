@@ -4,6 +4,18 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# All default on-disk locations resolve against the ``backend/`` package root,
+# never the process working directory.  CWD-relative defaults meant the same
+# setting pointed at a *different* database depending on where the process was
+# launched (``make test-backend`` cds into ``backend/``, CI runs from the repo
+# root), which silently split state across ``backend/data/`` and ``data/``.
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+
+
+def data_path(*parts: str) -> Path:
+    """Resolve a default path under ``backend/data/``."""
+    return BACKEND_ROOT.joinpath("data", *parts)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
@@ -19,10 +31,10 @@ class Settings(BaseSettings):
     LANGFUSE_SECRET_KEY: str = Field(default="")
     LANGFUSE_HOST: str = Field(default="https://cloud.langfuse.com")
 
-    FAISS_INDEX_PATH: Path = Field(default=Path("data/vector_store/index.faiss"))
-    BM25_DB_PATH: Path = Field(default=Path("data/bm25/bm25.db"))
-    CACHE_PATH: Path = Field(default=Path("data/cache/embeddings.json"))
-    UPLOAD_DIR: Path = Field(default=Path("data/uploads"))
+    FAISS_INDEX_PATH: Path = Field(default=data_path("vector_store", "index.faiss"))
+    BM25_DB_PATH: Path = Field(default=data_path("bm25", "bm25.db"))
+    CACHE_PATH: Path = Field(default=data_path("cache", "embeddings.json"))
+    UPLOAD_DIR: Path = Field(default=data_path("uploads"))
 
     MAX_GITHUB_FILES: int = Field(default=500)
     CHUNK_SIZE: int = Field(default=512)
@@ -234,21 +246,21 @@ class Settings(BaseSettings):
     # level of the tree to keep analysis bounded on CPU-only hardware.
     REPO_MAX_FILES: int = Field(default=800)
     REPO_CLONE_TIMEOUT: int = Field(default=180)
-    REPO_ANALYSIS_DIR: Path = Field(default=Path("data/repo_analysis"))
+    REPO_ANALYSIS_DIR: Path = Field(default=data_path("repo_analysis"))
     REPO_GIT_HISTORY_DAYS: int = Field(default=180)
     # Set to 0 to analyse the full history regardless of window.
     REPO_GIT_HISTORY_FULL: bool = Field(default=False)
     REPO_BLAME_FILE_LIMIT: int = Field(default=400)
     # Persisted generated mind maps (keyed by source_id).
-    MINDMAP_DIR: Path = Field(default=Path("data/mindmaps"))
+    MINDMAP_DIR: Path = Field(default=data_path("mindmaps"))
 
     # Model Hub — configured models, fallback chains, and serving selection.
-    MODEL_HUB_DB_PATH: Path = Field(default=Path("data/model_hub/model_hub.db"))
+    MODEL_HUB_DB_PATH: Path = Field(default=data_path("model_hub", "model_hub.db"))
 
     # Projects — lightweight project library (metadata + source membership).
     # Sources themselves stay in FAISS/BM25; this DB only maps projects to
     # source_ids so the library survives restarts without changing retrieval.
-    PROJECTS_DB_PATH: Path = Field(default=Path("data/projects/projects.db"))
+    PROJECTS_DB_PATH: Path = Field(default=data_path("projects", "projects.db"))
 
     # Scoring / health thresholds (transparent, explainable — no opaque AI)
     RISK_FANOUT_WEIGHT: float = Field(default=0.30)

@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from app.dependencies import get_query_service
+from app.dependencies import get_query_service, get_repository_intelligence_service
 from app.routes.query import _sse_generator as _query_sse_generator
 from app.schemas.query import QueryRequest
 from app.services.query_service import QueryService
@@ -40,12 +40,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/repository", tags=["repository-intelligence"])
 
 
-def _get_service():
-    from app.dependencies import get_repository_intelligence_service
-
-    return get_repository_intelligence_service()
-
-
 def _handle(exc: RepositoryIntelligenceError) -> HTTPException:
     logger.warning("repository intelligence error: %s", exc)
     msg = str(exc)
@@ -64,7 +58,7 @@ def _handle(exc: RepositoryIntelligenceError) -> HTTPException:
 )
 async def analyze(
     request: AnalyzeRequest,
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     """Start an in-background analysis of a public GitHub repository."""
     try:
@@ -80,7 +74,7 @@ async def analyze(
 )
 async def latest(
     repo_url: str = Query(..., description="Public GitHub repository URL"),
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     """Resolve the most recent completed analysis by repository URL.
 
@@ -99,7 +93,10 @@ async def latest(
     response_model=RepositoryAnalysis,
     summary="Fetch the full Repository Intelligence bundle",
 )
-async def get_analysis(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def get_analysis(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_analysis(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -111,7 +108,10 @@ async def get_analysis(analysis_id: str, service: RepositoryIntelligenceService 
     response_model=AnalysisStatus,
     summary="Poll the status of an analysis",
 )
-async def analysis_status(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def analysis_status(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_status(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -123,7 +123,10 @@ async def analysis_status(analysis_id: str, service: RepositoryIntelligenceServi
     response_model=DependencyGraph,
     summary="Architecture graph (repo -> area -> dir -> module -> file)",
 )
-async def architecture(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def architecture(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_architecture(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -139,7 +142,7 @@ async def dependencies(
     analysis_id: str,
     selected: str | None = Query(default=None),
     depth: int = Query(default=2, ge=1, le=5),
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     try:
         return await service.get_dependencies(analysis_id, selected, depth=depth)
@@ -152,7 +155,10 @@ async def dependencies(
     response_model=dict[str, DataFlow],
     summary="Detected execution / data-flow graph for a repository",
 )
-async def data_flows(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def data_flows(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_data_flows(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -167,7 +173,7 @@ async def data_flows(analysis_id: str, service: RepositoryIntelligenceService = 
 async def git_history(
     analysis_id: str,
     range: str = Query(default="180d", alias="range"),
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     try:
         return await service.get_git_history(analysis_id)
@@ -180,7 +186,10 @@ async def git_history(
     response_model=Ownership,
     summary="Ownership, contributors and bus-factor",
 )
-async def ownership(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def ownership(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_ownership(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -192,7 +201,10 @@ async def ownership(analysis_id: str, service: RepositoryIntelligenceService = D
     response_model=RepositoryHealth,
     summary="Repository health score and dimensions",
 )
-async def health(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def health(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_health(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -204,7 +216,10 @@ async def health(analysis_id: str, service: RepositoryIntelligenceService = Depe
     response_model=Repository,
     summary="Repository header metadata",
 )
-async def repository(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def repository(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_repository(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -216,7 +231,10 @@ async def repository(analysis_id: str, service: RepositoryIntelligenceService = 
     response_model=RiskExplanations,
     summary="Explainable risk-level descriptions",
 )
-async def risk_explanations(analysis_id: str, service: RepositoryIntelligenceService = Depends(_get_service)):
+async def risk_explanations(
+    analysis_id: str,
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
+):
     try:
         return await service.get_risk_explanations(analysis_id)
     except RepositoryIntelligenceError as exc:
@@ -231,7 +249,7 @@ async def risk_explanations(analysis_id: str, service: RepositoryIntelligenceSer
 async def change_impact(
     analysis_id: str,
     path: str = Query(..., description="Repo-relative path of the changed node"),
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     try:
         return await service.get_change_impact(analysis_id, path)
@@ -246,7 +264,7 @@ async def change_impact(
 async def node_details(
     analysis_id: str,
     node_id: str = Query(..., description="Node id or repo-relative path"),
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     try:
         return await service.get_module_details(analysis_id, node_id)
@@ -262,7 +280,7 @@ async def node_details(
 )
 async def reanalyze(
     analysis_id: str,
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
 ):
     """Re-run analysis with caching disabled for the given repository."""
     try:
@@ -279,7 +297,7 @@ async def reanalyze(
 async def ask(
     analysis_id: str,
     request: QueryRequest,
-    service: RepositoryIntelligenceService = Depends(_get_service),
+    service: RepositoryIntelligenceService = Depends(get_repository_intelligence_service),
     query_service: QueryService = Depends(get_query_service),
 ) -> StreamingResponse:
     """Stream an answer to a question about this repository.

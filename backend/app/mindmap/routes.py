@@ -24,10 +24,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mindmap", tags=["mind-map"])
 
 
-def _get_service():
-    return get_mindmap_service()
-
-
 @router.post(
     "/generate",
     response_model=MindMapResponse,
@@ -36,7 +32,7 @@ def _get_service():
 )
 async def generate(
     request: GenerateRequest,
-    service: MindMapService = Depends(_get_service),
+    service: MindMapService = Depends(get_mindmap_service),
 ) -> MindMapResponse:
     """Generate a mind map from a source's indexed content.
 
@@ -58,7 +54,7 @@ async def generate(
 )
 async def get(
     source_id: str,
-    service: MindMapService = Depends(_get_service),
+    service: MindMapService = Depends(get_mindmap_service),
 ) -> MindMapResponse:
     """Return the persisted mind map for ``source_id``, or 404 if none exists."""
     result = await service.get(source_id)
