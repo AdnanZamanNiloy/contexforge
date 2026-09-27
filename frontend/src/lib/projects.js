@@ -7,6 +7,64 @@
 
 export const COVERS = ['aurora', 'ember', 'tide', 'moss', 'violet', 'slate']
 
+// The three source families a project can focus on.  The choice is made at
+// creation and scopes which ingest options the workspace offers.
+export const SOURCE_CATEGORIES = [
+  {
+    id: 'documents',
+    label: 'Documents & Web',
+    hint: 'PDF, DOCX, TXT, Web URLs',
+    icon: 'doc',
+  },
+  {
+    id: 'youtube',
+    label: 'YouTube Videos',
+    hint: 'YouTube links',
+    icon: 'youtube',
+  },
+  {
+    id: 'github',
+    label: 'Code Repositories',
+    hint: 'GitHub repositories',
+    icon: 'github',
+  },
+]
+
+export function sourceCategoryLabel(id) {
+  return SOURCE_CATEGORIES.find((c) => c.id === id)?.label || 'Documents & Web'
+}
+
+// Which workspace ingest cards a project scope allows.  Unknown / legacy
+// ("all") projects keep every option.
+export function ingestScopeFor(sourceCategory) {
+  switch (sourceCategory) {
+    case 'youtube':
+      return ['youtube']
+    case 'github':
+      return ['github']
+    case 'documents':
+      return ['files', 'web', 'text']
+    default:
+      return ['files', 'web', 'github', 'youtube', 'text']
+  }
+}
+
+// Which Knowledge-Base sidebar rows a project scope allows.  `null` means
+// every row (legacy / unscoped projects).  Single-family scopes drop the
+// "All Documents" rollup since it would duplicate the only row.
+export function sidebarTypesFor(sourceCategory) {
+  switch (sourceCategory) {
+    case 'youtube':
+      return ['youtube']
+    case 'github':
+      return ['github']
+    case 'documents':
+      return ['all', 'pdf', 'docx', 'web', 'text']
+    default:
+      return null
+  }
+}
+
 export function coverForId(id) {
   if (!id) return 'aurora'
   let hash = 0

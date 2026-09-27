@@ -16,6 +16,7 @@ import {
   attachSourceToProject,
 } from '../services/api'
 import { sourceRepoUrl } from '../lib/sources'
+import { ingestScopeFor, sidebarTypesFor, sourceCategoryLabel } from '../lib/projects'
 import { useChat } from '../hooks/useChat'
 import { useSources } from '../hooks/useSources'
 
@@ -68,6 +69,19 @@ export default function Home() {
     const allowed = new Set(activeProject.source_ids || [])
     return sources.filter((s) => allowed.has(s.id))
   }, [sources, projectId, activeProject, projectMissing])
+
+  // The project's chosen source family scopes which ingest options this
+  // workspace offers.  Legacy projects ("all") keep every option.
+  const ingestScope = useMemo(() => ingestScopeFor(activeProject?.source_category), [activeProject])
+  const allowsIngest = useCallback((kind) => ingestScope.includes(kind), [ingestScope])
+
+  // Same family drives the sidebar's Knowledge Base rows.  While the project
+  // is still loading, no rows render rather than flashing the full list.
+  const sidebarScope = useMemo(() => {
+    if (!projectId) return null
+    if (!activeProject) return projectMissing ? null : []
+    return sidebarTypesFor(activeProject.source_category)
+  }, [projectId, activeProject, projectMissing])
 
   // Allow the shared sidebar's "Add Source" button on any page to open the
   // ingest modal by returning to the workspace with ?add=1.
@@ -453,45 +467,7 @@ export default function Home() {
             onSelectSource={handleSelectSource}
             onDeleteSource={handleDeleteSource}
             onClearKB={handleClearKB}
-            header={
-              projectId ? (
-                <button
-                  onClick={() => navigate('/projects')}
-                  style={{
-                    width: '100%',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid var(--hairline)',
-                    color: 'var(--ink)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '8px 10px',
-                    cursor: 'pointer',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    textAlign: 'left',
-                  }}
-                >
-                  ← All Projects{activeProject ? ` · ${activeProject.name}` : ''}
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/projects')}
-                  style={{
-                    width: '100%',
-                    background: 'transparent',
-                    border: '1px dashed var(--hairline)',
-                    color: 'var(--mute)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '8px 10px',
-                    cursor: 'pointer',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    textAlign: 'left',
-                  }}
-                >
-                  View Projects library
-                </button>
-              )
-            }
+            scopeTypes={sidebarScope}
           />
         }
         main={main}
@@ -504,216 +480,237 @@ export default function Home() {
           <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="modal-head">
               <div>
-                <h2>Expand your knowledge base</h2>
-                <p>Ingest sources in multiple formats and keep your RAG workspace grounded.</p>
+                {projectId && activeProject ? (
+                  <span className="eyebrow">Project · {activeProject.name}</span>
+                ) : null}
+                <h2>
+                  {projectId && activeProject && activeProject.source_category !== 'all'
+                    ? `Add ${sourceCategoryLabel(activeProject.source_category)}`
+                    : 'Expand your knowledge base'}
+                </h2>
+                <p>
+                  {projectId && activeProject && activeProject.source_category !== 'all'
+                    ? `This project holds ${sourceCategoryLabel(activeProject.source_category).toLowerCase()} — add them to “${activeProject.name}” below.`
+                    : 'Ingest sources in multiple formats and keep your RAG workspace grounded.'}
+                </p>
               </div>
               <button className="icon-button" onClick={() => setIsModalOpen(false)}>
                 x
               </button>
             </div>
 
-            <div className="modal-grid">
-              <div
-                className="option-card"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={handleFileDrop}
-              >
-                <div className="option-head">
-                  <div className="option-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <rect x="2" y="2" width="20" height="20" rx="4" fill="#3d3a39" />
-                      <rect x="2" y="2" width="13" height="7" rx="4" fill="#8b949e" />
-                      <text
-                        x="12"
-                        y="16"
-                        textAnchor="middle"
-                        fill="white"
-                        fontSize="7"
-                        fontWeight="bold"
-                        fontFamily="Arial,sans-serif"
+            <div className={`modal-grid${ingestScope.length === 1 ? ' is-single' : ''}`}>
+              {allowsIngest('files') ? (
+                <div
+                  className="option-card"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={handleFileDrop}
+                >
+                  <div className="option-head">
+                    <div className="option-icon is-files">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="2" width="20" height="20" rx="4" fill="#3d3a39" />
+                        <rect x="2" y="2" width="13" height="7" rx="4" fill="#8b949e" />
+                        <text
+                          x="12"
+                          y="16"
+                          textAnchor="middle"
+                          fill="white"
+                          fontSize="7"
+                          fontWeight="bold"
+                          fontFamily="Arial,sans-serif"
+                        >
+                          PDF
+                        </text>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>Upload PDF/DOCX</h3>
+                      <p>Drag & drop or browse files.</p>
+                    </div>
+                    {isUploading ? <span className="option-status">Uploading...</span> : null}
+                  </div>
+                  <label className="drop-zone">
+                    <input
+                      type="file"
+                      accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={handleFilePicker}
+                      hidden
+                    />
+                    <span>Drop PDF or DOCX here</span>
+                    <small>Max 50MB</small>
+                  </label>
+                  {isUploading ? (
+                    <div className="progress-bar">
+                      <div className="progress-fill" />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {allowsIngest('web') ? (
+                <div className="option-card">
+                  <div className="option-head">
+                    <div className="option-icon is-web">
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       >
-                        PDF
-                      </text>
-                    </svg>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="2" y1="12" x2="22" y2="12" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>Paste Website URL</h3>
+                      <p>Ingest a public webpage.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3>Upload PDF/DOCX</h3>
-                    <p>Drag & drop or browse files.</p>
-                  </div>
-                  {isUploading ? <span className="option-status">Uploading...</span> : null}
+                  <form
+                    className="inline-form"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      const url = event.currentTarget.elements.url?.value || ''
+                      if (url.trim()) {
+                        handleUrlIngest(url.trim())
+                        event.currentTarget.reset()
+                      }
+                    }}
+                  >
+                    <input name="url" placeholder="https://example.com" className="text-input" />
+                    <button className="primary" type="submit" disabled={isAddingUrl}>
+                      {isAddingUrl ? 'Ingesting...' : 'Ingest Website'}
+                    </button>
+                  </form>
                 </div>
-                <label className="drop-zone">
-                  <input
-                    type="file"
-                    accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleFilePicker}
-                    hidden
-                  />
-                  <span>Drop PDF or DOCX here</span>
-                  <small>Max 50MB</small>
-                </label>
-                {isUploading ? (
-                  <div className="progress-bar">
-                    <div className="progress-fill" />
-                  </div>
-                ) : null}
-              </div>
+              ) : null}
 
-              <div className="option-card">
-                <div className="option-head">
-                  <div className="option-icon">
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="2" y1="12" x2="22" y2="12" />
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                    </svg>
+              {allowsIngest('youtube') ? (
+                <div className="option-card">
+                  <div className="option-head">
+                    <div className="option-icon is-youtube">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="4" width="20" height="16" rx="4" fill="#3d3a39" />
+                        <path d="M10 9l6 3-6 3z" fill="#f2f2f2" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>YouTube Video</h3>
+                      <p>Paste a YouTube video URL to index it.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3>Paste Website URL</h3>
-                    <p>Ingest a public webpage.</p>
-                  </div>
+                  <form
+                    className="inline-form"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      const url = event.currentTarget.elements.url?.value || ''
+                      if (url.trim()) {
+                        handleYoutubeIngest(url.trim())
+                        event.currentTarget.reset()
+                      }
+                    }}
+                  >
+                    <input
+                      name="url"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="text-input"
+                    />
+                    <button className="primary" type="submit" disabled={isAddingYoutube}>
+                      {isAddingYoutube ? 'Ingesting...' : 'Ingest Video'}
+                    </button>
+                  </form>
                 </div>
-                <form
-                  className="inline-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    const url = event.currentTarget.elements.url?.value || ''
-                    if (url.trim()) {
-                      handleUrlIngest(url.trim())
+              ) : null}
+
+              {allowsIngest('github') ? (
+                <div className="option-card">
+                  <div className="option-head">
+                    <div className="option-icon is-github">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>GitHub Repository</h3>
+                      <p>Index a public repo.</p>
+                    </div>
+                  </div>
+                  <form
+                    className="inline-form"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      const url = event.currentTarget.elements.repo?.value || ''
+                      if (url.trim()) {
+                        handleRepoIngest(url.trim())
+                        event.currentTarget.reset()
+                      }
+                    }}
+                  >
+                    <input
+                      name="repo"
+                      placeholder="https://github.com/org/repo"
+                      className="text-input"
+                    />
+                    <button className="primary" type="submit" disabled={isAddingRepo}>
+                      {isAddingRepo ? 'Indexing...' : 'Index Repository'}
+                    </button>
+                  </form>
+                </div>
+              ) : null}
+
+              {allowsIngest('text') ? (
+                <div className="option-card">
+                  <div className="option-head">
+                    <div className="option-icon is-text">
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <line x1="10" y1="9" x2="8" y2="9" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3>Plain Text / Notes</h3>
+                      <p>Store raw notes quickly.</p>
+                    </div>
+                  </div>
+                  <form
+                    className="stack-form"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      const text = event.currentTarget.elements.notes?.value || ''
+                      handleTextIngest(text)
                       event.currentTarget.reset()
-                    }
-                  }}
-                >
-                  <input name="url" placeholder="https://example.com" className="text-input" />
-                  <button className="primary" type="submit" disabled={isAddingUrl}>
-                    {isAddingUrl ? 'Ingesting...' : 'Ingest Website'}
-                  </button>
-                </form>
-              </div>
-
-              <div className="option-card">
-                <div className="option-head">
-                  <div className="option-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      <rect x="2" y="4" width="20" height="16" rx="4" fill="#3d3a39" />
-                      <path d="M10 9l6 3-6 3z" fill="#f2f2f2" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3>YouTube Video</h3>
-                    <p>Paste a YouTube video URL to index it.</p>
-                  </div>
+                    }}
+                  >
+                    <textarea
+                      name="notes"
+                      rows={3}
+                      placeholder="Paste knowledge snippets, meeting notes, or specs..."
+                      className="text-input"
+                    />
+                    <button className="primary" type="submit" disabled={isAddingText}>
+                      {isAddingText ? 'Saving...' : 'Save to Knowledge Base'}
+                    </button>
+                  </form>
                 </div>
-                <form
-                  className="inline-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    const url = event.currentTarget.elements.url?.value || ''
-                    if (url.trim()) {
-                      handleYoutubeIngest(url.trim())
-                      event.currentTarget.reset()
-                    }
-                  }}
-                >
-                  <input
-                    name="url"
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="text-input"
-                  />
-                  <button className="primary" type="submit" disabled={isAddingYoutube}>
-                    {isAddingYoutube ? 'Ingesting...' : 'Ingest Video'}
-                  </button>
-                </form>
-              </div>
-
-              <div className="option-card">
-                <div className="option-head">
-                  <div className="option-icon">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3>GitHub Repository</h3>
-                    <p>Index a public repo.</p>
-                  </div>
-                </div>
-                <form
-                  className="inline-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    const url = event.currentTarget.elements.repo?.value || ''
-                    if (url.trim()) {
-                      handleRepoIngest(url.trim())
-                      event.currentTarget.reset()
-                    }
-                  }}
-                >
-                  <input
-                    name="repo"
-                    placeholder="https://github.com/org/repo"
-                    className="text-input"
-                  />
-                  <button className="primary" type="submit" disabled={isAddingRepo}>
-                    {isAddingRepo ? 'Indexing...' : 'Index Repository'}
-                  </button>
-                </form>
-              </div>
-
-              <div className="option-card">
-                <div className="option-head">
-                  <div className="option-icon">
-                    <svg
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                      <line x1="10" y1="9" x2="8" y2="9" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3>Plain Text / Notes</h3>
-                    <p>Store raw notes quickly.</p>
-                  </div>
-                </div>
-                <form
-                  className="stack-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    const text = event.currentTarget.elements.notes?.value || ''
-                    handleTextIngest(text)
-                    event.currentTarget.reset()
-                  }}
-                >
-                  <textarea
-                    name="notes"
-                    rows={3}
-                    placeholder="Paste knowledge snippets, meeting notes, or specs..."
-                    className="text-input"
-                  />
-                  <button className="primary" type="submit" disabled={isAddingText}>
-                    {isAddingText ? 'Saving...' : 'Save to Knowledge Base'}
-                  </button>
-                </form>
-              </div>
+              ) : null}
             </div>
 
             {isProcessing ? (

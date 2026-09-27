@@ -28,12 +28,18 @@ class ProjectsService:
 
     # -- writes ---------------------------------------------------------
 
-    async def create(self, name: str, description: str = "", category: str = "") -> dict[str, Any]:
-        project = await self._store.create_project(name, description, category)
+    async def create(
+        self, name: str, description: str = "", category: str = "", source_category: str = "documents"
+    ) -> dict[str, Any]:
+        project = await self._store.create_project(name, description, category, source_category)
         return self._present(project, {})
 
     async def update(self, project_id: str, fields: dict[str, Any]) -> dict[str, Any] | None:
-        clean = {k: v for k, v in fields.items() if k in {"name", "description", "category"} and v is not None}
+        clean = {
+            k: v
+            for k, v in fields.items()
+            if k in {"name", "description", "category", "source_category"} and v is not None
+        }
         if not clean:
             project = await self._store.get_project(project_id)
             return self._present(project, {}) if project else None
@@ -113,6 +119,7 @@ class ProjectsService:
             "description": raw.get("description", ""),
             "category": raw.get("category", ""),
             "cover": raw.get("cover", "aurora"),
+            "source_category": raw.get("source_category") or "all",
             "source_ids": live_ids if by_id else list(raw.get("source_ids", [])),
             "source_count": len(live_ids) if by_id else raw.get("source_count", 0),
             "source_types": types,

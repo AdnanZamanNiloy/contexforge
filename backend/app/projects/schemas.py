@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,13 +12,20 @@ __all__ = [
     "ProjectListResponse",
     "ProjectResponse",
     "ProjectUpdate",
+    "SourceCategory",
 ]
+
+# Which kinds of sources a project accepts.  The workspace ingest modal is
+# scoped to this choice.  "all" is never offered in the UI — it only marks
+# projects created before scoping existed so they keep every ingest option.
+SourceCategory = Literal["documents", "youtube", "github", "all"]
 
 
 class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     description: str = Field(default="", max_length=2000)
     category: str = Field(default="", max_length=80)
+    source_category: SourceCategory = Field(default="documents")
 
     @field_validator("name")
     @classmethod
@@ -37,6 +44,7 @@ class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     category: str | None = Field(default=None, max_length=80)
+    source_category: SourceCategory | None = Field(default=None)
 
     @field_validator("name")
     @classmethod
@@ -63,6 +71,7 @@ class ProjectResponse(BaseModel):
     description: str = ""
     category: str = ""
     cover: str = "aurora"
+    source_category: str = "documents"
     source_ids: list[str] = Field(default_factory=list)
     source_count: int = 0
     # Per-type breakdown + recency helpers for the library UI.  Populated from

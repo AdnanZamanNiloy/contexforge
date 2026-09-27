@@ -47,11 +47,14 @@ export function useProjects() {
     refresh()
   }, [refresh])
 
-  const create = useCallback(async ({ name, description = '', category = '' }) => {
-    const project = await createProject({ name, description, category })
-    setProjects((prev) => [project, ...prev])
-    return project
-  }, [])
+  const create = useCallback(
+    async ({ name, description = '', category = '', source_category = 'documents' }) => {
+      const project = await createProject({ name, description, category, source_category })
+      setProjects((prev) => [project, ...prev])
+      return project
+    },
+    [],
+  )
 
   const rename = useCallback(async (id, fields) => {
     const updated = await updateProject(id, fields)

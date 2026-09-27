@@ -606,18 +606,10 @@ export default function ProjectsPage() {
       <NewProjectModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onCreated={async (project, info) => {
+        onCreated={async (project) => {
           setModalOpen(false)
           await refresh()
-          if (info?.failures?.length) {
-            setNotice(
-              `${info.failures.length} source${info.failures.length === 1 ? '' : 's'} failed to ingest — project created anyway.`,
-            )
-          } else if (info?.staged) {
-            setNotice(
-              `Created “${project.name}” with ${info.staged} source${info.staged === 1 ? '' : 's'}.`,
-            )
-          }
+          setNotice(`Created “${project.name}” — add sources in its workspace.`)
           navigate(`/projects/${encodeURIComponent(project.id)}`)
         }}
       />

@@ -395,10 +395,15 @@ export async function listProjects() {
   return request('/projects', { method: 'GET' })
 }
 
-export async function createProject({ name, description = '', category = '' }) {
+export async function createProject({
+  name,
+  description = '',
+  category = '',
+  source_category = 'documents',
+}) {
   return request('/projects', {
     method: 'POST',
-    body: JSON.stringify({ name, description, category }),
+    body: JSON.stringify({ name, description, category, source_category }),
   })
 }
 

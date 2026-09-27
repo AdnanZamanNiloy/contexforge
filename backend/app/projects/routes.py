@@ -70,7 +70,7 @@ async def create_project(
     payload: ProjectCreate,
     service: ProjectsService = Depends(_get_projects_service),
 ) -> ProjectResponse:
-    project = await service.create(payload.name, payload.description, payload.category)
+    project = await service.create(payload.name, payload.description, payload.category, payload.source_category)
     return ProjectResponse(**project)
 
 
@@ -97,7 +97,12 @@ async def update_project(
     try:
         updated = await service.update(
             project_id,
-            {"name": payload.name, "description": payload.description, "category": payload.category},
+            {
+                "name": payload.name,
+                "description": payload.description,
+                "category": payload.category,
+                "source_category": payload.source_category,
+            },
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc

@@ -43,6 +43,9 @@ export default function Sidebar({
   onDeleteSource,
   onClearKB,
   header,
+  // Restricts the Knowledge Base rows to a project source family, e.g.
+  // ['pdf', 'docx', 'web', 'text'].  Null/undefined keeps every row.
+  scopeTypes = null,
 }) {
   const indexedCount = sources.filter((s) => s.status === 'indexed').length
   const processingCount = sources.filter((s) => s.status === 'processing').length
@@ -56,32 +59,63 @@ export default function Sidebar({
   const kbRows = [
     {
       id: 'all',
+      type: 'all',
       label: 'All Documents',
       count: sources.length,
       icon: <SourceGlyph type="text" size={14} />,
     },
-    { id: 'pdf', label: 'PDFs', count: pdfCount, icon: <SourceGlyph type="pdf" size={14} /> },
+    {
+      id: 'pdf',
+      type: 'pdf',
+      label: 'PDFs',
+      count: pdfCount,
+      icon: <SourceGlyph type="pdf" size={14} />,
+    },
     {
       id: 'docx',
+      type: 'docx',
       label: 'Word Docs',
       count: docxCount,
       icon: <SourceGlyph type="docx" size={14} />,
     },
-    { id: 'web', label: 'Web Pages', count: webCount, icon: <SourceGlyph type="web" size={14} /> },
-    { id: 'github', label: 'GitHub Repos', count: githubCount, icon: <GithubMark size={14} /> },
+    {
+      id: 'web',
+      type: 'web',
+      label: 'Web Pages',
+      count: webCount,
+      icon: <SourceGlyph type="web" size={14} />,
+    },
+    {
+      id: 'github',
+      type: 'github',
+      label: 'GitHub Repos',
+      count: githubCount,
+      icon: <GithubMark size={14} />,
+    },
     {
       id: 'youtube',
+      type: 'youtube',
       label: 'YouTube Videos',
       count: youtubeCount,
       icon: <SourceGlyph type="youtube" size={14} />,
     },
     {
       id: 'text',
+      type: 'text',
       label: 'Text',
       count: textCount,
       icon: <SourceGlyph type="text" size={14} />,
     },
   ]
+
+  // A scoped project only lists its own family.  The "All Documents" rollup
+  // is kept only when several types remain — otherwise it duplicates the
+  // single row.
+  const visibleRows = scopeTypes
+    ? kbRows.filter((row) =>
+        row.type === 'all' ? scopeTypes.length > 1 : scopeTypes.includes(row.type),
+      )
+    : kbRows
 
   return (
     <aside className="sidebar-shell">
@@ -107,7 +141,7 @@ export default function Sidebar({
       <section className="kb-section">
         <div className="section-title">Knowledge Base</div>
         <div className="kb-rows">
-          {kbRows.map((row) => (
+          {visibleRows.map((row) => (
             <div className="kb-row" key={row.id}>
               {row.icon}
               <span className="kb-label">{row.label}</span>

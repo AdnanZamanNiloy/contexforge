@@ -27,14 +27,15 @@ logger = logging.getLogger(__name__)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
-    id             TEXT PRIMARY KEY,
-    name           TEXT NOT NULL,
-    description    TEXT NOT NULL DEFAULT '',
-    category       TEXT NOT NULL DEFAULT '',
-    cover          TEXT NOT NULL DEFAULT 'aurora',
-    created_at     TEXT NOT NULL,
-    updated_at     TEXT NOT NULL,
-    last_opened_at TEXT NOT NULL
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    description     TEXT NOT NULL DEFAULT '',
+    category        TEXT NOT NULL DEFAULT '',
+    cover           TEXT NOT NULL DEFAULT 'aurora',
+    source_category TEXT NOT NULL DEFAULT 'documents',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    last_opened_at  TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS project_sources (
     project_id TEXT NOT NULL,
@@ -53,7 +54,11 @@ _COVERS = ("aurora", "ember", "tide", "moss", "violet", "slate")
 
 # Columns added after the first shipped schema, applied idempotently by
 # ``_migrate_sync`` to databases created before they existed.
-_MIGRATIONS = (("cover", "TEXT NOT NULL DEFAULT 'aurora'"),)
+_MIGRATIONS = (
+    ("cover", "TEXT NOT NULL DEFAULT 'aurora'"),
+    # Pre-existing projects predate source scoping: keep every ingest option.
+    ("source_category", "TEXT NOT NULL DEFAULT 'all'"),
+)
 
 
 def _cover_for(project_id: str) -> str:
@@ -75,9 +80,11 @@ class ProjectsStore:
     async def get_project(self, project_id: str) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._get_sync, project_id)
 
-    async def create_project(self, name: str, description: str = "", category: str = "") -> dict[str, Any]:
+    async def create_project(
+        self, name: str, description: str = "", category: str = "", source_category: str = "documents"
+    ) -> dict[str, Any]:
         project_id = f"proj_{uuid.uuid4().hex[:12]}"
-        return await asyncio.to_thread(self._create_sync, project_id, name, description, category)
+        return await asyncio.to_thread(self._create_sync, project_id, name, description, category, source_category)
 
     async def update_project(self, project_id: str, fields: dict[str, Any]) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._update_sync, project_id, fields)
@@ -170,21 +177,24 @@ class ProjectsStore:
         finally:
             conn.close()
 
-    def _create_sync(self, project_id: str, name: str, description: str, category: str) -> dict[str, Any]:
+    def _create_sync(
+        self, project_id: str, name: str, description: str, category: str, source_category: str
+    ) -> dict[str, Any]:
         now = _now()
         conn = self._connect()
         try:
             with conn:
                 conn.execute(
-                    "INSERT INTO projects (id, name, description, category, cover,"
+                    "INSERT INTO projects (id, name, description, category, cover, source_category,"
                     " created_at, updated_at, last_opened_at)"
-                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         project_id,
                         name,
                         description or "",
                         category or "",
                         _cover_for(project_id),
+                        source_category or "documents",
                         now,
                         now,
                         now,
@@ -196,6 +206,7 @@ class ProjectsStore:
                 "description": description or "",
                 "category": category or "",
                 "cover": _cover_for(project_id),
+                "source_category": source_category or "documents",
                 "source_ids": [],
                 "source_count": 0,
                 "created_at": now,
@@ -206,7 +217,7 @@ class ProjectsStore:
             conn.close()
 
     def _update_sync(self, project_id: str, fields: dict[str, Any]) -> dict[str, Any] | None:
-        allowed = {k: v for k, v in fields.items() if k in {"name", "description", "category"}}
+        allowed = {k: v for k, v in fields.items() if k in {"name", "description", "category", "source_category"}}
         if "name" in allowed and not str(allowed["name"]).strip():
             raise ValueError("Project name must not be blank.")
         allowed["updated_at"] = _now()

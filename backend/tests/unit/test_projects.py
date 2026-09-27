@@ -89,3 +89,69 @@ async def test_migrates_database_created_before_cover_column(tmp_path):
     listed = await service.list_enriched([])
     assert len(listed) == 1
     assert listed[0]["cover"]
+
+
+@pytest.mark.asyncio
+async def test_source_category_defaults_and_updates(tmp_path):
+    store = ProjectsStore(db_path=tmp_path / "projects.db")
+    service = ProjectsService(store)
+
+    created = await service.create("Docs", "", "")
+    assert created["source_category"] == "documents"
+
+    tubed = await service.create("Vids", "", "", "youtube")
+    assert tubed["source_category"] == "youtube"
+
+    updated = await service.update(tubed["id"], {"source_category": "github"})
+    assert updated["source_category"] == "github"
+
+
+@pytest.mark.asyncio
+async def test_legacy_database_gets_unscoped_source_category(tmp_path):
+    """Projects predating scoping keep every ingest option ("all")."""
+    from datetime import UTC, datetime
+
+    db_path = tmp_path / "projects.db"
+    conn = sqlite3.connect(str(db_path))
+    now = datetime.now(UTC).isoformat()
+    try:
+        with conn:
+            conn.execute(
+                "CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL,"
+                " description TEXT NOT NULL DEFAULT '', category TEXT NOT NULL DEFAULT '',"
+                " cover TEXT NOT NULL DEFAULT 'aurora',"
+                " created_at TEXT NOT NULL, updated_at TEXT NOT NULL,"
+                " last_opened_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "CREATE TABLE project_sources (project_id TEXT NOT NULL,"
+                " source_id TEXT NOT NULL, added_at TEXT NOT NULL,"
+                " PRIMARY KEY (project_id, source_id))"
+            )
+            conn.execute(
+                "INSERT INTO projects (id, name, description, category, cover,"
+                " created_at, updated_at, last_opened_at)"
+                " VALUES ('proj_legacy', 'Legacy', '', '', 'aurora', ?, ?, ?)",
+                (now, now, now),
+            )
+    finally:
+        conn.close()
+
+    store = ProjectsStore(db_path=db_path)
+    service = ProjectsService(store)
+    listed = await service.list_enriched([])
+    assert len(listed) == 1
+    assert listed[0]["source_category"] == "all"
+
+    fresh = await service.create("Fresh", "", "")
+    assert fresh["source_category"] == "documents"
+
+
+def test_create_schema_rejects_unknown_source_category():
+    from pydantic import ValidationError
+
+    from app.projects.schemas import ProjectCreate
+
+    assert ProjectCreate(name="x", source_category="youtube").source_category == "youtube"
+    with pytest.raises(ValidationError):
+        ProjectCreate(name="x", source_category="podcasts")
