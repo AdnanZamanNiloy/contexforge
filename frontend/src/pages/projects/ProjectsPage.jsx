@@ -259,7 +259,7 @@ export default function ProjectsPage() {
                 document.getElementById('pg-library')?.scrollIntoView({ behavior: 'smooth' })
               }
             >
-              Collections
+              Library
             </button>
           </nav>
           <div className="pg-nav-right">
