@@ -5725,7 +5725,9 @@ h3 {
    the workspace keeps its fixed shell — and repeated at the 1201px breakpoint
    because that is where the locking rule is declared. */
 body:has(.lp-root),
-body:has(.lp-root) #root {
+body:has(.lp-root) #root,
+body:has(.pg-root),
+body:has(.pg-root) #root {
   height: auto;
   min-height: 100vh;
   overflow: visible;
@@ -5734,7 +5736,9 @@ body:has(.lp-root) #root {
 /* --- landing responsive ---------------------------------------------------- */
 @media (min-width: 1201px) {
   body:has(.lp-root),
-  body:has(.lp-root) #root {
+  body:has(.lp-root) #root,
+  body:has(.pg-root),
+  body:has(.pg-root) #root {
     height: auto;
     overflow: visible;
   }

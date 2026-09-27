@@ -245,6 +245,11 @@ class Settings(BaseSettings):
     # Model Hub — configured models, fallback chains, and serving selection.
     MODEL_HUB_DB_PATH: Path = Field(default=Path("data/model_hub/model_hub.db"))
 
+    # Projects — lightweight project library (metadata + source membership).
+    # Sources themselves stay in FAISS/BM25; this DB only maps projects to
+    # source_ids so the library survives restarts without changing retrieval.
+    PROJECTS_DB_PATH: Path = Field(default=Path("data/projects/projects.db"))
+
     # Scoring / health thresholds (transparent, explainable — no opaque AI)
     RISK_FANOUT_WEIGHT: float = Field(default=0.30)
     RISK_CHURN_WEIGHT: float = Field(default=0.25)

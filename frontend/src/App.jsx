@@ -5,6 +5,7 @@ import MindMapPage from './pages/MindMapPage'
 import SourceExplorePage from './pages/SourceExplorePage'
 import RepositoryIntelligencePage from './pages/repository/RepositoryIntelligencePage'
 import ModelHubPage from './pages/modelhub/ModelHubPage'
+import ProjectsPage from './pages/projects/ProjectsPage'
 
 export default function App() {
   const location = useLocation()
@@ -18,6 +19,8 @@ export default function App() {
     <div className="page-transition" key={location.pathname}>
       <Routes location={location}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/:projectId" element={<Home />} />
         <Route path="/workspace" element={<Home />} />
         <Route path="/sources/:sourceId" element={<SourceExplorePage />} />
         <Route path="/mindmap/:sourceId" element={<MindMapPage />} />

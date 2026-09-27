@@ -270,8 +270,8 @@ function Nav() {
           >
             GitHub
           </a>
-          <Link className="lp-btn lp-btn-primary" to="/workspace">
-            Open workspace
+          <Link className="lp-btn lp-btn-primary" to="/projects">
+            Open projects
           </Link>
         </div>
       </div>
@@ -376,8 +376,8 @@ function Hero() {
             running on your own hardware.
           </p>
           <div className="lp-hero-cta">
-            <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/workspace">
-              Open the workspace
+            <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/projects">
+              Browse projects
             </Link>
             <a className="lp-btn lp-btn-ghost lp-btn-lg" href="#pipeline">
               See the pipeline
@@ -572,7 +572,7 @@ function IntelligenceSection() {
               </div>
             ))}
           </dl>
-          <Link className="lp-btn lp-btn-primary" to="/workspace">
+          <Link className="lp-btn lp-btn-primary" to="/projects">
             Analyze a repository
           </Link>
         </div>
@@ -670,8 +670,8 @@ function CtaBand() {
           </p>
         </div>
         <div className="lp-cta-actions">
-          <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/workspace">
-            Open the workspace
+          <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/projects">
+            Browse projects
           </Link>
           <a
             className="lp-btn lp-btn-ghost lp-btn-lg"
@@ -701,6 +701,7 @@ function Footer() {
         <nav className="lp-footer-links" aria-label="Footer">
           <div className="lp-footer-col">
             <span className="lp-footer-head">Product</span>
+            <Link to="/projects">Projects</Link>
             <Link to="/workspace">Workspace</Link>
             <a href="#pipeline">Pipeline</a>
             <a href="#capabilities">Capabilities</a>

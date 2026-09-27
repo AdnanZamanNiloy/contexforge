@@ -46,4 +46,13 @@ describe('sidebar scroll architecture (main.css)', () => {
     expect(body).toMatch(/overflow:\s*hidden/)
     expect(body).toMatch(/height:\s*calc\(100vh/)
   })
+
+  it('document pages opt out of the locked workspace shell so window scrolls', () => {
+    // The desktop `@media (min-width: 1201px)` rule locks body/#root to
+    // 100vh + overflow hidden for the workspace.  Landing (.lp-root) and
+    // Projects (.pg-root) are normal documents and must restore window
+    // scrolling via :has() — otherwise the page renders but cannot scroll.
+    expect(active).toMatch(/body:has\(\.pg-root\)/)
+    expect(active).toMatch(/body:has\(\.pg-root\) #root/)
+  })
 })

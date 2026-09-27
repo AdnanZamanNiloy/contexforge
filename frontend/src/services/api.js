@@ -385,3 +385,67 @@ export async function updateServing(payload) {
     body: JSON.stringify(payload),
   })
 }
+
+// --- Projects library ------------------------------------------------------
+//
+// Lightweight metadata + membership.  Sources themselves stay global in
+// FAISS/BM25; these endpoints only group source_ids into named projects.
+
+export async function listProjects() {
+  return request('/projects', { method: 'GET' })
+}
+
+export async function createProject({ name, description = '', category = '' }) {
+  return request('/projects', {
+    method: 'POST',
+    body: JSON.stringify({ name, description, category }),
+  })
+}
+
+export async function getProject(projectId) {
+  return request(`/projects/${encodeURIComponent(projectId)}`, { method: 'GET' })
+}
+
+export async function updateProject(projectId, payload) {
+  return request(`/projects/${encodeURIComponent(projectId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteProject(projectId) {
+  const response = await fetch(buildUrl(`/projects/${encodeURIComponent(projectId)}`), {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    let detail = 'Failed to delete project'
+    try {
+      const data = await response.json()
+      detail = data.detail || data.message || detail
+    } catch {
+      detail = await response.text()
+    }
+    throw new Error(detail)
+  }
+  return true
+}
+
+export async function touchProject(projectId) {
+  return request(`/projects/${encodeURIComponent(projectId)}/touch`, {
+    method: 'POST',
+  })
+}
+
+export async function attachSourceToProject(projectId, sourceId) {
+  return request(`/projects/${encodeURIComponent(projectId)}/sources`, {
+    method: 'POST',
+    body: JSON.stringify({ source_id: sourceId }),
+  })
+}
+
+export async function detachSourceFromProject(projectId, sourceId) {
+  return request(
+    `/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourceId)}`,
+    { method: 'DELETE' },
+  )
+}

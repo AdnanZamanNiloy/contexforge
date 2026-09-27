@@ -19,11 +19,11 @@ describe('LandingPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('exposes a primary call to action into the workspace', () => {
+  it('exposes a primary call to action into the projects library', () => {
     renderPage()
-    const ctas = screen.getAllByRole('link', { name: /open the workspace/i })
+    const ctas = screen.getAllByRole('link', { name: /open projects|browse projects/i })
     expect(ctas.length).toBeGreaterThan(0)
-    ctas.forEach((cta) => expect(cta).toHaveAttribute('href', '/workspace'))
+    ctas.forEach((cta) => expect(cta).toHaveAttribute('href', '/projects'))
   })
 
   it('renders the retrieval pipeline as a list of six stages', () => {

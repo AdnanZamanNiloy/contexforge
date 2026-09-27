@@ -1,5 +1,5 @@
 import { useCallback, useState, useRef, useEffect, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import AppShell from '../components/layout/AppShell'
 import Sidebar from '../components/layout/Sidebar'
@@ -11,6 +11,9 @@ import {
   ingestSource,
   deleteSource,
   clearKnowledgeBase,
+  getProject,
+  touchProject,
+  attachSourceToProject,
 } from '../services/api'
 import { sourceRepoUrl } from '../lib/sources'
 import { useChat } from '../hooks/useChat'
@@ -18,8 +21,11 @@ import { useSources } from '../hooks/useSources'
 
 export default function Home() {
   const navigate = useNavigate()
+  const { projectId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const { sources, loading, addSource, updateSource, removeSource, replaceAll } = useSources()
+  const [activeProject, setActiveProject] = useState(null)
+  const [projectMissing, setProjectMissing] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isAddingRepo, setIsAddingRepo] = useState(false)
@@ -29,6 +35,39 @@ export default function Home() {
   const [notifications, setNotifications] = useState([])
   const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null })
   const confirmResolveRef = useRef(null)
+
+  // Project scope: /projects/:projectId renders this same workspace filtered
+  // to the project's membership.  /workspace keeps the legacy global view.
+  useEffect(() => {
+    let cancelled = false
+    if (!projectId) {
+      setActiveProject(null)
+      setProjectMissing(false)
+      return undefined
+    }
+    setProjectMissing(false)
+    getProject(projectId)
+      .then((project) => {
+        if (cancelled) return
+        setActiveProject(project)
+        touchProject(projectId).catch(() => {})
+      })
+      .catch(() => {
+        if (!cancelled) setProjectMissing(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
+  const visibleSources = useMemo(() => {
+    if (!projectId) return sources
+    // While the project membership is still loading, show nothing rather
+    // than flashing the full global knowledge base inside a project view.
+    if (!activeProject) return projectMissing ? sources : []
+    const allowed = new Set(activeProject.source_ids || [])
+    return sources.filter((s) => allowed.has(s.id))
+  }, [sources, projectId, activeProject, projectMissing])
 
   // Allow the shared sidebar's "Add Source" button on any page to open the
   // ingest modal by returning to the workspace with ?add=1.
@@ -84,6 +123,21 @@ export default function Home() {
     }, 4000)
   }, [])
 
+  // Attach a freshly ingested source to the open project (if any) and refresh
+  // the project's membership so its card count updates immediately.
+  const attachToProject = useCallback(
+    async (sourceId) => {
+      if (!projectId || !sourceId) return
+      try {
+        const updated = await attachSourceToProject(projectId, sourceId)
+        setActiveProject(updated)
+      } catch {
+        /* best effort — source is still ingested globally */
+      }
+    },
+    [projectId],
+  )
+
   const showConfirm = useCallback((message) => {
     return new Promise((resolve) => {
       confirmResolveRef.current = resolve
@@ -121,6 +175,7 @@ export default function Home() {
           meta: response.message,
         })
         pushNotification('success', response.message)
+        await attachToProject(response.source_id)
       } catch (uploadError) {
         updateSource(tempId, { status: 'failed' })
         pushNotification('error', uploadError.message || 'Upload failed')
@@ -128,7 +183,7 @@ export default function Home() {
         setIsUploading(false)
       }
     },
-    [addSource, pushNotification, updateSource],
+    [addSource, pushNotification, updateSource, attachToProject],
   )
 
   const handleUrlIngest = useCallback(
@@ -152,6 +207,7 @@ export default function Home() {
           meta: response.message,
         })
         pushNotification('success', response.message)
+        await attachToProject(response.source_id)
       } catch (ingestError) {
         updateSource(tempId, { status: 'failed' })
         pushNotification('error', ingestError.message || 'Ingest failed')
@@ -159,7 +215,7 @@ export default function Home() {
         setIsAddingUrl(false)
       }
     },
-    [addSource, pushNotification, updateSource],
+    [addSource, pushNotification, updateSource, attachToProject],
   )
 
   const handleRepoIngest = useCallback(
@@ -182,6 +238,7 @@ export default function Home() {
           meta: response.message,
         })
         pushNotification('success', response.message)
+        await attachToProject(response.source_id)
         setIsModalOpen(false)
         navigate(`/sources/${encodeURIComponent(response.source_id)}?tab=intelligence`)
       } catch (repoError) {
@@ -191,7 +248,7 @@ export default function Home() {
         setIsAddingRepo(false)
       }
     },
-    [addSource, pushNotification, updateSource, navigate],
+    [addSource, pushNotification, updateSource, navigate, attachToProject],
   )
 
   const handleTextIngest = useCallback(
@@ -216,6 +273,7 @@ export default function Home() {
           meta: response.message,
         })
         pushNotification('success', response.message)
+        await attachToProject(response.source_id)
       } catch (textError) {
         updateSource(tempId, { status: 'failed' })
         pushNotification('error', textError.message || 'Text ingest failed')
@@ -223,7 +281,7 @@ export default function Home() {
         setIsAddingText(false)
       }
     },
-    [addSource, pushNotification, updateSource],
+    [addSource, pushNotification, updateSource, attachToProject],
   )
 
   const handleYoutubeIngest = useCallback(
@@ -246,6 +304,7 @@ export default function Home() {
           meta: response.message,
         })
         pushNotification('success', response.message)
+        await attachToProject(response.source_id)
       } catch (ingestError) {
         updateSource(tempId, { status: 'failed' })
         pushNotification('error', ingestError.message || 'YouTube ingest failed')
@@ -253,7 +312,7 @@ export default function Home() {
         setIsAddingYoutube(false)
       }
     },
-    [addSource, pushNotification, updateSource],
+    [addSource, pushNotification, updateSource, attachToProject],
   )
 
   const handleFileDrop = useCallback(
@@ -312,6 +371,47 @@ export default function Home() {
 
   const main = (
     <div className="main-card">
+      {projectId ? (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '0 24px 14px 0',
+            fontSize: '0.82rem',
+            color: 'var(--mute)',
+          }}
+        >
+          <button
+            onClick={() => navigate('/projects')}
+            style={{
+              background: 'none',
+              border: '1px solid var(--hairline)',
+              color: 'var(--ink)',
+              borderRadius: 999,
+              padding: '6px 12px',
+              cursor: 'pointer',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+            }}
+            aria-label="Back to Projects"
+          >
+            ← Projects
+          </button>
+          {projectMissing ? (
+            <span>This project could not be found.</span>
+          ) : (
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <strong style={{ color: 'var(--ink-strong)' }}>
+                {activeProject?.name || 'Loading project…'}
+              </strong>
+              {activeProject
+                ? ` · ${visibleSources.length} of ${sources.length} sources in view`
+                : ''}
+            </span>
+          )}
+        </div>
+      ) : null}
       <ChatBox
         messages={messages}
         input={input}
@@ -347,13 +447,52 @@ export default function Home() {
       <AppShell
         sidebar={
           <Sidebar
-            sources={sources}
+            sources={visibleSources}
             loading={loading}
             onAddSource={() => setIsModalOpen(true)}
             onSelectSource={handleSelectSource}
             onDeleteSource={handleDeleteSource}
             onClearKB={handleClearKB}
             onOpenModelHub={() => navigate('/models')}
+            header={
+              projectId ? (
+                <button
+                  onClick={() => navigate('/projects')}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--hairline)',
+                    color: 'var(--ink)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 10px',
+                    cursor: 'pointer',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    textAlign: 'left',
+                  }}
+                >
+                  ← All Projects{activeProject ? ` · ${activeProject.name}` : ''}
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/projects')}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: '1px dashed var(--hairline)',
+                    color: 'var(--mute)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '8px 10px',
+                    cursor: 'pointer',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    textAlign: 'left',
+                  }}
+                >
+                  View Projects library
+                </button>
+              )
+            }
           />
         }
         main={main}

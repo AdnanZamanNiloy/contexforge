@@ -162,6 +162,16 @@ async def delete_source(
             detail=f"Failed to delete source '{source_id}': {exc}",
         ) from exc
 
+    # Keep the Projects library in sync — a deleted source must not linger on
+    # any project card.  Best-effort so a projects-store hiccup never blocks
+    # the authoritative FAISS/BM25 delete.
+    try:
+        from app.dependencies import get_projects_store
+
+        await get_projects_store().remove_source_everywhere(source_id)
+    except Exception as exc:
+        logger.warning("delete_source: projects unsubscribe failed for %s: %s", source_id, exc)
+
     logger.info(
         "delete_source complete: source_id=%s chunks_deleted=%d",
         source_id,
@@ -192,6 +202,13 @@ async def clear_knowledge_base(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear knowledge base: {exc}",
         ) from exc
+
+    try:
+        from app.dependencies import get_projects_store
+
+        await get_projects_store().clear_membership()
+    except Exception as exc:
+        logger.warning("clear_knowledge_base: projects membership clear failed: %s", exc)
 
     total = result.get("faiss_chunks_removed", 0) + result.get("bm25_chunks_removed", 0)
     logger.info("clear_knowledge_base complete: removed %d total chunks", total)

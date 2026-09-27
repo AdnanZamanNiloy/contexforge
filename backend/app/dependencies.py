@@ -50,6 +50,8 @@ __all__ = [
     "close_all",
     "get_ingest_service",
     "get_model_hub_service",
+    "get_projects_service",
+    "get_projects_store",
     "get_query_service",
     "get_settings",
 ]
@@ -293,11 +295,7 @@ async def apply_serving_configuration() -> None:
     # --- LLM tier ---
     try:
         llm_configs = await service.resolve_llm_configs()
-        active_llm = (
-            model_hub_factory.build_llm_from_configs(llm_configs)
-            if llm_configs
-            else get_llm()
-        )
+        active_llm = model_hub_factory.build_llm_from_configs(llm_configs) if llm_configs else get_llm()
         await orchestrator.swap_llm(active_llm)
         _rewire_llm_consumers(active_llm)
     except Exception as exc:
@@ -306,11 +304,7 @@ async def apply_serving_configuration() -> None:
     # --- Embedding tier ---
     try:
         embedder_config = await service.resolve_embedding_config()
-        active_embedder = (
-            model_hub_factory.build_embedder(embedder_config)
-            if embedder_config
-            else get_embedder()
-        )
+        active_embedder = model_hub_factory.build_embedder(embedder_config) if embedder_config else get_embedder()
         await orchestrator.swap_embedder(active_embedder)
     except Exception as exc:
         logger.warning(
@@ -333,6 +327,25 @@ def _rewire_llm_consumers(llm) -> None:
         get_mindmap_service().swap_llm(llm)
     except Exception as exc:
         logger.warning("Model Hub: could not rewire Mind Map LLM (%s).", exc)
+
+
+# ---------------------------------------------------------------------------
+# Projects — library metadata + source membership
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_projects_store():
+    from app.projects.store import ProjectsStore
+
+    return ProjectsStore()
+
+
+@lru_cache(maxsize=1)
+def get_projects_service():
+    from app.projects.service import ProjectsService
+
+    return ProjectsService(store=get_projects_store())
 
 
 # ---------------------------------------------------------------------------
@@ -387,3 +400,9 @@ async def close_all() -> None:
         logger.debug("ModelHubStore closed.")
     except Exception as exc:
         logger.warning("Error closing ModelHubStore: %s", exc)
+
+    try:
+        get_projects_store().close()
+        logger.debug("ProjectsStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing ProjectsStore: %s", exc)
