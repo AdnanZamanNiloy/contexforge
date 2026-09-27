@@ -82,6 +82,39 @@ function ModelCard({ model, onChanged, onDeleted }) {
   return (
     <article className="mh-card">
       <header className="mh-card-head">
+        <span className={`mh-model-glyph is-${model.model_type}`} aria-hidden="true">
+          {model.model_type === 'embedding' ? (
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <circle cx="5" cy="5" r="2.2" />
+              <circle cx="19" cy="5" r="2.2" />
+              <circle cx="12" cy="12" r="2.2" />
+              <circle cx="5" cy="19" r="2.2" />
+              <circle cx="19" cy="19" r="2.2" />
+            </svg>
+          ) : (
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+              <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" />
+            </svg>
+          )}
+        </span>
         <div>
           <h3>{model.name}</h3>
           <div className="mh-card-tags">

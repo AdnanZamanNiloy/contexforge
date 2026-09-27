@@ -101,16 +101,23 @@ export default function ModelHubPage() {
   )
 
   const tabNav = (
-    <nav className="mh-tabs">
-      {TABS.map((item) => (
-        <button
-          key={item.id}
-          className={tab === item.id ? 'mh-tab active' : 'mh-tab'}
-          onClick={() => setTab(item.id)}
-        >
-          {item.label}
-        </button>
-      ))}
+    <nav className="mh-tabs" aria-label="Model Hub sections">
+      {TABS.map((item) => {
+        const count =
+          item.id === 'models' ? models.length : item.id === 'chains' ? chains.length : null
+        const active = tab === item.id
+        return (
+          <button
+            key={item.id}
+            className={active ? 'mh-tab active' : 'mh-tab'}
+            aria-current={active ? 'page' : undefined}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+            {count !== null ? <span className="mh-tab-count">{count}</span> : null}
+          </button>
+        )
+      })}
     </nav>
   )
 
@@ -152,9 +159,30 @@ export default function ModelHubPage() {
   const rightPanel = (
     <section className="panel mh-side-panel">
       <div className="panel-head">
-        <h3>Model Hub</h3>
+        <h3>Serving status</h3>
+        <span className="mh-live-dot" aria-hidden="true" />
       </div>
       <dl className="mh-side-stats">
+        <div>
+          <dt>
+            <span
+              className={`mh-dot ${serving.llm_mode === 'disabled' ? 'is-idle' : 'is-live'}`}
+              aria-hidden="true"
+            />
+            LLM
+          </dt>
+          <dd>{serving.llm_mode === 'disabled' ? 'Env default' : serving.llm_mode}</dd>
+        </div>
+        <div>
+          <dt>
+            <span
+              className={`mh-dot ${serving.embedding_mode === 'disabled' ? 'is-idle' : 'is-live'}`}
+              aria-hidden="true"
+            />
+            Embedding
+          </dt>
+          <dd>{serving.embedding_mode === 'disabled' ? 'Env default' : serving.embedding_mode}</dd>
+        </div>
         <div>
           <dt>Models</dt>
           <dd>{counts.models}</dd>
@@ -163,15 +191,8 @@ export default function ModelHubPage() {
           <dt>Chains</dt>
           <dd>{counts.chains}</dd>
         </div>
-        <div>
-          <dt>LLM Serving</dt>
-          <dd>{serving.llm_mode === 'disabled' ? 'Env default' : serving.llm_mode}</dd>
-        </div>
-        <div>
-          <dt>Embedding Serving</dt>
-          <dd>{serving.embedding_mode === 'disabled' ? 'Env default' : serving.embedding_mode}</dd>
-        </div>
       </dl>
+      <p className="mh-side-note">Serving changes apply live to the running pipeline.</p>
     </section>
   )
 
@@ -179,6 +200,7 @@ export default function ModelHubPage() {
     <div className="mh-page">
       <header className="mh-header">
         <div className="mh-header-text">
+          <span className="mh-eyebrow">Inference layer</span>
           <h1>Model Hub</h1>
           <p className="mh-subtitle">
             Connect, test, chain, and serve your LLM and embedding models.
