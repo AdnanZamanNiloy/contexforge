@@ -35,8 +35,9 @@ Source ──► loader ──► chunker ──► embedder ──► FAISS + B
 
 ## Frontend layers
 
-- **`pages/`** — routes (Home, Source Explore, Mind Map, Repository
-  Intelligence); the repository page owns several tabbed sub-views.
+- **`pages/`** — routes (Home, Projects, Repository Intelligence, Model Hub);
+  the project workspace owns the Chat and Mind Map views, and the repository
+  page owns several tabbed sub-views.
 - **`components/`** — reusable UI (chat, source header, mind-map canvas, repo
   CTA).
 - **`hooks/`** — data hooks (`useChat`, `useSources`, `useRepository`).

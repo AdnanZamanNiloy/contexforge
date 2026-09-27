@@ -240,15 +240,19 @@ h3 {
 }
 
 /* Section title shared */
+/* Sidebar section heading.  Plain sentence-case Inter at 16px/400 in a light
+   grey — the same treatment as the workspace panel headings, instead of the
+   small letter-spaced uppercase caption this used to be. */
 .section-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--mute);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--body-color);
   padding: 4px 10px 0;
   margin-bottom: 6px;
 }
@@ -324,7 +328,7 @@ h3 {
   margin-left: auto;
 }
 
-/* My Sources — the single scroll region.  flex: 1 1 auto + min-height: 0 lets it
+/* Source list — the single scroll region.  flex: 1 1 auto + min-height: 0 lets it
    absorb the leftover height and scroll internally, so a long source list never
    pushes the header or the status card out of view. */
 .sources-section {
@@ -333,12 +337,6 @@ h3 {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-}
-
-.sources-section > .section-title {
-  flex: 0 0 auto;
-  padding-bottom: 0;
-  background: linear-gradient(var(--panel) 70%, transparent);
 }
 
 .source-list {
@@ -432,81 +430,42 @@ h3 {
   color: var(--body-color);
 }
 
+/* One line: icon · name · type · checkbox.  The name is what may truncate; the
+   type label stays whole so the row never wraps or changes height. */
 .source-item-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   overflow: hidden;
+  white-space: nowrap;
 }
 
 .source-item-title {
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--text);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 100%;
+  white-space: nowrap;
+  min-width: 0;
 }
 
-.source-item-meta {
-  font-size: 0.6rem;
+.source-item-title:hover {
+  color: var(--ink-strong);
+}
+
+.source-item-type {
+  font-size: 0.74rem;
   color: var(--muted);
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: none;
 }
 
 .source-item-status {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-}
-
-/* Visible "opens its own workspace" affordance for every source row. */
-.source-item-linked {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  color: var(--primary-soft);
-  background: var(--accent-soft);
-  border: 1px solid rgba(67, 119, 253, 0.35);
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
-}
-.source-item-compact:hover .source-item-linked {
-  color: var(--on-primary);
-  background: var(--primary);
-  border-color: var(--primary);
-}
-
-.source-item-delete {
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.15);
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  transition:
-    opacity 0.15s ease,
-    color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.source-item-compact:hover .source-item-delete {
-  opacity: 1;
-}
-
-.source-item-delete:hover {
-  color: var(--warning);
 }
 
 /* Sidebar spacer — must NOT grow, otherwise it steals the height the source
@@ -1230,17 +1189,6 @@ h3 {
   padding-top: 20px;
 }
 
-.evidence .mindmap-cta-row {
-  margin-bottom: 20px;
-  flex: 0 0 auto;
-}
-
-.evidence .mindmap-cta-row.is-pinned {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
 @media (min-width: 1201px) {
   body,
   #root,
@@ -1281,23 +1229,16 @@ h3 {
 .ev-head-text {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   min-width: 0;
 }
 
 .ev-head-text h3 {
   margin: 0;
-  font-size: 1.02rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.ev-eyebrow {
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--mute);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--body-color);
 }
 
 .ev-count {
@@ -3815,163 +3756,6 @@ h3 {
   }
 }
 
-/* Mind Map */
-.evidence .mindmap-cta-row {
-  margin-bottom: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.mindmap-cta {
-  order: 0;
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-size: 0.86rem;
-  font-weight: 650;
-  cursor: pointer;
-  background: linear-gradient(135deg, rgba(67, 119, 253, 0.12), rgba(67, 119, 253, 0.03));
-  border: 1px solid rgba(67, 119, 253, 0.3);
-  color: var(--ink);
-  text-align: left;
-  transition:
-    border-color 0.2s ease,
-    transform 0.2s ease,
-    filter 0.2s ease;
-}
-
-.mindmap-cta:hover:not(:disabled) {
-  border-color: rgba(67, 119, 253, 0.55);
-  transform: translateY(-1px);
-  filter: brightness(1.06);
-  box-shadow: none;
-}
-
-.mindmap-cta:disabled {
-  opacity: 0.65;
-  cursor: default;
-}
-
-.mindmap-cta > svg {
-  width: 36px;
-  height: 36px;
-  padding: 10px;
-  flex: none;
-  border-radius: 12px;
-  background: rgba(67, 119, 253, 0.16);
-  color: var(--primary-soft);
-}
-
-.mindmap-cta-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.mindmap-cta-text small {
-  font-size: 0.72rem;
-  font-weight: 400;
-  color: var(--mute);
-}
-
-.mindmap-cta::after {
-  content: '→';
-  flex: none;
-  color: var(--mute);
-  font-size: 0.9rem;
-  transition:
-    color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.mindmap-cta:hover:not(:disabled)::after {
-  color: var(--primary-soft);
-  transform: translateX(2px);
-}
-
-.repo-intel-cta {
-  order: 0;
-  flex: 1 1 0;
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-/* Repository Intelligence launch button. Always carries the brand accent so it
-   reads as a first-class action; it only *navigates* once the repo is ingested,
-   otherwise it surfaces guidance. */
-.repo-intel-cta {
-  background: var(--primary);
-  color: var(--on-primary);
-  border: 1px solid var(--primary);
-}
-
-.repo-intel-cta svg {
-  color: var(--on-primary);
-  transition: color 0.2s ease;
-}
-
-.repo-intel-cta:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: none;
-}
-
-.repo-intel-cta:hover:not(:disabled) svg {
-  color: var(--on-primary);
-}
-
-.repo-intel-cta.is-checking,
-.repo-intel-cta:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.mindmap-error {
-  margin: 8px 0 0;
-  font-size: 0.78rem;
-  color: var(--warning);
-  text-align: center;
-}
-
-.mindmap-prompt,
-.repo-intel-prompt {
-  order: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 9px 12px;
-  background: rgba(67, 119, 253, 0.1);
-  border: 1px solid rgba(67, 119, 253, 0.25);
-  border-radius: 9px;
-  color: var(--text);
-  font-size: 0.8rem;
-  line-height: 1.4;
-  animation: mindmap-prompt-in 0.22s ease-out;
-  flex-basis: 100%;
-}
-
-.mindmap-prompt svg,
-.repo-intel-prompt svg {
-  flex-shrink: 0;
-  color: var(--accent);
-}
-
 @keyframes mindmap-prompt-in {
   from {
     opacity: 0;
@@ -3981,97 +3765,6 @@ h3 {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.mindmap-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-2);
-  color: var(--text);
-  padding: 10px 12px;
-  gap: 10px;
-}
-
-.mindmap-page.is-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: var(--bg);
-  padding: 10px 12px;
-}
-
-.mindmap-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 0 2px;
-}
-
-.mindmap-header .icon-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.mindmap-title {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-
-.mindmap-title h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-
-.mindmap-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.mindmap-container-shell {
-  flex: 1;
-  min-height: 0;
-  height: calc(100vh - 104px);
-  position: relative;
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow);
-  /* Let the library's dark canvas blend into our panel and match the app style. */
-  --mindmap-canvas-bg: transparent;
-  --mindmap-root-bg: var(--accent);
-  --mindmap-root-text: var(--on-primary);
-  --mindmap-node-text: var(--ink);
-  --mindmap-selection-stroke: var(--accent);
-  --mindmap-selection-fill: rgba(67, 119, 253, 0.16);
-}
-
-.mindmap-page.is-fullscreen .mindmap-container-shell {
-  height: auto;
-  flex: 1;
-}
-
-.mindmap-container-shell > .empty {
-  margin: auto;
-}
-
-.mindmap-footer {
-  display: flex;
-  justify-content: center;
-  padding: 0 4px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -4146,338 +3839,6 @@ h3 {
   flex: 1;
   gap: 0;
 }
-.explore-content {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-/* The keyed tab pane fades capability switches in softly instead of snapping. */
-.explore-content > .tab-pane {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.explore-content > .tab-pane > .main-card,
-.explore-content > .tab-pane > .intel-card {
-  flex: 1;
-  min-height: 0;
-}
-
-.explore-loading,
-.explore-empty {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  min-height: 60vh;
-  color: var(--muted);
-}
-.explore-empty .primary,
-.explore-empty p,
-.explore-loading {
-  text-align: center;
-}
-
-/* Source identity header — shared representation for every source type. */
-.source-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  padding: 18px 26px 16px;
-  border-bottom: 1px solid var(--stroke);
-  flex-wrap: wrap;
-}
-.source-header-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  flex: 1;
-}
-.source-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  white-space: nowrap;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.source-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--hairline);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.92);
-}
-.source-identity {
-  min-width: 0;
-}
-.source-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.source-name {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-.source-type-pill {
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--primary-soft);
-  border: 1px solid rgba(67, 119, 253, 0.3);
-}
-.source-type-pill.is-github {
-  background: var(--canvas);
-  color: var(--ink);
-  border-color: var(--hairline);
-}
-.source-type-pill.is-youtube {
-  background: var(--canvas);
-  color: var(--body-color);
-  border-color: var(--hairline);
-}
-.source-sub {
-  font-size: 0.8rem;
-  color: var(--muted);
-  margin-top: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.source-header-right {
-  flex-shrink: 0;
-}
-
-/* Single-row explore top bar: the identity header and the capability tabs
-   share one line so the tab row's height is reclaimed by the content below.
-   The title ellipsizes (full text via [title] hover) instead of wrapping, and
-   at very narrow widths the tab track wraps onto its own line as a fallback. */
-.explore-topbar {
-  display: flex;
-  align-items: stretch;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 0 22px 0 26px;
-  border-bottom: 1px solid var(--stroke);
-}
-.explore-topbar .source-header {
-  border-bottom: none;
-  padding: 10px 0;
-  /* flex-basis 0 keeps the tab track on the SAME line during wrap math;
-     the header then grows and the title ellipsizes instead of wrapping. */
-  flex: 1 1 0;
-  min-width: 0;
-}
-.explore-topbar .source-name {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Keep the type pill inline with the title — letting it wrap below would add
-   a second line to the identity block and grow the whole row again. */
-.explore-topbar .source-line {
-  flex-wrap: nowrap;
-}
-.explore-topbar .source-type-pill {
-  flex-shrink: 0;
-}
-.explore-topbar .capability-tabs {
-  border-bottom: none;
-  padding: 0;
-  display: flex;
-  align-items: stretch;
-}
-
-/* Capability tabs (Overview / Chat / Repository Intelligence / Mind Map). */
-.capability-tabs {
-  border-bottom: 1px solid var(--stroke);
-  padding: 0 22px;
-  flex-shrink: 0;
-}
-.capability-tabs-track {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.capability-tabs-track::-webkit-scrollbar {
-  height: 0;
-  width: 0;
-  display: none;
-}
-.capability-tab {
-  position: relative;
-  appearance: none;
-  background: transparent;
-  border: none;
-  color: var(--mute);
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 12px 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.15s ease;
-}
-.capability-tab:hover {
-  color: var(--ink);
-}
-.capability-tab.active {
-  color: var(--ink-strong);
-}
-.capability-tab.active::after {
-  content: '';
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--primary);
-}
-
-/* Overview capability. */
-.overview-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  align-content: start;
-  padding: 22px 26px;
-  overflow-y: auto;
-}
-.overview-panel .panel-head h3 {
-  margin: 0 0 12px;
-}
-.overview-visual {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.overview-title {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #fff;
-}
-.overview-meta {
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
-.overview-blurb {
-  margin: 16px 0 0;
-  font-size: 0.86rem;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.overview-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.overview-actions .primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* Source details rail. */
-.source-details-panel .panel-head {
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--stroke);
-}
-.source-detail-grid {
-  margin: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.source-detail-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.03);
-  min-width: 0;
-}
-.source-detail-tile-span {
-  grid-column: 1 / -1;
-}
-.source-detail-tile dt {
-  font-size: 0.6rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-}
-.source-detail-tile dd {
-  margin: 0;
-  color: var(--text);
-  font-size: 0.9rem;
-  overflow: hidden;
-}
-.source-detail-tile dd.source-detail-count {
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-.source-detail-url {
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-}
-.source-detail-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  color: var(--accent);
-  text-decoration: none;
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-.source-detail-link svg {
-  flex-shrink: 0;
-  color: var(--muted);
-}
-.source-detail-link:hover {
-  color: var(--primary-soft);
-}
-.source-detail-link:hover svg {
-  color: var(--accent);
-}
-.source-detail-link-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* Embedded Repository Intelligence analysis view (inside the explore shell). */
 .rv-analyzing.is-embedded {
@@ -4487,50 +3848,6 @@ h3 {
 }
 .rv-analyzing.is-embedded .rv-analyzing-card {
   width: min(620px, 100%);
-}
-
-/* Mind map inside the explore shell. */
-.mindmap-shell {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  margin: 22px 26px;
-  --mindmap-canvas-bg: transparent;
-  --mindmap-root-bg: var(--accent);
-  --mindmap-root-text: var(--on-primary);
-  --mindmap-node-text: var(--ink);
-  --mindmap-selection-stroke: var(--accent);
-  --mindmap-selection-fill: rgba(67, 119, 253, 0.16);
-}
-.mindmap-fullscreen-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-  background: var(--canvas-soft);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  padding: 6px;
-  color: var(--text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-}
-.mindmap-fullscreen-btn:hover,
-.mindmap-fullscreen-btn.is-active {
-  opacity: 1;
-}
-.mindmap-fullscreen-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 .mindmap-canvas {
   position: relative;
@@ -4576,9 +3893,6 @@ h3 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .capability-tab.active::after {
-    display: none;
-  }
 }
 
 /* ==========================================================================
@@ -7103,9 +6417,6 @@ select.mh-input {
   width: 32px;
   height: 32px;
 }
-.source-item-linked {
-  border-radius: 50%;
-}
 
 /* Panels, cards, evidence */
 .panel {
@@ -7122,9 +6433,6 @@ select.mh-input {
 .confidence {
   border-radius: 18px;
 }
-.source-detail-tile {
-  border-radius: 14px;
-}
 .badge {
   border-radius: var(--radius-pill);
   padding: 4px 10px;
@@ -7140,11 +6448,6 @@ select.mh-input {
 }
 .icon-button {
   border-radius: 12px;
-}
-
-/* Explore tabs read as a soft segmented control */
-.capability-tab {
-  border-radius: var(--radius-pill);
 }
 
 /* Overlays */
@@ -7220,4 +6523,679 @@ select.mh-input {
   .mindmap-cta:hover:not(:disabled) {
     transform: none;
   }
+}
+
+/* ---------- source list: uniform rows, dividers, hover ---------- */
+
+/* One height for every row so the list scans evenly.  A fixed height plus
+   `overflow: hidden` on the row means a long title can never wrap and push the
+   list out of rhythm. */
+.source-list .source-item-compact {
+  height: 44px;
+  padding: 0 10px;
+  gap: 10px;
+  border-radius: 12px;
+}
+
+.source-list .source-item-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  flex: none;
+}
+
+/* Hairline between rows, dropped after the last one.  A sibling-based rule is
+   used instead of a border so row height stays fixed. */
+.source-list .source-item-compact + .source-item-compact {
+  box-shadow: 0 -1px 0 rgb(255 255 255 / 0.05);
+}
+
+.source-list .source-item-compact:hover {
+  background: rgb(255 255 255 / 0.04);
+}
+
+.source-list .source-item-compact.is-active {
+  background: rgb(67 119 253 / 0.1);
+  box-shadow: none;
+}
+
+.source-list .source-item-compact.is-active + .source-item-compact {
+  box-shadow: none;
+}
+
+.source-item-check {
+  width: 20px;
+  height: 20px;
+  margin-right: 0;
+}
+
+.source-item-check input {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---------- project workspace: source selection, tabs, mind map ---------- */
+
+/* Sidebar rows carry a checkbox so a selection of several sources is one
+   gesture away, and a plain row click still selects a single source. */
+.source-item-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-right: 2px;
+  cursor: pointer;
+}
+
+.source-item-check input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin: 0;
+}
+
+/* "Select all" reads as a label with a checkbox on the right, matching the
+   reference.  It is also the clear-all affordance: unchecking it clears. */
+/* Compact flat toolbar above the source list: a decorative list mark on the
+   left, "Select all" and its checkbox on the right.  Deliberately not the
+   uppercase, letter-spaced .section-title used elsewhere — this is a tight
+   app-header row, separated by a single hairline rather than a fading divider. */
+.sources-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 40px;
+  padding: 0 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.06);
+}
+
+/* Sort trigger — a flat icon button, no chrome until hovered. */
+.sources-sort {
+  flex: none;
+  position: relative;
+}
+
+.sources-sort-trigger {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: -5px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--mute);
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.sources-sort-trigger:hover,
+.sources-sort-trigger.is-open {
+  background: rgb(255 255 255 / 0.07);
+  color: var(--ink-strong);
+}
+
+/* Portalled to <body> and placed with measured viewport coordinates, so the
+   sidebar's overflow:hidden ancestors cannot clip it.  Width is mirrored by
+   SORT_MENU_WIDTH in Sidebar.jsx, which the placement maths relies on. */
+.sources-sort-menu {
+  position: fixed;
+  z-index: 400;
+  width: 168px;
+  padding: 5px;
+  border-radius: 12px;
+  background: #1c1c1c;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.62);
+  animation: source-menu-fade-in 0.14s ease;
+}
+
+.sources-sort-menu.is-up {
+  animation-name: source-menu-fade-in-up;
+}
+
+.sources-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font-size: 0.86rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.sources-sort-item:hover {
+  background: rgb(255 255 255 / 0.07);
+}
+
+.sources-sort-item.is-active {
+  background: var(--accent-soft);
+  color: var(--ink-strong);
+}
+
+.sources-sort-item svg {
+  flex: none;
+  color: var(--primary-soft);
+}
+
+/* "Select all" is plain sentence-case text with a square checkbox beside it,
+   vertically centred.  It doubles as the clear-all affordance: unchecking it
+   clears the selection. */
+.sources-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sources-select-all input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin: 0;
+  flex: none;
+}
+
+/* Mind map panel: source scope picker plus the canvas. */
+.mindmap-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.mindmap-panel-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 12px 0;
+  flex-wrap: wrap;
+}
+
+.mindmap-panel-scope {
+  position: relative;
+}
+
+.mindmap-scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: border-color 0.18s ease;
+}
+
+.mindmap-scope-toggle:hover {
+  border-color: var(--hairline-soft);
+}
+
+.mindmap-scope-toggle svg {
+  transition: transform 0.18s ease;
+}
+
+.mindmap-scope-toggle svg.is-open {
+  transform: rotate(180deg);
+}
+
+.mindmap-scope-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: min(320px, 78vw);
+  max-height: 300px;
+  overflow-y: auto;
+  background: #1c1c1c;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.6);
+}
+
+.mindmap-scope-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 4px;
+}
+
+.mindmap-scope-menu-head button {
+  background: none;
+  border: none;
+  color: var(--primary-soft);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mindmap-scope-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.mindmap-scope-option:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.mindmap-scope-option input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin: 0;
+  flex: none;
+}
+
+.mindmap-scope-option-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mindmap-scope-empty {
+  margin: 0;
+  padding: 12px 10px;
+  font-size: 0.8rem;
+  color: var(--mute);
+}
+
+.mindmap-panel-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.mindmap-action {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.mindmap-action:hover:not(:disabled) {
+  border-color: var(--hairline-soft);
+  background: rgb(255 255 255 / 0.05);
+}
+
+.mindmap-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mindmap-panel-canvas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  margin: 0 24px 24px 0;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--canvas-soft);
+}
+
+/* Full screen: a viewport-covering layer portalled to <body>, so the workspace
+   grid, the sidebar and the evidence rail are all out of the way and the map
+   gets the entire screen.  No padding, gap, border or radius — the canvas
+   edges sit on the viewport edges. */
+.mindmap-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--canvas);
+  animation: mindmap-fade-in 0.16s ease;
+}
+
+.mindmap-panel.is-fullscreen {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+}
+
+/* The controls float over the map instead of taking a row of their own, so the
+   canvas gets the whole viewport.  The bar itself is click-through and only its
+   children take pointer events, otherwise it would swallow canvas drags. */
+.mindmap-panel.is-fullscreen .mindmap-panel-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 10;
+  padding: 0;
+  flex-wrap: wrap;
+  pointer-events: none;
+}
+
+.mindmap-panel.is-fullscreen .mindmap-panel-scope,
+.mindmap-panel.is-fullscreen .mindmap-panel-actions {
+  pointer-events: auto;
+}
+
+.mindmap-panel.is-fullscreen .mindmap-scope-toggle,
+.mindmap-panel.is-fullscreen .mindmap-action {
+  background: rgb(16 16 16 / 0.86);
+  backdrop-filter: blur(10px);
+}
+
+.mindmap-panel.is-fullscreen .mindmap-panel-canvas {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--canvas);
+  width: 100%;
+  height: 100%;
+}
+
+/* Grow to fill rather than trusting height:100% to resolve through two nested
+   flex ancestors — the library's own .mindmap-container is already 100%/100%. */
+.mindmap-panel-canvas > .mindmap-canvas,
+.mindmap-panel.is-fullscreen .mindmap-panel-canvas > .mindmap-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+@keyframes mindmap-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mindmap-fullscreen {
+    animation: none;
+  }
+}
+
+/* ---------- Mind Map entry point (evidence rail) ---------- */
+
+.evidence .mindmap-cta-row {
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.evidence .mindmap-cta-row.is-pinned {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.mindmap-cta {
+  order: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(67, 119, 253, 0.12), rgba(67, 119, 253, 0.03));
+  border: 1px solid rgba(67, 119, 253, 0.3);
+  color: var(--ink);
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.mindmap-cta:hover:not(:disabled) {
+  border-color: rgba(67, 119, 253, 0.55);
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: none;
+}
+
+.mindmap-cta:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.mindmap-cta > svg {
+  width: 36px;
+  height: 36px;
+  padding: 10px;
+  flex: none;
+  border-radius: 12px;
+  background: rgba(67, 119, 253, 0.16);
+  color: var(--primary-soft);
+}
+
+.mindmap-cta-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mindmap-cta-text small {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--mute);
+}
+
+.mindmap-cta::after {
+  content: '→';
+  flex: none;
+  color: var(--mute);
+  font-size: 0.9rem;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mindmap-cta:hover:not(:disabled)::after {
+  color: var(--primary-soft);
+  transform: translateX(2px);
+}
+
+/* ---------- per-source action menu (⋮) ---------- */
+
+/* The row layout: icon, name/type, status dot, selection checkbox, ⋮ menu. */
+.source-item-menu {
+  position: relative;
+  flex: none;
+  margin-left: 2px;
+}
+
+.source-item-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--mute);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.source-item-menu-trigger:hover,
+.source-item-menu-trigger.is-open {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--ink-strong);
+  border-color: var(--hairline);
+}
+
+/* Portalled to <body> and placed with fixed viewport coordinates measured from
+   the ⋮ trigger, so none of the sidebar's overflow:hidden ancestors can clip
+   it.  min-width is mirrored by MENU_WIDTH in Sidebar.jsx, which the placement
+   maths relies on — keep the two in step. */
+.source-action-menu {
+  position: fixed;
+  z-index: 400;
+  width: 176px;
+  padding: 5px;
+  border-radius: 12px;
+  background: #1c1c1c;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.62);
+  animation: source-menu-fade-in 0.14s ease;
+}
+
+/* Flipped above the trigger when there is no room below. */
+.source-action-menu.is-up {
+  animation-name: source-menu-fade-in-up;
+}
+
+.source-action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.source-action-item:hover {
+  background: rgb(255 255 255 / 0.07);
+}
+
+.source-action-item svg {
+  flex: none;
+  color: var(--mute);
+}
+
+.source-action-item:hover svg {
+  color: var(--ink);
+}
+
+.source-action-item.is-danger {
+  color: #f0a3a3;
+}
+
+.source-action-item.is-danger:hover {
+  background: rgb(240 163 163 / 0.1);
+}
+
+.source-action-item.is-danger svg {
+  color: #f0a3a3;
+}
+
+.source-action-item.is-danger:hover svg {
+  color: #f0a3a3;
+}
+
+@keyframes source-menu-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes source-menu-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-action-menu {
+    animation: none;
+  }
+}
+
+/* Rename dialog input, matching the shared confirm modal. */
+.confirm-input {
+  width: 100%;
+  margin: 4px 0 0;
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.confirm-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.confirm-cancel:disabled,
+.confirm-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

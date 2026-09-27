@@ -124,8 +124,7 @@ flowchart TB
     subgraph FE["CLIENT — React 19 + Vite"]
         direction TB
         Chat["Chat UI (REST + SSE)"]
-        Explore["Source Explorer"]
-        Mindmap["Mind Map Viewer"]
+        Workspace["Project Workspace<br/>Chat · Mind Map"]
         Repo["Repository Intelligence"]
     end
 
@@ -172,8 +171,7 @@ flowchart TB
     end
 
     Chat --> Routes
-    Explore --> Routes
-    Mindmap --> Routes
+    Workspace --> Routes
     Repo --> Routes
 
     Routes <--> Services
@@ -407,9 +405,9 @@ contextforge/
 │       └── integration/             # API-level integration tests
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx                  # Routes (/, /sources/:id, /mindmap/:id, /repository)
-│   │   ├── pages/                   # Page components (Home, SourceExplore, MindMap, Repository)
-│   │   ├── components/              # Reusable UI (ChatBox, MindMapCanvas, SourceHeader, etc.)
+│   │   ├── App.jsx                  # Routes (/, /projects, /projects/:id, /repository, /models)
+│   │   ├── pages/                   # Page components (Home, Projects, Repository, ModelHub)
+│   │   ├── components/              # Reusable UI (ChatBox, MindMapCanvas, SourceViewer, etc.)
 │   │   ├── hooks/                   # useChat, useSources, useRepository
 │   │   ├── services/api.js          # API client (REST + SSE streaming)
 │   │   ├── lib/sources.jsx          # Source helper utilities
@@ -494,7 +492,7 @@ POST    /repository/{id}/reanalyze               Re-run analysis
 <br>
 
 ```
-POST    /mindmap/generate                       Generate or fetch cached mind map for a source
+POST    /mindmap/generate                       Generate or fetch cached mind map for one or more sources
 GET     /mindmap/{source_id}                     Fetch a previously generated mind map
 ```
 

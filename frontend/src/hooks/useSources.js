@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { fetchSources } from '../services/api'
+import { fetchSources, updateSourceTitle } from '../services/api'
 import { normalizeSource } from '../lib/sources'
 
 // Shared source store for the ContextForge workspace.  Every page — the
@@ -44,6 +44,17 @@ export function useSources() {
     setSources((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
   }, [])
 
+  // Persist a new display title, then reflect it locally.  A failed rename
+  // leaves the previous title in place so the row never shows a name the
+  // server did not accept.
+  const renameSource = useCallback(async (id, title) => {
+    const clean = (title || '').trim()
+    if (!clean) throw new Error('Source name cannot be empty.')
+    await updateSourceTitle(id, clean)
+    setSources((prev) => prev.map((item) => (item.id === id ? { ...item, title: clean } : item)))
+    return clean
+  }, [])
+
   const removeSource = useCallback((id) => {
     setSources((prev) => prev.filter((item) => item.id !== id))
   }, [])
@@ -58,6 +69,7 @@ export function useSources() {
     refresh,
     addSource,
     updateSource,
+    renameSource,
     removeSource,
     replaceAll,
   }

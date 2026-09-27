@@ -96,6 +96,15 @@ export async function deleteSource(sourceId) {
   })
 }
 
+// Rename a source.  The backend stores this as a display-title override
+// layered over the title derived from the source's chunk metadata.
+export async function updateSourceTitle(sourceId, title) {
+  return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  })
+}
+
 export async function clearKnowledgeBase() {
   return request('/ingest/clear', {
     method: 'DELETE',
@@ -291,15 +300,27 @@ export async function reanalyzeRepository(analysisId) {
 
 // --- Mind Map ---------------------------------------------------------------
 
-export async function createMindMap(sourceId) {
+// The workspace can build a map from one source or from several at once.  A
+// single source posts `source_id` so the backend keeps using the pre-existing
+// cache entry for it; multiple sources post `source_ids` and are keyed by a
+// sorted composite key server-side.
+export async function createMindMap(sourceIds, options = {}) {
+  const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
+  const body = ids.length === 1 ? { source_id: ids[0] } : { source_ids: ids }
+  if (options.refresh) body.refresh = true
   return request('/mindmap/generate', {
     method: 'POST',
-    body: JSON.stringify({ source_id: sourceId }),
+    body: JSON.stringify(body),
   })
 }
 
-export async function getMindMap(sourceId) {
-  const response = await fetch(buildUrl(`/mindmap/${encodeURIComponent(sourceId)}`), {
+export async function getMindMap(sourceIds) {
+  const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
+  if (ids.length === 0) return null
+  // Mirror the server's key derivation so a GET addresses the same entry the
+  // POST created (single source = its own id, several = sorted composite).
+  const key = ids.length === 1 ? ids[0] : `multi:${[...new Set(ids)].sort().join(',')}`
+  const response = await fetch(buildUrl(`/mindmap/${encodeURIComponent(key)}`), {
     method: 'GET',
   })
   if (response.status === 404) {

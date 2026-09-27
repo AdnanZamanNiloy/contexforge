@@ -1,10 +1,11 @@
 import { useCallback, useState, useRef, useEffect, useMemo } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 import AppShell from '../components/layout/AppShell'
 import Sidebar from '../components/layout/Sidebar'
 import ChatBox from '../components/ChatBox'
 import SourceViewer from '../components/SourceViewer'
+import MindMapPanel from '../components/MindMapPanel'
 import {
   ingestFile,
   ingestGithub,
@@ -17,13 +18,14 @@ import {
 } from '../services/api'
 import { ingestScopeFor, sidebarTypesFor, sourceCategoryLabel } from '../lib/projects'
 import { useChat } from '../hooks/useChat'
+import { useSourceSelection } from '../hooks/useSourceSelection'
 import { useSources } from '../hooks/useSources'
 
 export default function Home() {
-  const navigate = useNavigate()
   const { projectId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { sources, loading, addSource, updateSource, removeSource, replaceAll } = useSources()
+  const { sources, loading, addSource, updateSource, renameSource, removeSource, replaceAll } =
+    useSources()
   const [activeProject, setActiveProject] = useState(null)
   const [projectMissing, setProjectMissing] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -34,6 +36,9 @@ export default function Home() {
   const [isAddingYoutube, setIsAddingYoutube] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [confirmState, setConfirmState] = useState({ open: false, message: '', onConfirm: null })
+  const [renameTarget, setRenameTarget] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameSaving, setRenameSaving] = useState(false)
   const confirmResolveRef = useRef(null)
 
   // Project scope: /projects/:projectId renders this same workspace filtered
@@ -82,6 +87,33 @@ export default function Home() {
     return sidebarTypesFor(activeProject.source_category)
   }, [projectId, activeProject, projectMissing])
 
+  // The sidebar owns source selection.  That one selection drives chat, the mind
+  // map and every other AI capability in this workspace.
+  const selection = useSourceSelection(visibleSources)
+  const {
+    selectedIds: selectedSourceIds,
+    select: selectSource,
+    selectOnly: selectOnlySource,
+    toggle: toggleSource,
+    selectAll: selectAllSources,
+    clear: clearSourceSelection,
+  } = selection
+
+  // The Mind Map tab's in-tab picker edits the same selection the sidebar owns.
+  const setSelection = useCallback(
+    (ids) => {
+      selection.replaceAll(ids)
+    },
+    [selection],
+  )
+
+  // Chat and Mind Map share the selection, so both stay on the same scope.
+  // The Mind Map is reached from a button in the evidence rail, not a tab.
+  const [activeView, setActiveView] = useState('chat')
+  const handleOpenMindMap = useCallback(() => {
+    setActiveView((view) => (view === 'mindmap' ? 'chat' : 'mindmap'))
+  }, [])
+
   // Allow the shared sidebar's "Add Source" button on any page to open the
   // ingest modal by returning to the workspace with ?add=1.
   useEffect(() => {
@@ -104,7 +136,7 @@ export default function Home() {
     retryLast,
     showUploadHint,
     resetChat,
-  } = useChat()
+  } = useChat({ sourceIds: selectedSourceIds })
 
   const pushNotification = useCallback((type, text) => {
     const id = `${type}-${Date.now()}`
@@ -231,7 +263,10 @@ export default function Home() {
         pushNotification('success', response.message)
         await attachToProject(response.source_id)
         setIsModalOpen(false)
-        navigate(`/sources/${encodeURIComponent(response.source_id)}?tab=intelligence`)
+        // There is no per-source page any more: select the new source so the
+        // workspace is scoped to it, and let the user reach Repository
+        // Intelligence from the source details panel.
+        selectOnlySource(response.source_id)
       } catch (repoError) {
         updateSource(tempId, { status: 'failed' })
         pushNotification('error', repoError.message || 'GitHub ingest failed')
@@ -239,7 +274,7 @@ export default function Home() {
         setIsAddingRepo(false)
       }
     },
-    [addSource, pushNotification, updateSource, navigate, attachToProject],
+    [addSource, pushNotification, updateSource, selectOnlySource, attachToProject],
   )
 
   const handleTextIngest = useCallback(
@@ -353,12 +388,53 @@ export default function Home() {
     [removeSource],
   )
 
-  const handleSelectSource = useCallback(
-    (id) => {
-      navigate(`/sources/${encodeURIComponent(id)}`)
+  // The ⋮ menu's Remove action asks first — deleting a source drops its chunks
+  // from the knowledge base and cannot be undone.
+  const handleRequestRemoveSource = useCallback(
+    async (source) => {
+      const confirmed = await showConfirm(
+        `Remove "${source.title}"? Its chunks are deleted from the knowledge base and this cannot be undone.`,
+      )
+      if (!confirmed) return
+      await handleDeleteSource(source.id)
+      pushNotification('success', `Removed "${source.title}".`)
     },
-    [navigate],
+    [showConfirm, handleDeleteSource, pushNotification],
   )
+
+  const handleRequestRenameSource = useCallback((source) => {
+    setRenameTarget(source)
+    setRenameValue(source.title || '')
+  }, [])
+
+  const handleCommitRename = useCallback(async () => {
+    const clean = renameValue.trim()
+    if (!renameTarget || !clean || renameSaving) return
+    setRenameSaving(true)
+    try {
+      await renameSource(renameTarget.id, clean)
+      setRenameTarget(null)
+      pushNotification('success', `Renamed to "${clean}".`)
+    } catch (err) {
+      pushNotification('error', err.message || 'Failed to rename source.')
+    } finally {
+      setRenameSaving(false)
+    }
+  }, [renameTarget, renameValue, renameSaving, renameSource, pushNotification])
+
+  // Escape closes the rename dialog.
+  useEffect(() => {
+    if (!renameTarget) return undefined
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' && !renameSaving) setRenameTarget(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [renameTarget, renameSaving])
+
+  // How many sources chat is currently allowed to draw on, for its counter.
+  const chatScopeCount =
+    selectedSourceIds.length > 0 ? selectedSourceIds.length : visibleSources.length
 
   const main = (
     <div className="main-card is-bare">
@@ -387,18 +463,27 @@ export default function Home() {
           )}
         </div>
       ) : null}
-      <ChatBox
-        messages={messages}
-        input={input}
-        onInputChange={setInput}
-        onSend={sendMessage}
-        isStreaming={isStreaming}
-        error={error}
-        onRetry={retryLast}
-        uploadHint={showUploadHint}
-        onNewChat={resetChat}
-        sourceCount={visibleSources.length}
-      />
+
+      {activeView === 'chat' ? (
+        <ChatBox
+          messages={messages}
+          input={input}
+          onInputChange={setInput}
+          onSend={sendMessage}
+          isStreaming={isStreaming}
+          error={error}
+          onRetry={retryLast}
+          uploadHint={showUploadHint}
+          onNewChat={resetChat}
+          sourceCount={chatScopeCount}
+        />
+      ) : (
+        <MindMapPanel
+          sources={visibleSources}
+          selectedIds={selectedSourceIds}
+          onSelectionChange={setSelection}
+        />
+      )}
     </div>
   )
 
@@ -408,7 +493,8 @@ export default function Home() {
       latency={latency}
       isStreaming={isStreaming}
       confidence={confidence}
-      showQuickActions
+      onOpenMindMap={handleOpenMindMap}
+      mindMapActive={activeView === 'mindmap'}
     />
   )
 
@@ -420,8 +506,13 @@ export default function Home() {
             sources={visibleSources}
             loading={loading}
             onAddSource={() => setIsModalOpen(true)}
-            onSelectSource={handleSelectSource}
-            onDeleteSource={handleDeleteSource}
+            onSelectSource={selectSource}
+            onToggleSource={toggleSource}
+            onSelectAllSources={selectAllSources}
+            onClearSourceSelection={clearSourceSelection}
+            selectedSourceIds={selectedSourceIds}
+            onRenameSource={handleRequestRenameSource}
+            onDeleteSource={handleRequestRemoveSource}
             onClearKB={handleClearKB}
             scopeTypes={sidebarScope}
           />
@@ -685,6 +776,50 @@ export default function Home() {
           </div>
         ))}
       </div>
+
+      {renameTarget ? (
+        <div
+          className="confirm-backdrop"
+          onClick={() => {
+            if (!renameSaving) setRenameTarget(null)
+          }}
+        >
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Rename source</h3>
+            <p>Give this source a name you will recognise in the sidebar.</p>
+            <input
+              className="confirm-input"
+              value={renameValue}
+              autoFocus
+              maxLength={200}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleCommitRename()
+                }
+              }}
+              aria-label="New source name"
+            />
+            <div className="confirm-actions">
+              <button
+                className="confirm-cancel"
+                onClick={() => setRenameTarget(null)}
+                disabled={renameSaving}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-danger"
+                onClick={handleCommitRename}
+                disabled={renameSaving || !renameValue.trim()}
+              >
+                {renameSaving ? 'Saving…' : 'Save name'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {confirmState.open && (
         <div className="confirm-backdrop" onClick={() => handleConfirm(false)}>

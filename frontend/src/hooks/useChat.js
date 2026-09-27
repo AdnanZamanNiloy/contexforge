@@ -4,8 +4,17 @@ import { queryAnswer, streamQuery } from '../services/api'
 
 const STORAGE_PREFIX = 'contextforge:chat:'
 
-function storageKey(sourceId) {
-  return `${STORAGE_PREFIX}${sourceId ? `source:${sourceId}` : 'general'}`
+// Chat history is kept per scope.  The workspace scopes a query to the sources
+// the user selected in the sidebar, so a thread is only meaningful alongside the
+// selection that produced it — sorting keeps "a + b" and "b + a" on one thread.
+function scopeKeyOf(sourceIds) {
+  const ids = (sourceIds || []).filter(Boolean)
+  if (ids.length === 0) return 'all'
+  return [...new Set(ids)].sort().join('|')
+}
+
+function storageKey(sourceIds) {
+  return `${STORAGE_PREFIX}scope:${scopeKeyOf(sourceIds)}`
 }
 
 function loadState(sourceId) {
@@ -32,23 +41,62 @@ const DEFAULT_CONFIDENCE = {
   retrieved_chunks: 0,
 }
 
-export function useChat({ sourceId = null } = {}) {
+// `sourceIds` is the workspace's current source selection.  Empty means "every
+// source in the knowledge base", which is also the unscoped default.
+export function useChat({ sourceIds = [] } = {}) {
+  const scopeKey = scopeKeyOf(sourceIds)
+  const [scope, setScope] = useState(scopeKey)
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState(() => loadState(sourceId)?.messages ?? [])
+  const [messages, setMessages] = useState(() => loadState(sourceIds)?.messages ?? [])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState('')
-  const [sources, setSources] = useState(() => loadState(sourceId)?.sources ?? [])
+  const [sources, setSources] = useState(() => loadState(sourceIds)?.sources ?? [])
   const [latency, setLatency] = useState({})
   // FIX: store server-side confidence metrics
-  const [confidence, setConfidence] = useState(() => loadState(sourceId)?.confidence ?? null)
+  const [confidence, setConfidence] = useState(() => loadState(sourceIds)?.confidence ?? null)
   const [showUploadHint, setShowUploadHint] = useState(false)
   const abortRef = useRef(null)
   const lastQuestionRef = useRef('')
 
-  // Persist chat state so history survives page refresh.
+  // Switching the selection switches to that scope's thread, so answers are
+  // never shown next to a selection that did not produce them.  React's
+  // documented pattern for adjusting state to a changed input is to do it during
+  // render, which avoids painting one frame of the previous scope's thread.
+  if (scope !== scopeKey) {
+    setScope(scopeKey)
+    const stored = loadState(sourceIds)
+    setMessages(stored?.messages ?? [])
+    setSources(stored?.sources ?? [])
+    setConfidence(stored?.confidence ?? null)
+    setLatency({})
+    setError('')
+    setShowUploadHint(false)
+    setInput('')
+    setIsStreaming(false)
+  }
+
+  // Abandoning an in-flight stream is a genuine side effect on an external
+  // system, so it stays in an effect: the response was grounded in the scope
+  // the user just moved away from.
   useEffect(() => {
-    saveState(sourceId, { messages, sources, confidence })
-  }, [sourceId, messages, sources, confidence])
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+    lastQuestionRef.current = ''
+  }, [scopeKey])
+
+  // Persist chat state so history survives page refresh.  Writing is skipped on
+  // the render that swaps scope — the restore above already loaded that key's
+  // own state, and saving the old thread under the new key would clobber it.
+  const prevScopeRef = useRef(scopeKey)
+  useEffect(() => {
+    if (prevScopeRef.current !== scopeKey) {
+      prevScopeRef.current = scopeKey
+      return
+    }
+    saveState(sourceIds, { messages, sources, confidence })
+  }, [sourceIds, scopeKey, messages, sources, confidence])
 
   const appendMessage = useCallback((message) => {
     setMessages((prev) => [...prev, message])
@@ -106,7 +154,10 @@ export function useChat({ sourceId = null } = {}) {
 
       try {
         let hasTokens = false
-        const payload = { question: trimmed, source_id: sourceId || undefined }
+        const payload = {
+          question: trimmed,
+          source_ids: sourceIds.length ? sourceIds : undefined,
+        }
         await streamQuery(payload, {
           signal: controller.signal,
           onToken: (token) => {
@@ -145,7 +196,7 @@ export function useChat({ sourceId = null } = {}) {
         try {
           const fallback = await queryAnswer({
             question: trimmed,
-            source_id: sourceId || undefined,
+            source_ids: sourceIds.length ? sourceIds : undefined,
           })
           updateAssistant(assistantId, {
             text: fallback.answer,
@@ -164,7 +215,7 @@ export function useChat({ sourceId = null } = {}) {
         setIsStreaming(false)
       }
     },
-    [appendMessage, stopStream, updateAssistant, sourceId],
+    [appendMessage, stopStream, updateAssistant, sourceIds],
   )
 
   const retryLast = useCallback(() => {
@@ -188,11 +239,11 @@ export function useChat({ sourceId = null } = {}) {
     setInput('')
     lastQuestionRef.current = ''
     try {
-      localStorage.removeItem(storageKey(sourceId))
+      localStorage.removeItem(storageKey(sourceIds))
     } catch {
       // ignore storage errors
     }
-  }, [sourceId, stopStream])
+  }, [sourceIds, stopStream])
 
   // Keep the shortcut pointing at the latest resetChat implementation.
   useEffect(() => {

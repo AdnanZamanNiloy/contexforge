@@ -32,7 +32,9 @@ export default function RepositoryIntelligencePage() {
     removeSource(id)
   }
 
-  const handleSelectSource = (id) => navigate(`/sources/${encodeURIComponent(id)}`)
+  // There is no per-source page any more, so a source picked here returns to the
+  // workspace rather than opening a source workspace of its own.
+  const handleSelectSource = () => navigate('/workspace')
 
   const handleClearKB = async () => {
     try {

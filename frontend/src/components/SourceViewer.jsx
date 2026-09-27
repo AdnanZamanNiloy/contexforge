@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import CreateMindMapButton from './CreateMindMapButton'
-import RepositoryIntelButton from './RepositoryIntelButton'
+import { useEffect, useState } from 'react'
 
 function formatSourceTitle(source) {
   const meta = source.metadata || {}
@@ -158,9 +156,8 @@ export default function SourceViewer({
   latency = {},
   isStreaming,
   confidence = null,
-  repoUrl,
-  onOpenIntel,
-  showQuickActions = false,
+  onOpenMindMap,
+  mindMapActive = false,
 }) {
   const DEFAULT_VISIBLE_CHUNKS = 3
   const hasSources = sources.length > 0
@@ -192,34 +189,38 @@ export default function SourceViewer({
   const visibleSources = sources.slice(0, visibleChunks)
   const hasMoreChunks = totalChunks > visibleChunks
 
-  const dominantSourceId = useMemo(() => {
-    const counts = {}
-    for (const item of sources) {
-      if (item.source_id) counts[item.source_id] = (counts[item.source_id] || 0) + 1
-    }
-    let best = null
-    let bestCount = 0
-    for (const [id, count] of Object.entries(counts)) {
-      if (count > bestCount) {
-        best = id
-        bestCount = count
-      }
-    }
-    return best
-  }, [sources])
-
   return (
     <aside className="evidence">
-      {showQuickActions ? (
+      {onOpenMindMap ? (
         <div className="mindmap-cta-row is-pinned">
-          <CreateMindMapButton sourceId={dominantSourceId} />
-          {onOpenIntel ? <RepositoryIntelButton repoUrl={repoUrl} onOpen={onOpenIntel} /> : null}
+          <button className="mindmap-cta" onClick={onOpenMindMap} aria-pressed={mindMapActive}>
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="6" cy="5" r="2.2" />
+              <circle cx="18" cy="7" r="2.2" />
+              <circle cx="8" cy="19" r="2.2" />
+              <path d="M8.2 5.8l7.6 1M7 7.1l.8 9.7M17 9.2l-7 8" />
+            </svg>
+            <span className="mindmap-cta-text">
+              <span>{mindMapActive ? 'Back to Chat' : 'Mind Map'}</span>
+              <small>
+                {mindMapActive ? 'Return to the conversation' : 'Map the key ideas visually'}
+              </small>
+            </span>
+          </button>
         </div>
       ) : null}
       <section className="panel panel-scroll panel-chunks">
         <div className="panel-head">
           <div className="ev-head-text">
-            <span className="ev-eyebrow">Evidence</span>
             <h3>Top Retrieved Chunks</h3>
           </div>
           <span className="ev-count">
@@ -294,7 +295,6 @@ export default function SourceViewer({
       <section className="panel panel-confidence">
         <div className="panel-head">
           <div className="ev-head-text">
-            <span className="ev-eyebrow">Trust</span>
             <h3>Confidence & Coverage</h3>
           </div>
         </div>
