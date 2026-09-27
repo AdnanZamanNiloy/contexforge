@@ -50,13 +50,19 @@ class QueryService:
             :class:`GenerationResult` with answer, reranked sources,
             per-stage latency breakdown, and ConfidenceMetrics.
         """
-        logger.info("answer: question=%r source_id=%s", request.question, request.source_id)
+        logger.info(
+            "answer: question=%r source_id=%s source_ids=%s",
+            request.question,
+            request.source_id,
+            request.source_ids,
+        )
         result = await self._orchestrator.answer(
             request.question,
             top_k_retrieval=request.top_k_retrieval,
             top_k_rerank=request.top_k_rerank,
             use_hyde=request.use_hyde,
             source_id=request.source_id,
+            source_ids=request.source_ids,
         )
         logger.info(
             "answer complete: sources=%d latency=%s confidence=%s",
@@ -84,7 +90,12 @@ class QueryService:
         Args:
             request: Validated query request.
         """
-        logger.info("stream_answer: question=%r source_id=%s", request.question, request.source_id)
+        logger.info(
+            "stream_answer: question=%r source_id=%s source_ids=%s",
+            request.question,
+            request.source_id,
+            request.source_ids,
+        )
 
         # Unpack the new 3-tuple from retrieve_context
         reranked, timings, mean_confidence = await self._orchestrator.retrieve_context(
@@ -93,6 +104,7 @@ class QueryService:
             top_k_rerank=request.top_k_rerank,
             use_hyde=request.use_hyde,
             source_id=request.source_id,
+            source_ids=request.source_ids,
         )
 
         # Time the LLM stream so generation latency is visible in the

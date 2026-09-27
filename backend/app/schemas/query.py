@@ -65,9 +65,30 @@ class QueryRequest(BaseModel):
         default=None,
         description=(
             "Restrict retrieval to the chunks of a single source document "
-            "(e.g. a GitHub repository). This scopes the answer to that source."
+            "(e.g. a GitHub repository). This scopes the answer to that source. "
+            "Ignored when source_ids is supplied."
         ),
     )
+    source_ids: list[str] | None = Field(
+        default=None,
+        description=(
+            "Restrict retrieval to the chunks of these source documents. Used by "
+            "the project workspace to scope chat to the sources the user selected "
+            "in the sidebar. Takes precedence over source_id."
+        ),
+        examples=[["repo:owner/name", "doc:handbook"]],
+    )
+
+    @field_validator("source_ids")
+    @classmethod
+    def source_ids_must_be_meaningful(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        cleaned = [s.strip() for s in v if s and s.strip()]
+        # An all-blank list is treated as "no scope" rather than "match nothing",
+        # so a client sending stray whitespace keeps the default whole-KB search.
+        return cleaned or None
+
     # Upper bounds prevent absurd values reaching FAISS / BM25
     top_k_retrieval: int | None = Field(
         default=None,

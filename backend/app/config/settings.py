@@ -257,6 +257,10 @@ class Settings(BaseSettings):
     # Model Hub — configured models, fallback chains, and serving selection.
     MODEL_HUB_DB_PATH: Path = Field(default=data_path("model_hub", "model_hub.db"))
 
+    # Sources — user-set metadata overrides (e.g. a custom display title).
+    # Chunks and derived titles stay in FAISS/BM25; only overrides live here.
+    SOURCE_META_DB_PATH: Path = Field(default=data_path("sources", "sources.db"))
+
     # Projects — lightweight project library (metadata + source membership).
     # Sources themselves stay in FAISS/BM25; this DB only maps projects to
     # source_ids so the library survives restarts without changing retrieval.

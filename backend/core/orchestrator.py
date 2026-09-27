@@ -439,6 +439,7 @@ class Orchestrator:
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
         source_id: str | None = None,
+        source_ids: set[str] | list[str] | None = None,
         # Return type now includes mean_confidence from the reranker
     ) -> tuple[list[RerankedChunk], dict[str, float], float]:
         """Expand query, embed, retrieve, and rerank.
@@ -490,11 +491,12 @@ class Orchestrator:
         t = time.perf_counter()
         k_retrieve = top_k_retrieval if top_k_retrieval is not None else settings.TOP_K_RETRIEVAL
         k_rerank = top_k_rerank if top_k_rerank is not None else settings.TOP_K_RERANK
-        # When the query is scoped to a single source (e.g. a repository in the
-        # Repository Intelligence chat), exclude every other source's chunks so
-        # the answer is grounded only in that repository.  The exclusion set is
-        # the store's full source list minus the target source_id.
-        exclude_source_ids = self._source_exclude_set(source_id)
+        # When the query is scoped to a selection of sources (the project
+        # workspace picks one or many; Repository Intelligence chat picks a single
+        # repository), exclude every other source's chunks so the answer is
+        # grounded only in the selected sources.  The exclusion set is the
+        # store's full source list minus the selection.
+        exclude_source_ids = self._source_exclude_set(source_id, source_ids)
         # Use the (possibly HyDE-expanded) query text for the BM25 + dense
         # legs too, so expansion is consistent across the whole pipeline.
         retrieved = await self._hybrid.retrieve(
@@ -587,20 +589,32 @@ class Orchestrator:
     # boost is applied — below it the query is treated as off-topic/no-match.
     _FOCUS_RELEVANCE_GATE = 0.20
 
-    def _source_exclude_set(self, source_id: str | None) -> set[str] | None:
-        """Return source_ids to exclude so retrieval is scoped to *source_id*.
+    def _source_exclude_set(
+        self,
+        source_id: str | None,
+        source_ids: set[str] | list[str] | None = None,
+    ) -> set[str] | None:
+        """Return source_ids to exclude so retrieval is scoped to the selection.
 
-        When ``source_id`` is ``None`` no filtering is applied.  Otherwise every
-        currently-indexed source except the target is excluded, so the hybrid
-        retrieval only ever returns chunks belonging to that source.
+        With neither argument no filtering is applied.  ``source_id`` scopes to a
+        single source and ``source_ids`` scopes to a chosen set (the project
+        workspace selects one or many).  In both cases every currently-indexed
+        source *outside* the selection is excluded, so the hybrid retrieval only
+        ever returns chunks belonging to the selected sources.
         """
-        if not source_id:
+        if source_ids:
+            selected = {sid.strip() for sid in source_ids if sid and sid.strip()}
+        elif source_id and source_id.strip():
+            selected = {source_id.strip()}
+        else:
+            return None
+        if not selected:
             return None
         try:
             known = self._faiss.get_source_ids()
         except Exception:  # pragma: no cover - defensive
             return None
-        return {sid for sid in known if sid and sid != source_id}
+        return {sid for sid in known if sid and sid not in selected}
 
     @staticmethod
     def _resolve_hyde(use_hyde: bool | None, question: str) -> bool:
@@ -725,6 +739,7 @@ class Orchestrator:
         top_k_rerank: int | None = None,
         use_hyde: bool | None = None,
         source_id: str | None = None,
+        source_ids: set[str] | list[str] | None = None,
     ) -> GenerationResult:
         """Full RAG pipeline: retrieve → generate → return with sources and confidence."""
 
@@ -735,6 +750,7 @@ class Orchestrator:
             top_k_rerank=top_k_rerank,
             use_hyde=use_hyde,
             source_id=source_id,
+            source_ids=source_ids,
         )
         # Time the LLM generation so it shows up in the latency breakdown
         # (previously the biggest cost was invisible to the client).

@@ -2,18 +2,21 @@
 
 Prefix: ``/mindmap``.
 
-- ``GET  /mindmap/{source_id:path}``  — fetch a previously generated map (404 if none).
-- ``POST /mindmap/generate``          — generate (or return the cached) map for a source.
+- ``GET  /mindmap/{key:path}``  — fetch a previously generated map (404 if none).
+- ``POST /mindmap/generate``    — generate (or return the cached) map for a selection.
 
-The ``:path`` converter lets ``source_id`` (``repo:<owner>/<name>``) survive the
-slash in the URL.  Errors are mapped to clean HTTP responses.
+A *selection* is one source or several.  A single source is keyed by its own id
+so every map generated before multi-source support stays addressable; several
+sources are keyed by a sorted composite key.  The ``:path`` converter lets those
+keys (``repo:<owner>/<name>``) survive the slash in the URL.  Errors are mapped
+to clean HTTP responses.
 """
 from __future__ import annotations
 
 import logging
 
 from app.dependencies import get_mindmap_service
-from app.mindmap.schemas import GenerateRequest, MindMapResponse
+from app.mindmap.schemas import GenerateRequest, MindMapResponse, split_composite_key
 from app.mindmap.service import MindMapError, MindMapService
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -28,19 +31,22 @@ router = APIRouter(prefix="/mindmap", tags=["mind-map"])
     "/generate",
     response_model=MindMapResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Generate (or fetch the cached) mind map for a source",
+    summary="Generate (or fetch the cached) mind map for a selection of sources",
 )
 async def generate(
     request: GenerateRequest,
     service: MindMapService = Depends(get_mindmap_service),
 ) -> MindMapResponse:
-    """Generate a mind map from a source's indexed content.
+    """Generate a mind map from the selected sources' indexed content.
 
-    Idempotent: if a map already exists for ``source_id`` it is returned
-    unchanged (200) rather than regenerated.  New maps return 201.
+    Idempotent: if a map already exists for the selection it is returned
+    unchanged (201) rather than regenerated.  Pass ``refresh`` to force a
+    regeneration after the sources changed.
     """
     try:
-        result = await service.generate(request.source_id)
+        result = await service.generate(
+            request.resolved_source_ids(), refresh=request.refresh
+        )
     except MindMapError as exc:
         logger.warning("mindmap generate failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
@@ -48,16 +54,16 @@ async def generate(
 
 
 @router.get(
-    "/{source_id:path}",
+    "/{key:path}",
     response_model=MindMapResponse,
-    summary="Fetch a previously generated mind map by source id",
+    summary="Fetch a previously generated mind map by source id or selection key",
 )
 async def get(
-    source_id: str,
+    key: str,
     service: MindMapService = Depends(get_mindmap_service),
 ) -> MindMapResponse:
-    """Return the persisted mind map for ``source_id``, or 404 if none exists."""
-    result = await service.get(source_id)
+    """Return the persisted mind map for ``key``, or 404 if none exists."""
+    result = await service.get(key)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -67,8 +73,10 @@ async def get(
 
 
 def _to_response(result) -> MindMapResponse:
+    key = result["source_id"]
     return MindMapResponse(
-        source_id=result["source_id"],
+        source_id=key,
+        source_ids=result.get("source_ids") or split_composite_key(key),
         title=result.get("title", "Mind Map"),
         markdown=result.get("markdown", ""),
         chunk_count=int(result.get("chunk_count", 0)),

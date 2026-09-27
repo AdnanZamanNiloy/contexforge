@@ -2,11 +2,11 @@
 
 Layered:  route -> service -> (LLM + FaissStore) + MindMapStore.
 
-The service gathers a source's chunks from the vector store, asks the LLM to
-condense them into a markdown outline (the mind map library's native input),
-and persists the result keyed by ``source_id`` so a map is generated only once
-per source.  It reuses the existing singletons (LLM fallback chain + FaissStore)
-rather than building new infrastructure.
+The service gathers the selected sources' chunks from the vector store, asks
+the LLM to condense them into a markdown outline (the mind map library's
+native input), and persists the result keyed by the selection so a given set
+is generated only once.  It reuses the existing singletons (LLM fallback chain
++ FaissStore) rather than building new infrastructure.
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ import logging
 import time
 from typing import Any
 
+from app.mindmap.schemas import composite_key
 from app.mindmap.storage import MindMapStore
 from core.generation.prompt_builder import PromptBuilder
 from core.interfaces.llm import LLM
@@ -96,31 +97,58 @@ class MindMapService:
     # ------------------------------------------------------------------ #
 
     @observe(name="mindmap_get")
-    async def get(self, source_id: str) -> dict[str, Any] | None:
-        return await self._store.get(source_id)
+    async def get(self, key: str) -> dict[str, Any] | None:
+        """Return a stored map by key, or ``None`` when nothing is cached.
+
+        ``key`` is a raw source id for a single source, or a composite key from
+        :func:`~app.mindmap.schemas.composite_key` for a multi-source selection.
+        """
+        return await self._store.get(key)
 
     @observe(name="mindmap_generate")
-    async def generate(self, source_id: str) -> dict[str, Any]:
-        """Return the persisted map for *source_id*, generating it if absent.
+    async def generate(
+        self,
+        source_ids: list[str] | str,
+        refresh: bool = False,
+    ) -> dict[str, Any]:
+        """Return the persisted map for the selection, generating it if absent.
 
-        Idempotent: if a map is already stored it is returned unchanged so the
-        frontend never has to regenerate on a repeat visit.
+        Idempotent: if a map is already stored for the same selection it is
+        returned unchanged, so the frontend never regenerates on a repeat visit.
+        ``source_ids`` accepts a list (the workspace can select several sources
+        at once) or a bare string for the single-source case.
         """
-        existing = await self._store.get(source_id)
-        if existing is not None:
-            logger.info("mindmap: source_id=%s cached — returning stored map.", source_id)
-            return existing
+        if isinstance(source_ids, str):
+            source_ids = [source_ids]
+        ids = [s.strip() for s in source_ids if s and s.strip()]
+        # De-duplicate while keeping the caller's order for title resolution.
+        seen: set[str] = set()
+        selected: list[str] = []
+        for s in ids:
+            if s not in seen:
+                seen.add(s)
+                selected.append(s)
+        if not selected:
+            raise MindMapError("Select at least one source to build a mind map.")
 
-        chunks = await self._faiss.get_chunks_by_source_id(source_id)
+        key = composite_key(selected)
+
+        if not refresh:
+            existing = await self._store.get(key)
+            if existing is not None:
+                logger.info("mindmap: key=%s cached — returning stored map.", key)
+                return existing
+
+        chunks = await self._collect_chunks(selected)
         if not chunks:
             raise MindMapError(
-                "No indexed content found for this source. Re-ingest it to "
-                "generate a mind map."
+                "No indexed content found for the selected source(s). Re-ingest "
+                "them to generate a mind map."
             )
 
-        title = self._resolve_title(source_id, chunks)
+        title = self._resolve_title(selected, chunks)
         sampled = _sample_chunks(chunks)
-        user_prompt = self._build_prompt(source_id, title, sampled)
+        user_prompt = self._build_prompt(selected, title, sampled)
 
         start = time.perf_counter()
         try:
@@ -133,15 +161,15 @@ class MindMapService:
             )
         except TimeoutError as exc:  # pragma: no cover - timing guard
             logger.exception(
-                "mindmap: generation timed out after %.0fs for source_id=%s",
-                MAX_GENERATION_SECONDS, source_id,
+                "mindmap: generation timed out after %.0fs for key=%s",
+                MAX_GENERATION_SECONDS, key,
             )
             raise MindMapError(
                 "Mind map generation timed out. The AI providers may be under "
                 "rate limits — please try again in a little while."
             ) from exc
         except Exception as exc:  # pragma: no cover - provider failure surfaced to route
-            logger.exception("mindmap: LLM generation failed for source_id=%s", source_id)
+            logger.exception("mindmap: LLM generation failed for key=%s", key)
             raise MindMapError(
                 "The AI provider could not generate a mind map. It may be at its "
                 "rate limit or quota — please try again in a little while."
@@ -153,43 +181,79 @@ class MindMapService:
             raise MindMapError("The AI provider returned no mind map to render.")
 
         saved = await self._store.upsert(
-            source_id, title, markdown, len(sampled)
+            key, title, markdown, len(sampled)
         )
         logger.info(
-            "mindmap: generated for source_id=%s chunks=%d elapsed=%.1f ms",
-            source_id, len(sampled), elapsed,
+            "mindmap: generated for key=%s sources=%d chunks=%d elapsed=%.1f ms",
+            key, len(selected), len(sampled), elapsed,
         )
         return saved
+
+    async def _collect_chunks(self, source_ids: list[str]) -> list:
+        """Gather chunks for every selected source, skipping unknown ones.
+
+        A selection can name a source that has since been deleted, so a missing
+        one must not sink the whole map — it is skipped and the rest still build.
+        """
+        gathered: list = []
+        for sid in source_ids:
+            try:
+                found = await self._faiss.get_chunks_by_source_id(sid)
+            except Exception:
+                logger.exception("mindmap: chunk lookup failed for source_id=%s", sid)
+                continue
+            if found:
+                gathered.extend(found)
+            else:
+                logger.warning("mindmap: no indexed chunks for source_id=%s — skipping.", sid)
+        return gathered
 
     # ------------------------------------------------------------------ #
     # Internals
     # ------------------------------------------------------------------ #
 
-    def _resolve_title(self, source_id: str, chunks) -> str:
-        title = ""
+    def _resolve_title(self, source_ids: list[str], chunks) -> str:
+        """Derive the root-node title from the selected sources' metadata."""
+        titles: list[str] = []
         for chunk in chunks:
             meta = dict(chunk.metadata) if chunk.metadata else {}
-            if meta.get("repo"):
-                title = str(meta["repo"])
-                break
-            if meta.get("title"):
-                title = str(meta["title"])
-                break
-            if meta.get("filename"):
-                title = str(meta["filename"])
-                break
-        if not title:
-            title = source_id.rsplit("/", 1)[-1]
+            label = ""
+            for field in ("repo", "title", "filename"):
+                if meta.get(field):
+                    label = str(meta[field]).strip()
+                    break
+            if label and label not in titles:
+                titles.append(label)
+
+        if not titles:
+            titles = [s.rsplit("/", 1)[-1] for s in source_ids]
+
         # A text loader may store the whole body as the title — keep the root
         # node short so the map stays scannable.
+        if len(titles) == 1:
+            title = titles[0]
+        else:
+            title = f"{len(titles)} sources"
+
         title = title.strip()
         if len(title) > 64:
             title = title[:61].rstrip() + "..."
         return title or "Mind Map"
 
-    def _build_prompt(self, source_id: str, title: str, chunks) -> str:
+    def _build_prompt(self, source_ids: list[str], title: str, chunks) -> str:
         lines: list[str] = []
-        lines.append(f"Source: {title}  (id: {source_id})")
+        if len(source_ids) == 1:
+            lines.append(f"Source: {title}  (id: {source_ids[0]})")
+        else:
+            joined = ", ".join(source_ids)
+            lines.append(f"Sources ({len(source_ids)}): {joined}")
+            lines.append(f"Overall topic: {title}")
+            lines.append(
+                "Build one mind map covering the shared themes across every source. "
+                "Group branches by theme rather than by source, and only add a "
+                "source-specific branch where a source has content no other source "
+                "covers."
+            )
         lines.append(
             f"Build a mind map from its {len(chunks)} indexed chunk(s). "
             "Return only the Markdown list."
@@ -199,7 +263,8 @@ class MindMapService:
             text = (chunk.text or "").strip()[:MAX_CHUNK_CHARS]
             if not text:
                 continue
-            lines.append(f"[Chunk {i}]\n{text}")
+            label = getattr(chunk, "source_id", None) or source_ids[0]
+            lines.append(f"[Chunk {i} — {label}]\n{text}")
             if sum(len(line) for line in lines) >= MAX_CONTEXT_CHARS:
                 break
         return "\n\n".join(lines)

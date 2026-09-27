@@ -22,6 +22,7 @@ from app.repository_intelligence.service import RepositoryIntelligenceService
 from app.repository_intelligence.storage import RepositoryStore
 from app.services.ingest_service import IngestService
 from app.services.query_service import QueryService
+from app.sources.storage import SourceMetaStore
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
 from core.generation.prompt_builder import PromptBuilder
@@ -261,6 +262,16 @@ def get_mindmap_service() -> MindMapService:
         llm=get_llm(),
         prompt_builder=get_prompt_builder(),
     )
+
+
+# ---------------------------------------------------------------------------
+# Sources — persisted per-source metadata overrides (e.g. a custom title)
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_source_meta_store() -> SourceMetaStore:
+    return SourceMetaStore()
 
 
 # ---------------------------------------------------------------------------

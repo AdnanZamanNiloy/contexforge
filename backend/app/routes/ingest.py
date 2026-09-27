@@ -4,6 +4,7 @@ routes/ingest.py — Ingestion endpoints for the ContextForge API.
 Endpoints:
     POST /ingest/source           — Ingest a URL or GitHub repo by reference.
     POST /ingest/file             — Upload and ingest a PDF or DOCX file.
+    PATCH /ingest/source/{id}     — Rename a source (persist a title override).
     DELETE /ingest/source/{id}    — Delete a previously ingested source.
 """
 
@@ -14,7 +15,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
-from app.dependencies import get_ingest_service
+from app.dependencies import get_ingest_service, get_source_meta_store
 from app.schemas.ingest import (
     ClearResponse,
     DeleteResponse,
@@ -23,6 +24,8 @@ from app.schemas.ingest import (
     SourcesResponse,
 )
 from app.services.ingest_service import IngestService
+from app.sources.schemas import UpdateSourceRequest, UpdateSourceResponse
+from app.sources.storage import SourceMetaStore
 
 __all__ = ["router"]
 
@@ -120,6 +123,41 @@ async def ingest_file(
     return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed)
 
 
+@router.patch(
+    "/source/{source_id:path}",
+    response_model=UpdateSourceResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Rename a source",
+)
+async def update_source(
+    source_id: str,
+    payload: UpdateSourceRequest,
+    meta_store: SourceMetaStore = Depends(get_source_meta_store),
+) -> UpdateSourceResponse:
+    """Persist a custom display title for *source_id*.
+
+    A source's title is derived from its chunk metadata, which lives in
+    FAISS/BM25.  Renaming therefore records an override in a small side store
+    that ``GET /ingest/sources`` layers over the derived title, so no chunk
+    rows are rewritten and the name survives a restart.
+    """
+    if not source_id or not source_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="source_id must not be blank or whitespace-only",
+        )
+    logger.info("update_source: source_id=%s", source_id)
+    try:
+        result = await meta_store.set_title(source_id.strip(), payload.title)
+    except Exception as exc:
+        logger.exception("update_source failed for source_id=%s", source_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to rename source: {exc}",
+        ) from exc
+    return UpdateSourceResponse(**result)
+
+
 @router.delete(
     "/source/{source_id:path}",
     response_model=DeleteResponse,
@@ -129,6 +167,7 @@ async def ingest_file(
 async def delete_source(
     source_id: str,
     service: IngestService = Depends(get_ingest_service),
+    meta_store: SourceMetaStore = Depends(get_source_meta_store),
 ) -> DeleteResponse:
     """Remove all chunks belonging to *source_id* from FAISS and BM25.
 
@@ -172,6 +211,13 @@ async def delete_source(
     except Exception as exc:
         logger.warning("delete_source: projects unsubscribe failed for %s: %s", source_id, exc)
 
+    # A rename is meaningless once the source is gone, and a re-ingest would
+    # derive a fresh title anyway.
+    try:
+        await meta_store.clear(source_id)
+    except Exception as exc:
+        logger.warning("delete_source: title override cleanup failed for %s: %s", source_id, exc)
+
     logger.info(
         "delete_source complete: source_id=%s chunks_deleted=%d",
         source_id,
@@ -188,6 +234,7 @@ async def delete_source(
 )
 async def clear_knowledge_base(
     service: IngestService = Depends(get_ingest_service),
+    meta_store: SourceMetaStore = Depends(get_source_meta_store),
 ) -> ClearResponse:
     """Wipe all FAISS vectors, BM25 entries, and the deduplicator.
 
@@ -210,6 +257,12 @@ async def clear_knowledge_base(
     except Exception as exc:
         logger.warning("clear_knowledge_base: projects membership clear failed: %s", exc)
 
+    # Every source is gone, so every rename goes with it.
+    try:
+        await meta_store.clear_all()
+    except Exception as exc:
+        logger.warning("clear_knowledge_base: title override clear failed: %s", exc)
+
     total = result.get("faiss_chunks_removed", 0) + result.get("bm25_chunks_removed", 0)
     logger.info("clear_knowledge_base complete: removed %d total chunks", total)
     return ClearResponse(
@@ -227,14 +280,29 @@ async def clear_knowledge_base(
 )
 async def get_sources(
     service: IngestService = Depends(get_ingest_service),
+    meta_store: SourceMetaStore = Depends(get_source_meta_store),
 ) -> SourcesResponse:
-    """Return the current number of chunks and grouped source info from the store."""
+    """Return the current number of chunks and grouped source info from the store.
+
+    Titles are derived from chunk metadata in FAISS; any rename the user made is
+    layered on top from the source-meta side store.
+    """
     try:
         faiss_store = service._orchestrator._faiss
         bm25 = service._orchestrator._bm25
         sources = await faiss_store.get_source_info()
         total_chunks = await bm25.count()
-        logger.info("get_sources: found %d source groups, %d total chunks", len(sources), total_chunks)
+        overrides = await meta_store.all_titles()
+        for source in sources:
+            custom = overrides.get(source.get("source_id"))
+            if custom:
+                source["title"] = custom
+        logger.info(
+            "get_sources: found %d source groups, %d total chunks, %d renamed",
+            len(sources),
+            total_chunks,
+            len(overrides),
+        )
     except Exception as exc:
         logger.error("get_sources failed: %s", exc)
         raise HTTPException(
