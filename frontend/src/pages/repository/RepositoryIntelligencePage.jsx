@@ -90,7 +90,6 @@ export default function RepositoryIntelligencePage() {
           onSelectSource={handleSelectSource}
           onDeleteSource={handleDeleteSource}
           onClearKB={handleClearKB}
-          onOpenModelHub={() => navigate('/models')}
         />
       }
       main={<div className="explore-main">{main}</div>}

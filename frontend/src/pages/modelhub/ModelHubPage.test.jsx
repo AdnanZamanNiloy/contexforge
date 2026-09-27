@@ -21,9 +21,6 @@ function stubFetch() {
     'fetch',
     vi.fn(async (url) => {
       const path = String(url)
-      if (path.endsWith('/ingest/sources')) {
-        return { ok: true, status: 200, json: async () => ({ sources: [] }) }
-      }
       if (path.endsWith('/models')) {
         return { ok: true, status: 200, json: async () => [MODEL] }
       }
@@ -65,11 +62,15 @@ describe('ModelHubPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1, name: /model hub/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1, name: /model center/i })).toBeInTheDocument()
     })
     expect(screen.getByText(/inference layer/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /models\s*1/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /chains\s*0/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /serving status/i })).toBeInTheDocument()
+    expect(screen.getByText(/llm serving/i)).toBeInTheDocument()
+    expect(screen.getByText(/embedding serving/i)).toBeInTheDocument()
+    // Standalone page: no workspace sidebars.
+    expect(screen.queryByRole('button', { name: /add source/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /clear knowledge base/i })).not.toBeInTheDocument()
   })
 })

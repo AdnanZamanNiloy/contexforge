@@ -318,7 +318,7 @@ export async function getMindMap(sourceId) {
   return response.json()
 }
 
-// --- Model Hub --------------------------------------------------------------
+// --- Model Center -------------------------------------------------------------
 //
 // API keys travel in the JSON request body only — never in a URL — and the
 // backend redacts them from every response.

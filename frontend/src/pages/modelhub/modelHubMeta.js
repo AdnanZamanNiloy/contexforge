@@ -1,4 +1,4 @@
-// Shared labels and helpers for the Model Hub UI.
+// Shared labels and helpers for the Model Center UI.
 
 export const MODEL_TYPES = [
   { id: 'llm', label: 'LLM', hint: 'Chat / generation model' },

@@ -5727,7 +5727,9 @@ h3 {
 body:has(.lp-root),
 body:has(.lp-root) #root,
 body:has(.pg-root),
-body:has(.pg-root) #root {
+body:has(.pg-root) #root,
+body:has(.mh-standalone),
+body:has(.mh-standalone) #root {
   height: auto;
   min-height: 100vh;
   overflow: visible;
@@ -5738,7 +5740,9 @@ body:has(.pg-root) #root {
   body:has(.lp-root),
   body:has(.lp-root) #root,
   body:has(.pg-root),
-  body:has(.pg-root) #root {
+  body:has(.pg-root) #root,
+  body:has(.mh-standalone),
+  body:has(.mh-standalone) #root {
     height: auto;
     overflow: visible;
   }
@@ -5906,33 +5910,8 @@ body:has(.pg-root) #root {
 }
 
 /* ==========================================================================
-   Model Hub — model registry, fallback chains, serving configuration
+   Model Center — model registry, fallback chains, serving configuration
    ========================================================================== */
-
-.model-hub-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-top: 8px;
-  padding: 9px 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--hairline);
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease;
-}
-.model-hub-btn:hover {
-  background: var(--accent-soft);
-  border-color: rgba(67, 119, 253, 0.4);
-  color: var(--text);
-}
 
 .mh-page {
   display: flex;
@@ -6761,6 +6740,149 @@ select.mh-input {
   font-size: 0.84rem;
 }
 
+/* ---------- standalone page ---------- */
+
+.mh-standalone {
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mh-topnav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(16, 16, 16, 0.86);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.mh-topnav-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 28px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mh-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-strong);
+  font-weight: 650;
+  font-size: 1.02rem;
+  letter-spacing: -0.01em;
+  flex: none;
+}
+
+.mh-brand-accent {
+  color: var(--primary);
+}
+
+.mh-topnav-tabs {
+  margin-left: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  width: auto;
+}
+
+.mh-topnav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.mh-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 36px 28px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.mh-status-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.mh-stat {
+  border: 1px solid var(--hairline);
+  background: #141414;
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.mh-stat dt {
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mute);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mh-stat dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+.mh-stand-body {
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .mh-status-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .mh-topnav-inner {
+    padding: 0 16px;
+    gap: 10px;
+  }
+  .mh-brand span {
+    display: none;
+  }
+  .mh-topnav-tabs {
+    flex: 1;
+    min-width: 0;
+  }
+  .mh-topnav-right .mh-back span {
+    display: none;
+  }
+  .mh-topnav-right .mh-back {
+    padding: 8px 10px;
+  }
+  .mh-wrap {
+    padding: 24px 16px 64px;
+    gap: 20px;
+  }
+}
+
 /* ---------- add-model wizard ---------- */
 
 .mh-wizard {
@@ -7088,5 +7210,138 @@ select.mh-input {
   .mh-serving-tier,
   .mh-chain-card {
     padding: 18px;
+  }
+}
+
+/* ==========================================================================
+   Workspace softness pass — rounder, calmer geometry for /workspace.
+   --------------------------------------------------------------------------
+   Appended last so these win the cascade without touching the shared radius
+   tokens (other pages keep their own shapes).  Nothing behavioral changes.
+   ========================================================================== */
+
+/* Shell columns (sidebar scoped as a compound selector: main.test.js guards
+   the single top-level `.sidebar-shell` block as the scroll architecture) */
+.app-shell .sidebar-shell {
+  border-radius: 20px;
+  padding: 18px 12px 14px;
+}
+.main-card {
+  border-radius: 20px;
+  padding: 28px 8px 24px 28px;
+}
+.evidence {
+  border-radius: 20px;
+  padding: 22px;
+}
+
+/* Sidebar */
+.brand-mark {
+  border-radius: 12px;
+}
+.add-knowledge-btn {
+  border-radius: var(--radius-pill);
+  padding: 11px 14px;
+}
+.kb-row {
+  border-radius: 10px;
+  padding: 5px 10px;
+}
+.source-item-compact {
+  border-radius: 16px;
+  padding: 8px 10px;
+}
+.source-item-icon {
+  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+}
+.source-item-linked {
+  border-radius: 50%;
+}
+.status-card {
+  border-radius: 18px;
+  padding: 10px 12px;
+}
+.clear-kb-btn {
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+/* Panels, cards, evidence */
+.panel {
+  border-radius: 18px;
+  padding: 18px;
+}
+.chunk {
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.chunk-icon {
+  border-radius: 12px;
+}
+.confidence {
+  border-radius: 18px;
+}
+.source-detail-tile {
+  border-radius: 14px;
+}
+.empty-card {
+  border-radius: 16px;
+}
+.badge {
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+}
+
+/* Inputs & buttons */
+.text-input {
+  border-radius: 14px;
+}
+.ghost,
+.primary {
+  border-radius: var(--radius-pill);
+}
+.icon-button {
+  border-radius: 12px;
+}
+.pill {
+  padding: 5px 14px;
+}
+
+/* Explore tabs read as a soft segmented control */
+.capability-tab {
+  border-radius: var(--radius-pill);
+}
+
+/* Overlays */
+.modal-card {
+  border-radius: 22px;
+  padding: 28px;
+}
+.option-card {
+  border-radius: 18px;
+  padding: 18px;
+}
+.option-icon {
+  border-radius: 14px;
+}
+.drop-zone {
+  border-radius: 16px;
+  padding: 24px 20px;
+}
+.confirm-modal {
+  border-radius: 20px;
+}
+.toast {
+  border-radius: 16px;
+  padding: 13px 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source-item-compact,
+  .add-knowledge-btn,
+  .mh-back {
+    transition: none;
   }
 }

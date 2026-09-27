@@ -102,14 +102,7 @@ export default function SourceExplorePage() {
   if (sourcesLoading && !source) {
     return (
       <AppShell
-        sidebar={
-          <Sidebar
-            sources={sources}
-            loading
-            onAddSource={() => navigate('/?add=1')}
-            onOpenModelHub={() => navigate('/models')}
-          />
-        }
+        sidebar={<Sidebar sources={sources} loading onAddSource={() => navigate('/?add=1')} />}
         main={<div className="explore-loading">Loading source…</div>}
       />
     )
@@ -118,13 +111,7 @@ export default function SourceExplorePage() {
   if (!source) {
     return (
       <AppShell
-        sidebar={
-          <Sidebar
-            sources={sources}
-            onAddSource={() => navigate('/?add=1')}
-            onOpenModelHub={() => navigate('/models')}
-          />
-        }
+        sidebar={<Sidebar sources={sources} onAddSource={() => navigate('/?add=1')} />}
         main={
           <div className="explore-empty">
             <p>This source could not be found. It may have been deleted.</p>
@@ -332,7 +319,6 @@ export default function SourceExplorePage() {
           onSelectSource={(id) => navigate(`/sources/${encodeURIComponent(id)}`)}
           onDeleteSource={handleDelete}
           onClearKB={handleClearKB}
-          onOpenModelHub={() => navigate('/models')}
         />
       }
       main={

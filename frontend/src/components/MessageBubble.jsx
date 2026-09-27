@@ -21,7 +21,7 @@ function CopyButton({ text }) {
       onClick={handleCopy}
       aria-label={copied ? 'Copied' : 'Copy answer'}
       title={copied ? 'Copied' : 'Copy answer'}
-      className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-1 text-xs
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs
         text-[#8b949e] border border-transparent
         transition-colors hover:text-[#f2f2f2] hover:border-[#3d3a39] hover:bg-[#1a1a1a]"
     >
@@ -79,9 +79,9 @@ export default function MessageBubble({ role, text, status }) {
     return (
       <div className="flex justify-end">
         <div
-          className="max-w-[78%] rounded-[8px] px-4 py-3
-            bg-[#1a1a1a]
-            border border-[#3d3a39]"
+          className="max-w-[78%] rounded-[20px] rounded-br-[8px] px-5 py-3.5
+            bg-[#222222]
+            border border-[rgba(255,255,255,0.07)]"
         >
           <p className="text-base text-[#f2f2f2] leading-relaxed m-0 whitespace-pre-line">{text}</p>
         </div>
@@ -92,7 +92,7 @@ export default function MessageBubble({ role, text, status }) {
   const isStreamingEmpty = status === 'streaming' && !text
 
   return (
-    <div className="rounded-[8px] p-4">
+    <div className="rounded-[20px] rounded-tl-[8px] px-5 py-4 bg-[rgba(255,255,255,0.025)] border border-[rgba(255,255,255,0.06)]">
       {isStreamingEmpty ? (
         <span className="inline-flex items-center gap-0.5 text-[#8b949e]">
           <span className="animate-pulse duration-1000">Thinking</span>

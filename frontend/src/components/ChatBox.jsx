@@ -54,18 +54,18 @@ export default function ChatBox({
   }, [messages])
 
   const textareaBase =
-    'w-full resize-none rounded-[8px] px-5 py-4 pr-14 overflow-y-hidden ' +
+    'w-full resize-none rounded-[24px] px-6 py-4 pr-16 overflow-y-hidden ' +
     'bg-[#1a1a1a] ' +
     'border border-[#3d3a39] ' +
     'text-[#f2f2f2] placeholder-[#8b949e] ' +
     'text-base leading-relaxed outline-none ' +
     'transition-all duration-200 ' +
     'focus:border-[rgba(67,119,253,0.6)] ' +
-    'focus:bg-[#1a1a1a] ' +
+    'focus:bg-[#1e1e1e] ' +
     'disabled:opacity-60 disabled:cursor-not-allowed'
 
   const sendBtnBase =
-    'absolute right-2 bottom-2 p-2.5 rounded-[6px] ' +
+    'absolute right-3 bottom-3 p-2.5 rounded-full ' +
     'bg-[#4377FD] ' +
     'text-[#101010] font-semibold ' +
     'disabled:opacity-40 disabled:cursor-not-allowed ' +
@@ -176,7 +176,7 @@ export default function ChatBox({
           title="Start a new chat and clear this thread"
           aria-label="Start a new chat"
           disabled={!onNewChat}
-          className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-[6px] text-xs font-semibold
+          className="group inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold
             bg-[#1a1a1a] text-[#f2f2f2]
             border border-[#3d3a39]
             cursor-pointer shrink-0
@@ -202,7 +202,7 @@ export default function ChatBox({
           </svg>
           <span>New Chat</span>
           <kbd
-            className="hidden sm:inline-block font-mono text-[0.62rem] leading-none px-1.5 py-1 rounded-[4px]
+            className="hidden sm:inline-block font-mono text-[0.62rem] leading-none px-1.5 py-1 rounded-md
               text-[#8b949e] bg-[#101010] border border-[#3d3a39]"
           >
             ⌘K
@@ -233,14 +233,14 @@ export default function ChatBox({
 
         {error ? (
           <div
-            className="flex items-center justify-between gap-3 px-4 py-3 rounded-[8px]
+            className="flex items-center justify-between gap-3 px-5 py-3.5 rounded-[16px]
               bg-[rgba(139,148,158,0.1)] border border-[rgba(139,148,158,0.3)]
               text-[#bdbdbd] text-sm"
           >
             <span>{error}</span>
             <button
               onClick={onRetry}
-              className="px-3 py-1 rounded-[6px] text-xs font-medium
+              className="px-4 py-1.5 rounded-full text-xs font-medium
                 bg-[rgba(255,255,255,0.05)] text-[#f2f2f2]
                 border border-[#3d3a39]
                 hover:bg-[rgba(255,255,255,0.1)] transition-colors cursor-pointer"
@@ -252,8 +252,8 @@ export default function ChatBox({
 
         {uploadHint ? (
           <div
-            className="rounded-[8px] border border-[#3d3a39]
-              bg-[#1a1a1a] p-4 space-y-2"
+            className="rounded-[20px] border border-[#3d3a39]
+              bg-[#1a1a1a] p-5 space-y-2"
           >
             <div className="font-semibold text-sm text-white">
               No sources were used for this answer.
