@@ -92,7 +92,7 @@ export default function MessageBubble({ role, text, status }) {
   const isStreamingEmpty = status === 'streaming' && !text
 
   return (
-    <div className="rounded-[20px] rounded-tl-[8px] px-5 py-4 bg-[rgba(255,255,255,0.025)] border border-[rgba(255,255,255,0.06)]">
+    <div className="px-1 py-1">
       {isStreamingEmpty ? (
         <span className="inline-flex items-center gap-0.5 text-[#8b949e]">
           <span className="animate-pulse duration-1000">Thinking</span>

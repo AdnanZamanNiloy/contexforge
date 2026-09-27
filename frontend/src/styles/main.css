@@ -586,9 +586,9 @@ h3 {
 }
 
 .clear-kb-btn:hover {
-  color: #f0a3a3;
-  background: rgba(240, 163, 163, 0.07);
-  border-color: rgba(240, 163, 163, 0.25);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--hairline-soft);
 }
 
 .main-shell {
@@ -937,15 +937,6 @@ h3 {
   100% {
     opacity: 0.3;
   }
-}
-
-/* Donut transition */
-.donut svg .value {
-  transition: stroke-dashoffset 0.6s ease;
-}
-
-.donut:hover svg .value {
-  stroke: var(--primary);
 }
 
 @keyframes shimmer {
@@ -1344,6 +1335,13 @@ h3 {
 
 .evidence .mindmap-cta-row {
   margin-bottom: 20px;
+  flex: 0 0 auto;
+}
+
+.evidence .mindmap-cta-row.is-pinned {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 @media (min-width: 1201px) {
@@ -1551,63 +1549,13 @@ h3 {
 .confidence {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 18px;
+  gap: 0;
   padding: 4px 2px 0;
   border: none;
   border-radius: 0;
   background: transparent;
-}
-
-.donut {
-  display: grid;
-  place-items: center;
-  position: relative;
-}
-
-.donut svg {
-  width: 120px;
-  height: 120px;
-}
-
-.track {
-  fill: none;
-  stroke: var(--stroke);
-  stroke-width: 10;
-}
-
-.value {
-  fill: none;
-  stroke: var(--primary);
-  stroke-width: 10;
-  stroke-linecap: round;
-  transform: rotate(-90deg);
-  transform-origin: 60px 60px;
-}
-
-.donut-value {
-  position: absolute;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.donut-value strong {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #ffffff;
-  display: block;
-  line-height: 1;
-}
-
-.donut-value span {
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: var(--muted);
-  line-height: 1;
 }
 
 .confidence-list {

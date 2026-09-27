@@ -189,8 +189,6 @@ export default function SourceViewer({
 
   const showEmpty = !isLoading && !hasSources
 
-  const circumference = 2 * Math.PI * 46
-  const offset = circumference - (circumference * Math.min(displayConfidence, 100)) / 100
   const visibleSources = sources.slice(0, visibleChunks)
   const hasMoreChunks = totalChunks > visibleChunks
 
@@ -212,13 +210,13 @@ export default function SourceViewer({
 
   return (
     <aside className="evidence">
+      {showQuickActions ? (
+        <div className="mindmap-cta-row is-pinned">
+          <CreateMindMapButton sourceId={dominantSourceId} />
+          {onOpenIntel ? <RepositoryIntelButton repoUrl={repoUrl} onOpen={onOpenIntel} /> : null}
+        </div>
+      ) : null}
       <section className="panel panel-scroll panel-chunks">
-        {showQuickActions ? (
-          <div className="mindmap-cta-row">
-            <CreateMindMapButton sourceId={dominantSourceId} />
-            {onOpenIntel ? <RepositoryIntelButton repoUrl={repoUrl} onOpen={onOpenIntel} /> : null}
-          </div>
-        ) : null}
         <div className="panel-head">
           <div className="ev-head-text">
             <span className="ev-eyebrow">Evidence</span>
@@ -349,23 +347,6 @@ export default function SourceViewer({
           </div>
         ) : (
           <div className="confidence">
-            <div className="donut">
-              <svg viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="46" className="track" />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="46"
-                  className="value"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={offset}
-                />
-              </svg>
-              <div className="donut-value">
-                <strong>{displayConfidence}%</strong>
-                <span>Confidence</span>
-              </div>
-            </div>
             <div className="confidence-list">
               <div>
                 <span>Answer Confidence</span>
