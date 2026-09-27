@@ -445,9 +445,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--ink-strong);
-  color: #101010;
-  border: 1px solid var(--ink-strong);
+  background: var(--primary);
+  color: var(--on-primary);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-pill);
   padding: 10px 18px;
   font-weight: 650;
@@ -459,7 +459,7 @@
 }
 
 .pg-new-btn:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.08);
   transform: translateY(-1px);
 }
 
@@ -672,9 +672,9 @@
 }
 
 .pg-btn-primary {
-  background: var(--ink-strong);
-  color: #101010;
-  border: 1px solid var(--ink-strong);
+  background: var(--primary);
+  color: var(--on-primary);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-pill);
   padding: 10px 20px;
   font-weight: 650;
@@ -684,7 +684,7 @@
 }
 
 .pg-btn-primary:hover {
-  filter: brightness(1.07);
+  filter: brightness(1.08);
 }
 
 .pg-btn-ghost {
