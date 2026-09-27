@@ -70,7 +70,7 @@ describe('ProjectsPage', () => {
     expect(screen.getByRole('button', { name: /browse templates/i })).toBeInTheDocument()
   })
 
-  it('marks Projects as the active nav item and offers command-palette search', async () => {
+  it('marks Projects as the active nav item and links to Model Center', async () => {
     mockProjectsFetch([])
 
     render(
@@ -83,6 +83,7 @@ describe('ProjectsPage', () => {
       expect(screen.getByRole('navigation', { name: /primary/i })).toBeInTheDocument()
     })
     expect(screen.getByRole('button', { name: /projects/i, current: 'page' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /search projects/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /model center/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /search projects/i })).not.toBeInTheDocument()
   })
 })
