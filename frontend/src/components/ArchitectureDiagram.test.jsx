@@ -8,6 +8,24 @@ import * as api from '../services/api'
 // component, so these tests never load the real library — they assert the
 // behaviour around it: which endpoint is called, when, and what the user is told.
 
+// The Architecture Diagram view.
+//
+// Mermaid is stubbed rather than really rendered.  jsdom does not implement
+// SVGTextElement.getComputedTextLength(), which Mermaid's layout needs to size a
+// label, so a real render throws there and leaves nothing in the DOM — that is a
+// limitation of the test environment, not of the view, and real rendering is
+// covered by the browser end-to-end check.  Stubbing it also lets these tests
+// assert the behaviour that actually matters here: that the diagram is written
+// into the host element again after a full-screen round trip replaces it.
+const renderMock = vi.fn(async (id) => ({ svg: `<svg data-render-id="${id}"></svg>` }))
+
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    render: (id, source) => renderMock(id, source),
+  },
+}))
+
 const DIAGRAM = {
   mermaid: 'flowchart TD\n  n_n1["API"]',
   explanation: 'A short summary.',
@@ -24,6 +42,7 @@ const DIAGRAM = {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  renderMock.mockClear()
 })
 
 afterEach(() => {
@@ -161,5 +180,215 @@ describe('ArchitectureDiagram', () => {
     await waitFor(() => {
       expect(screen.getByText(/some paths were unverified/i)).toBeInTheDocument()
     })
+  })
+})
+
+describe('ArchitectureDiagram full screen', () => {
+  async function renderDiagram() {
+    vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const actor = userEvent.setup()
+    const utils = render(<ArchitectureDiagram projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText('A short summary.')).toBeInTheDocument()
+    })
+    return { actor, ...utils }
+  }
+
+  it('offers a full-screen control only once a diagram is on screen', async () => {
+    const { rerender } = render(<ArchitectureDiagram projectId="p1" hasGithubSource={false} />)
+    expect(screen.queryByRole('button', { name: /full screen/i })).not.toBeInTheDocument()
+
+    await renderDiagram()
+    expect(screen.getByRole('button', { name: /full screen/i })).toBeInTheDocument()
+    rerender(<ArchitectureDiagram projectId="p2" />)
+  })
+
+  it('portals to the body so the sidebars are genuinely out of the way', async () => {
+    const { actor } = await renderDiagram()
+
+    // Rendered in place to begin with, inside its column.
+    expect(document.querySelector('.ad-root')?.closest('.ad-fullscreen')).toBeNull()
+
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+
+    const overlay = document.querySelector('.ad-fullscreen')
+    expect(overlay).not.toBeNull()
+    // The overlay is a sibling of the app root, not a descendant of the
+    // three-column grid, so it can cover the whole viewport.
+    expect(overlay?.parentElement).toBe(document.body)
+    expect(overlay?.getAttribute('aria-modal')).toBe('true')
+  })
+
+  it('exits on the X button', async () => {
+    const { actor } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    expect(document.querySelector('.ad-fullscreen')).not.toBeNull()
+
+    await actor.click(screen.getByRole('button', { name: /exit/i }))
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen')).toBeNull()
+    })
+  })
+
+  it('exits on Escape', async () => {
+    const { actor } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    expect(document.querySelector('.ad-fullscreen')).not.toBeNull()
+
+    await actor.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen')).toBeNull()
+    })
+  })
+
+  it('releases the body scroll lock when it exits', async () => {
+    const { actor } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    expect(document.body.style.overflow).toBe('hidden')
+
+    await actor.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(document.body.style.overflow).not.toBe('hidden')
+    })
+  })
+
+  it('keeps the diagram rendered after a full-screen round trip', async () => {
+    const { actor } = await renderDiagram()
+    await waitFor(() => {
+      expect(document.querySelector('.ad-canvas svg')).not.toBeNull()
+    })
+    const rendersBefore = renderMock.mock.calls.length
+
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+
+    // The portal swap hands the host a brand new element, so the render effect
+    // has to run again: the SVG written into the old (now detached) node would
+    // otherwise leave the full-screen surface blank.
+    await waitFor(() => {
+      expect(renderMock.mock.calls.length).toBeGreaterThan(rendersBefore)
+    })
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen .ad-canvas svg')).not.toBeNull()
+    })
+
+    await actor.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(document.querySelector('.ad-canvas svg')).not.toBeNull()
+    })
+  })
+
+  it('hides the full-screen button while already full screen', async () => {
+    const { actor } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen')).not.toBeNull()
+    })
+    expect(screen.queryByRole('button', { name: /full screen/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /exit/i })).toBeInTheDocument()
+  })
+})
+
+describe('ArchitectureDiagram full screen layout', () => {
+  async function renderDiagram() {
+    vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const actor = userEvent.setup()
+    const utils = render(<ArchitectureDiagram projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText('A short summary.')).toBeInTheDocument()
+    })
+    return { actor, ...utils }
+  }
+
+  it('shows the explanation in the normal view', async () => {
+    await renderDiagram()
+    expect(document.querySelector('.ad-explanation')).not.toBeNull()
+  })
+
+  it('drops the explanation in full screen so the diagram gets the room', async () => {
+    const { actor } = await renderDiagram()
+    expect(document.querySelector('.ad-explanation')).not.toBeNull()
+
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen')).not.toBeNull()
+    })
+    expect(document.querySelector('.ad-explanation')).toBeNull()
+
+    // ...and it comes back on exit rather than being lost for the session.
+    await actor.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(document.querySelector('.ad-explanation')).not.toBeNull()
+    })
+  })
+
+  it('still identifies the repository in full screen', async () => {
+    const { actor } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen')).not.toBeNull()
+    })
+    // Only the prose panel goes; the repo/nodes summary stays.
+    expect(document.querySelector('.ad-fullscreen .ad-meta')?.textContent).toContain('acme/widgets')
+  })
+})
+
+describe('ArchitectureDiagram full screen shell hiding', () => {
+  async function renderDiagram() {
+    vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const actor = userEvent.setup()
+    const utils = render(
+      <div className="app-layout">
+        <ArchitectureDiagram projectId="p1" />
+      </div>,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('A short summary.')).toBeInTheDocument()
+    })
+    return { actor, ...utils }
+  }
+
+  it('marks the body so the app shell is hidden, not just covered', async () => {
+    const { actor } = await renderDiagram()
+    expect(document.body.classList.contains('ad-fullscreen-active')).toBe(false)
+
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    await waitFor(() => {
+      expect(document.body.classList.contains('ad-fullscreen-active')).toBe(true)
+    })
+
+    await actor.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(document.body.classList.contains('ad-fullscreen-active')).toBe(false)
+    })
+  })
+
+  it('keeps the overlay outside the hidden shell so it stays visible', async () => {
+    const { actor } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    await waitFor(() => {
+      expect(document.querySelector('.ad-fullscreen')).not.toBeNull()
+    })
+
+    // The shell is display:none, and the overlay is portalled to body, so it is
+    // not a descendant of anything that was hidden.
+    const overlay = document.querySelector('.ad-fullscreen')
+    expect(overlay?.closest('.app-layout')).toBeNull()
+    expect(overlay?.parentElement).toBe(document.body)
+  })
+
+  it('cleans the body class up on unmount so a closed view cannot leave it set', async () => {
+    const { actor, unmount } = await renderDiagram()
+    await actor.click(screen.getByRole('button', { name: /full screen/i }))
+    await waitFor(() => {
+      expect(document.body.classList.contains('ad-fullscreen-active')).toBe(true)
+    })
+
+    unmount()
+    expect(document.body.classList.contains('ad-fullscreen-active')).toBe(false)
+    expect(document.body.style.overflow).not.toBe('hidden')
   })
 })

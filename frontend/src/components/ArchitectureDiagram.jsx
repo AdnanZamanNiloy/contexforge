@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import { getArchitecture, regenerateArchitecture, streamArchitecture } from '../services/api'
 
@@ -142,6 +143,42 @@ function DiagramIcon() {
   )
 }
 
+function ExpandIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  )
+}
+
 function ZoomControls({ zoom, onZoom, onFit }) {
   return (
     <div className="ad-zoom" role="group" aria-label="Diagram zoom">
@@ -175,10 +212,39 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
   const [error, setError] = useState('')
   const [zoom, setZoom] = useState(1)
   const [copied, setCopied] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const surfaceRef = useRef(null)
   const svgHostRef = useRef(null)
   const dragRef = useRef(null)
+
+  const exitFullscreen = useCallback(() => setIsFullscreen(false), [])
+
+  // Escape leaves full screen, matching the mind map overlay.
+  useEffect(() => {
+    if (!isFullscreen) return undefined
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setIsFullscreen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isFullscreen])
+
+  // The page behind the overlay must not scroll, or the fixed layer would let it
+  // slide underneath.  The app shell is also hidden outright rather than merely
+  // covered: the overlay is opaque, so the sidebar and Studio rail are invisible
+  // either way, but leaving them laid out means Tab can still move focus into
+  // controls the user cannot see behind the diagram.
+  useEffect(() => {
+    if (!isFullscreen) return undefined
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('ad-fullscreen-active')
+    return () => {
+      document.body.style.overflow = previous
+      document.body.classList.remove('ad-fullscreen-active')
+    }
+  }, [isFullscreen])
 
   const run = useCallback(
     (regenerate) => {
@@ -263,7 +329,11 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
       // Remove any svg Mermaid left in the document body for this id.
       document.getElementById(id)?.remove()
     }
-  }, [diagram?.mermaid])
+    // `isFullscreen` is a real dependency: entering or leaving the portal swaps
+    // the host element, so the SVG written into the old (now detached) node
+    // would otherwise leave the new surface blank.  Re-rendering Mermaid on a
+    // mode toggle is cheap next to showing an empty diagram.
+  }, [diagram?.mermaid, isFullscreen])
 
   // ---- Pan & zoom -------------------------------------------------------- //
   // Pointer events rather than wheel-only, so a trackpad drag pans and a pinch
@@ -311,7 +381,10 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
     }
     surface.addEventListener('wheel', onWheel, { passive: false })
     return () => surface.removeEventListener('wheel', onWheel)
-  }, [])
+    // `isFullscreen` for the same reason as the render effect: the portal swap
+    // hands us a different element, and a listener left on the detached one
+    // would make Ctrl+scroll stop working in full screen.
+  }, [isFullscreen])
 
   const mermaidSource = diagram?.mermaid
   // Derived at render time rather than stored, so a payload that fails the
@@ -359,7 +432,7 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
     )
   }
 
-  return (
+  const view = (
     <div className="rs-view ad-root">
       <div className="rs-view-head ad-head">
         <div>
@@ -378,6 +451,17 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
           ) : null}
         </div>
         <div className="ad-actions">
+          {isFullscreen ? (
+            <button
+              type="button"
+              className="ad-btn"
+              onClick={exitFullscreen}
+              title="Exit full screen (Esc)"
+            >
+              <CloseIcon />
+              <span>Exit</span>
+            </button>
+          ) : null}
           <button
             type="button"
             className="ad-btn"
@@ -398,6 +482,18 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
             <RefreshIcon />
             <span>Regenerate</span>
           </button>
+          {isFullscreen ? null : (
+            <button
+              type="button"
+              className="ad-btn ad-btn-icon"
+              onClick={() => setIsFullscreen(true)}
+              disabled={!diagram || unsafeSource}
+              title="Expand to fill the screen"
+              aria-label="Full screen"
+            >
+              <ExpandIcon />
+            </button>
+          )}
         </div>
       </div>
 
@@ -414,7 +510,12 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
 
       {diagram && !unsafeSource ? (
         <>
-          {diagram.explanation ? <p className="ad-explanation">{diagram.explanation}</p> : null}
+          {/* The explanation is useful context, but in full screen the diagram
+              is the point and the prose just costs vertical room, so it is
+              dropped for that mode. */}
+          {diagram.explanation && !isFullscreen ? (
+            <p className="ad-explanation">{diagram.explanation}</p>
+          ) : null}
           <div
             className="ad-surface"
             ref={surfaceRef}
@@ -436,6 +537,7 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
             />
             <span className="ad-foot-hint">
               Drag to pan · Ctrl+scroll to zoom
+              {isFullscreen ? ' · Esc to exit' : ''}
               {diagram.truncated_paths ? ' · some paths were unverified' : ''}
             </span>
           </div>
@@ -460,6 +562,27 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
         </p>
       ) : null}
     </div>
+  )
+
+  if (!isFullscreen) {
+    return view
+  }
+
+  // A portal to document.body rather than a CSS state on the surface: the
+  // workspace is a three-column grid (sidebar · main · Studio rail), so a
+  // positioned overlay nested inside the main column could only ever fill that
+  // column.  Portalling is what lets the diagram take the whole viewport with
+  // the sidebars genuinely out of the way.
+  return createPortal(
+    <div
+      className="ad-fullscreen"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Architecture diagram"
+    >
+      {view}
+    </div>,
+    document.body,
   )
 }
 

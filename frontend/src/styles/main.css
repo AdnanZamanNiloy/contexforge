@@ -6235,3 +6235,57 @@ select.mh-input {
     animation: none;
   }
 }
+
+/* Architecture Diagram — full-screen overlay.
+   A portal to document.body, so the workspace's three-column grid (sidebar ·
+   main · Studio rail) is genuinely out of the way rather than merely covered.
+   Mirrors .mindmap-fullscreen so the two overlays behave identically. */
+.ad-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--canvas);
+  animation: ad-fade-in 0.16s ease;
+}
+
+.ad-fullscreen .ad-root {
+  height: 100%;
+  min-height: 0;
+  padding: 18px 22px;
+  gap: 14px;
+}
+
+.ad-fullscreen .ad-surface {
+  min-height: 0;
+}
+
+.ad-fullscreen .ad-head h3 {
+  font-size: 1.05rem;
+}
+
+@keyframes ad-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Icon-only variant of the toolbar button, used for the full-screen toggle so it
+   does not widen the action row in the narrow Studio column. */
+.ad-btn-icon {
+  padding: 6px 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-fullscreen {
+    animation: none;
+  }
+}
+
+/* While the diagram overlay is up the app shell is removed from the layout, not
+   just painted over, so keyboard focus cannot reach the controls behind it. */
+body.ad-fullscreen-active .app-layout {
+  display: none;
+}
