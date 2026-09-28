@@ -28,7 +28,7 @@ import re
 
 import httpx
 
-__all__ = ["FetchOutcome", "GitFileFetcher", "default_branch"]
+__all__ = ["BRANCH_CANDIDATES", "FetchOutcome", "GitFileFetcher", "default_branch"]
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,19 @@ _SAFE_PATH = re.compile(r"^[A-Za-z0-9._\-/]+$")
 # Python and markdown source, so the report can read the latter as prose.
 _RAIL_SUFFIXES = (".md", ".rst", ".txt")
 
+# Branch names tried in order, without asking the API first.  `default_branch()`
+# costs a request against a 60-per-hour anonymous quota that the ingest path also
+# spends, and being rate-limited there silently disabled the whole fetch phase:
+# the scan reported nothing rather than saying why.  Nearly every repository is
+# on one of these two, so the common case now spends no quota at all.
+BRANCH_CANDIDATES = ("main", "master")
+
 
 async def default_branch(owner: str, repo: str, timeout: float = 10.0) -> str | None:
     """Resolve a repository's default branch, or ``None`` if unreachable.
 
-    One API call per scan, cached by the caller for the scan's duration.  The
-    index does not record which branch was ingested, so raw file URLs need it.
+    Only consulted once the cheap branch guesses have failed, because this is
+    the one call that spends API quota and it is rate-limited.
     """
     try:
         async with httpx.AsyncClient(
@@ -53,6 +60,12 @@ async def default_branch(owner: str, repo: str, timeout: float = 10.0) -> str | 
         ) as client:
             response = await client.get(f"https://api.github.com/repos/{owner}/{repo}")
             if response.status_code != 200:
+                logger.info(
+                    "health: branch lookup for %s/%s returned HTTP %s",
+                    owner,
+                    repo,
+                    response.status_code,
+                )
                 return None
             branch = (response.json() or {}).get("default_branch")
             return str(branch) if branch else None
@@ -85,7 +98,7 @@ class GitFileFetcher:
         self,
         owner: str,
         repo: str,
-        branch: str,
+        branch: str | None = None,
         *,
         max_files: int = 40,
         max_bytes: int = 120_000,
@@ -94,18 +107,54 @@ class GitFileFetcher:
     ) -> None:
         self._owner = owner
         self._repo = repo
+        # When unknown, the branch is discovered from candidates that need no API
+        # quota, falling back to the one rate-limited lookup.
         self._branch = branch
         self._max_files = max_files
         self._max_bytes = max_bytes
         self._concurrency = concurrency
         self._timeout = timeout
+        #: Set when every branch guess missed, so the report can say the files
+        #: were unreachable rather than implying the repository had no code.
+        self.branch_unresolved = False
 
-    def _url(self, path: str) -> str | None:
+    def _url(self, path: str, branch: str | None = None) -> str | None:
         if not _SAFE_PATH.match(path) or ".." in path:
+            return None
+        target = branch if branch is not None else self._branch
+        if not target:
             return None
         # raw.githubusercontent.com serves the file bytes directly and spends no
         # API quota, unlike the contents API.
-        return f"https://raw.githubusercontent.com/{self._owner}/{self._repo}/{self._branch}/{path}"
+        return f"https://raw.githubusercontent.com/{self._owner}/{self._repo}/{target}/{path}"
+
+    async def _resolve_branch(self, probe: str) -> str | None:
+        """Find a branch that serves *probe*, spending no API quota if possible."""
+        candidates = [self._branch] if self._branch else []
+        candidates += [b for b in BRANCH_CANDIDATES if b != self._branch]
+        async with httpx.AsyncClient(
+            timeout=self._timeout,
+            follow_redirects=True,
+            headers={"User-Agent": "ContextForge-HealthScan"},
+        ) as client:
+            for candidate in candidates:
+                url = self._url(probe, candidate)
+                if url is None:
+                    continue
+                try:
+                    response = await client.get(url)
+                except Exception as exc:
+                    logger.debug("health: branch probe failed for %s (%s)", candidate, exc)
+                    return None
+                if response.status_code == 200:
+                    return candidate
+
+        # Every guess missed: one rate-limited API call before giving up.
+        resolved = await default_branch(self._owner, self._repo)
+        if resolved:
+            return resolved
+        self.branch_unresolved = True
+        return None
 
     async def fetch(self, paths: list[str], deadline_seconds: float = 20.0) -> FetchOutcome:
         outcome = FetchOutcome()
@@ -114,15 +163,24 @@ class GitFileFetcher:
         # nothing else is worth a request.
         wanted = [p for p in paths if p.endswith(".py") or p.endswith(_RAIL_SUFFIXES)]
         for path in wanted:
-            if self._url(path) is None:
+            if not _SAFE_PATH.match(path) or ".." in path:
                 outcome.skipped += 1
-        wanted = [p for p in wanted if self._url(path) is not None]
+        wanted = [p for p in wanted if _SAFE_PATH.match(p) and ".." not in p]
 
         if len(wanted) > self._max_files:
             # Shallow paths first: real code and a README live near the top.
             wanted = sorted(wanted, key=lambda p: (p.count("/"), p))[: self._max_files]
             outcome.skipped += 1
         if not wanted:
+            return outcome
+
+        # Find the branch before spending a request per file. The probe reuses a
+        # file already wanted, so a repository on `main` costs no quota at all.
+        if self._branch is None:
+            self._branch = await self._resolve_branch(wanted[0])
+        if not self._branch:
+            logger.info("health: no usable branch for %s/%s", self._owner, self._repo)
+            outcome.failed += len(wanted)
             return outcome
 
         semaphore = asyncio.Semaphore(self._concurrency)

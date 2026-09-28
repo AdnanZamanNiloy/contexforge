@@ -397,7 +397,8 @@ async def test_rescan_bypasses_the_cache(tmp_path, chunks):
 
 
 @pytest.mark.asyncio
-async def test_non_python_repo_reports_honestly_rather_than_faking(tmp_path):
+async def test_non_python_repo_reports_honestly_rather_than_faking(tmp_path, stub_fetch):
+    stub_fetch.bodies = {}
     chunks = [FakeChunk("const a = 1\n" * 50, "src/app.js", "a")]
     result = await _service(tmp_path, chunks).scan("p1", "repo:acme/widgets")
     assert result["symbol_count"] == 0
@@ -466,7 +467,8 @@ async def test_measures_reassembled_text_chunked_index(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_unparseable_file_is_skipped_and_counted_not_guessed(tmp_path):
+async def test_unparseable_file_is_skipped_and_counted_not_guessed(tmp_path, stub_fetch):
+    stub_fetch.bodies = {}
     """A file that will not parse is reported as skipped, never measured."""
     chunks = [
         FakeChunk("    return 1\n    ) garbage ((", "app/broken.py"),
@@ -484,7 +486,8 @@ async def test_unparseable_file_is_skipped_and_counted_not_guessed(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_skipped_files_do_not_count_as_low_risk(tmp_path):
+async def test_skipped_files_do_not_count_as_low_risk(tmp_path, stub_fetch):
+    stub_fetch.bodies = {}
     """A file that could not be measured must not dilute the health score.
 
     Counting unparsed files as zero-risk would make a broken index look healthy,
@@ -505,19 +508,30 @@ async def test_skipped_files_do_not_count_as_low_risk(tmp_path):
 
 
 class StubFetcher:
-    """Stands in for GitFileFetcher, returning canned file bodies."""
+    """Stands in for GitFileFetcher, returning canned file bodies.
+
+    A unit test must not touch the network: the real fetcher is rate-limited
+    unpredictably, so an unstubbed test asserted a different message depending
+    on whether GitHub was answering.
+    """
 
     instances: ClassVar[list] = []
+    bodies: ClassVar[dict] = {}
+    #: Flipped by the rate-limit test; read in fetch() rather than assigned in
+    #: __init__ so a class-level override is not shadowed per instance.
+    default_unresolved: ClassVar[bool] = False
 
-    def __init__(self, owner, repo, branch, **kwargs):
+    def __init__(self, owner, repo, branch=None, **kwargs):
         self.owner, self.repo, self.branch = owner, repo, branch
         self.paths: list[str] = []
+        self.branch_unresolved = False
         StubFetcher.instances.append(self)
 
     async def fetch(self, paths, deadline_seconds=20.0):
         from app.health.fetch import FetchOutcome
 
         self.paths = list(paths)
+        self.branch_unresolved = self.default_unresolved
         outcome = FetchOutcome()
         outcome.attempted = len(paths)
         for path in paths:
@@ -533,8 +547,9 @@ def stub_fetch(monkeypatch):
     import app.health.service as service_module
 
     StubFetcher.instances = []
+    StubFetcher.bodies = {}
+    StubFetcher.default_unresolved = False
     monkeypatch.setattr(service_module, "GitFileFetcher", StubFetcher)
-    monkeypatch.setattr(service_module, "default_branch", lambda owner, repo: _async_value("main"))
     return StubFetcher
 
 
@@ -584,7 +599,18 @@ async def test_a_failed_fetch_is_counted_not_faked(tmp_path, stub_fetch):
     assert result["symbol_count"] == 0
     # An unreadable index is not a healthy repository.
     assert result["health"] is None
-    assert "could not be read" in result["coverage_note"]
+    assert "could not be read and was skipped" in result["coverage_note"]
+
+
+@pytest.mark.asyncio
+async def test_a_rate_limited_branch_lookup_says_so(tmp_path, stub_fetch):
+    """A rate limit is temporary and the files are fine, so it is named as the
+    cause rather than reported as unreadable files."""
+    stub_fetch.default_unresolved = True
+    chunks = [FakeChunk("class C:\n", "app/broken.py")]
+    result = await _service(tmp_path, chunks).scan("p1", "repo:acme/widgets")
+    assert "rate-limited" in result["coverage_note"]
+    assert "GITHUB_TOKEN" in result["coverage_note"]
 
 
 @pytest.mark.asyncio

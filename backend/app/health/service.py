@@ -29,7 +29,7 @@ import re
 import time
 from typing import Any
 
-from app.health.fetch import GitFileFetcher, default_branch
+from app.health.fetch import GitFileFetcher
 from app.health.metrics import iter_symbols
 from app.health.risk import BANDS, RISK_WEIGHTS, analyze, health_from_bands
 from app.health.storage import HealthStore
@@ -229,22 +229,24 @@ class HealthService:
         # to measure it exactly is to read the file.  Bounded to the files that
         # actually need it, and skipped entirely when everything resolved.
         fetched = 0
+        unreachable = False
         if unresolved and owner and repo:
-            branch = await default_branch(owner, repo)
-            if branch:
-                outcome = await GitFileFetcher(owner, repo, branch).fetch(unresolved)
-                for path in unresolved:
-                    text = outcome.files.get(path)
-                    if not text:
-                        continue
-                    symbols = iter_symbols(text[:MAX_SOURCE_CHARS], path)
-                    if symbols is None:
-                        continue
-                    fetched += 1
-                    measured_paths += 1
-                    rows.extend(self._rows_for(symbols))
-            else:
-                logger.info("health: could not resolve a branch for %s", repository)
+            # The fetcher finds the branch itself, preferring candidates that need
+            # no API quota: being rate-limited on the branch lookup used to
+            # disable this phase entirely, and the report just came back empty.
+            fetcher = GitFileFetcher(owner, repo)
+            outcome = await fetcher.fetch(unresolved)
+            unreachable = fetcher.branch_unresolved
+            for path in unresolved:
+                text = outcome.files.get(path)
+                if not text:
+                    continue
+                symbols = iter_symbols(text[:MAX_SOURCE_CHARS], path)
+                if symbols is None:
+                    continue
+                fetched += 1
+                measured_paths += 1
+                rows.extend(self._rows_for(symbols))
         unparseable_paths = len(unresolved) - fetched
 
         if len(rows) >= MAX_SYMBOLS:
@@ -301,7 +303,7 @@ class HealthService:
             "measured_files": measured_paths,
             "unparsed_files": unparseable_paths,
             "fetched_files": fetched,
-            "coverage_note": _coverage_note(measured, len(all_paths), unparseable_paths, fetched),
+            "coverage_note": _coverage_note(measured, len(all_paths), unparseable_paths, fetched, unreachable),
             "fingerprint": fingerprint,
         }
 
@@ -343,7 +345,7 @@ def _count(value: int, noun: str) -> str:
     return f"{value} {noun}" if value == 1 else f"{value} {noun}s"
 
 
-def _coverage_note(measured: list[str], files: int, unparsed: int, fetched: int = 0) -> str:
+def _coverage_note(measured: list[str], files: int, unparsed: int, fetched: int = 0, unreachable: bool = False) -> str:
     scope = f"for {', '.join(measured)} only" if measured else "for Python only"
     note = (
         f"Per-function risk is measured {scope}; other files are listed by size. "
@@ -356,7 +358,14 @@ def _coverage_note(measured: list[str], files: int, unparsed: int, fetched: int 
             f"them cut at chunk boundaries."
         )
     if unparsed:
-        # "1 file ... was" and "2 files ... were" both have to read correctly.
-        verb = "was" if unparsed == 1 else "were"
-        note += f" {_count(unparsed, 'file')} could not be read and {verb} skipped."
+        if unreachable:
+            # The cause matters: a rate limit is temporary and the files are fine.
+            note += (
+                f" {_count(unparsed, 'file')} could not be read from GitHub — the branch lookup"
+                f" is rate-limited, so a GITHUB_TOKEN would let this scan measure them."
+            )
+        else:
+            # "1 file ... was" and "2 files ... were" both have to read correctly.
+            verb = "was" if unparsed == 1 else "were"
+            note += f" {_count(unparsed, 'file')} could not be read and {verb} skipped."
     return note
