@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 
 import ModelsTab from './ModelsTab'
 
@@ -29,6 +29,26 @@ const EMBEDDING_MODEL = {
 }
 
 describe('ModelsTab', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function stubTestEndpoint(response, { ok = true, status = 200 } = {}) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok, status, json: async () => response })),
+    )
+  }
+
+  async function user() {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    return userEvent.setup()
+  }
+
   it('shows the empty state when no models exist', () => {
     render(<ModelsTab models={[]} onChanged={vi.fn()} onDeleted={vi.fn()} />)
     expect(screen.getByText(/no models configured yet/i)).toBeInTheDocument()
@@ -76,5 +96,65 @@ describe('ModelsTab', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(screen.getByLabelText(/custom provider name/i)).toHaveValue('My vLLM server')
+  })
+
+  it('reports a successful test as a toast and leaves the card intact', async () => {
+    stubTestEndpoint({ ok: true, latency_ms: 231 })
+    const u = await user()
+    render(<ModelsTab models={[BASE_MODEL]} onChanged={vi.fn()} onDeleted={vi.fn()} />)
+
+    await u.click(screen.getByRole('button', { name: /^test$/i }))
+
+    expect(await screen.findByText('GPT-4o mini · 231 ms')).toBeInTheDocument()
+    // The card keeps its actions — nothing expanded inline.
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  })
+
+  it('surfaces API errors like 429 as an error toast without touching the card', async () => {
+    stubTestEndpoint(
+      { detail: '429 Too Many Requests: rate limit exceeded' },
+      { ok: false, status: 429 },
+    )
+    const u = await user()
+    render(<ModelsTab models={[BASE_MODEL]} onChanged={vi.fn()} onDeleted={vi.fn()} />)
+
+    await u.click(screen.getByRole('button', { name: /^test$/i }))
+
+    expect(await screen.findByText('Test failed')).toBeInTheDocument()
+    expect(await screen.findByText(/429 Too Many Requests/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('opens Edit in a modal and closes it on Cancel', async () => {
+    const u = await user()
+    render(<ModelsTab models={[BASE_MODEL]} onChanged={vi.fn()} onDeleted={vi.fn()} />)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await u.click(screen.getByRole('button', { name: 'Edit' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Edit model')
+    await u.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // The card grid is untouched.
+    expect(screen.getByText('GPT-4o mini')).toBeInTheDocument()
+  })
+
+  it('reveals the typed key when the eye toggle is clicked', async () => {
+    const u = await user()
+    render(<ModelsTab models={[BASE_MODEL]} onChanged={vi.fn()} onDeleted={vi.fn()} />)
+
+    await u.click(screen.getByRole('button', { name: 'Edit' }))
+    const keyInput = screen.getByLabelText('API Key')
+    expect(keyInput).toHaveAttribute('type', 'password')
+
+    await u.type(keyInput, 'sk-new-secret')
+    await u.click(screen.getByRole('button', { name: /show api key/i }))
+    expect(keyInput).toHaveAttribute('type', 'text')
+    expect(keyInput).toHaveValue('sk-new-secret')
+
+    await u.click(screen.getByRole('button', { name: /hide api key/i }))
+    expect(keyInput).toHaveAttribute('type', 'password')
   })
 })

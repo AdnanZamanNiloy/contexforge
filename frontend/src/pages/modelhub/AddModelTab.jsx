@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { createModel, testModel } from '../../services/api'
+import PasswordField from './PasswordField'
 import { DEVICES, LOCAL_BACKENDS, MODEL_TYPES, PROVIDERS, RUNTIMES } from './modelHubMeta'
 
 const EMPTY = {
@@ -470,12 +471,9 @@ export default function AddModelTab({ onCreated }) {
                     />
                   </div>
                   <div className="mh-field">
-                    <label htmlFor="mh-api-key">API Key</label>
-                    <input
+                    <PasswordField
                       id="mh-api-key"
-                      className="mh-input"
-                      type="password"
-                      autoComplete="off"
+                      label="API Key"
                       value={form.api_key}
                       onChange={(e) => update('api_key', e.target.value)}
                       placeholder="Stored securely, never returned"

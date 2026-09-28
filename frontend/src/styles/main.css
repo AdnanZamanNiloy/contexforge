@@ -5463,7 +5463,8 @@ select.mh-input {
 
 .mh-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 340px));
+  justify-content: start;
   gap: 16px;
 }
 
@@ -5472,6 +5473,8 @@ select.mh-input {
   flex-direction: column;
   gap: 14px;
   padding: 20px;
+  height: 360px;
+  overflow: hidden;
   border-radius: 18px;
   border: 1px solid var(--hairline);
   background: #141414;
@@ -5517,10 +5520,31 @@ select.mh-input {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mh-card-tags {
+.mh-card-provider {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--body-color);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+}
+
+.mh-card-provider svg {
+  flex: none;
+  color: var(--mute);
+}
+
+.mh-card-provider span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .mh-tag {
   font-size: 0.68rem;
@@ -5531,6 +5555,8 @@ select.mh-input {
   border: 1px solid var(--hairline);
   color: var(--body-color);
   text-transform: capitalize;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .mh-tag.is-llm,
 .mh-tag.is-embedding {
@@ -5573,6 +5599,9 @@ select.mh-input {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--hairline);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 .mh-card-meta div {
   display: flex;
@@ -5593,13 +5622,6 @@ select.mh-input {
   text-align: right;
   color: var(--ink);
 }
-.mh-card-detail {
-  font-size: 0.78rem;
-  color: var(--body-color);
-  margin: 0;
-  line-height: 1.5;
-}
-
 .mh-test-result {
   display: flex;
   flex-direction: column;
@@ -5627,13 +5649,14 @@ select.mh-input {
 .mh-card-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-top: auto;
 }
 .mh-card-actions .mh-btn {
   flex: 1;
-  min-width: 70px;
-  padding: 9px 12px;
+  min-width: 0;
+  padding: 9px 8px;
+  white-space: nowrap;
 }
 
 .mh-edit {
@@ -5647,6 +5670,44 @@ select.mh-input {
   gap: 5px;
   font-size: 0.76rem;
   color: var(--muted);
+}
+
+.mh-password {
+  position: relative;
+  display: block;
+}
+
+.mh-password .mh-input {
+  padding-right: 42px;
+}
+
+.mh-password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: var(--mute);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.mh-password-toggle:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mh-password-toggle:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 1px;
 }
 
 .mh-checkbox {
@@ -6328,6 +6389,184 @@ select.mh-input {
   }
 }
 
+/* ---------- model toasts (top-right) + edit modal ---------- */
+
+.mh-toast-stack {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 48px));
+}
+
+.mh-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  background: #1b1b1b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 13px 15px;
+  cursor: pointer;
+  color: var(--ink);
+  font-family: inherit;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.6);
+  animation: mh-toast-in 0.25s ease;
+}
+
+.mh-toast.is-success {
+  border-color: rgba(67, 119, 253, 0.4);
+}
+
+.mh-toast.is-error {
+  border-color: rgba(240, 163, 163, 0.35);
+}
+
+.mh-toast-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.mh-toast-icon.is-success {
+  background: rgba(67, 119, 253, 0.16);
+  border: 1px solid rgba(67, 119, 253, 0.4);
+  color: var(--primary-soft);
+}
+
+.mh-toast-icon.is-error {
+  background: rgba(240, 163, 163, 0.1);
+  border: 1px solid rgba(240, 163, 163, 0.35);
+  color: #f0a3a3;
+}
+
+.mh-toast-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 1px;
+}
+
+.mh-toast-title {
+  font-size: 0.87rem;
+  font-weight: 650;
+}
+
+.mh-toast.is-error .mh-toast-title {
+  color: #f0a3a3;
+}
+
+.mh-toast-detail {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--mute);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+@keyframes mh-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.mh-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.66);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  animation: mh-modal-in 0.12s ease-out;
+}
+
+.mh-modal {
+  width: min(520px, 94vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+  animation: mh-modal-in 0.12s ease-out;
+}
+
+@keyframes mh-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mh-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.mh-modal-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.mh-modal-head p {
+  margin: 4px 0 0;
+  color: var(--mute);
+  font-size: 0.84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 36ch;
+}
+
+.mh-modal-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--mute);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.mh-modal-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+}
+
 /* Keyboard access + motion preferences for the whole capability. */
 .mh-tab:focus-visible,
 .mh-btn:focus-visible,
@@ -6345,7 +6584,10 @@ select.mh-input {
   .mh-choice,
   .mh-chain-member,
   .mh-type-card,
-  .mh-step-panel {
+  .mh-step-panel,
+  .mh-toast,
+  .mh-modal,
+  .mh-modal-backdrop {
     transition: none;
   }
   .mh-card:hover,
@@ -6353,12 +6595,19 @@ select.mh-input {
   .mh-type-card:hover {
     transform: none;
   }
-  .mh-step-panel {
+  .mh-step-panel,
+  .mh-toast,
+  .mh-modal,
+  .mh-modal-backdrop {
     animation: none;
   }
 }
 
 @media (max-width: 640px) {
+  .mh-toast-stack {
+    top: 70px;
+    right: 16px;
+  }
   .mh-header h1 {
     font-size: 1.4rem;
   }
