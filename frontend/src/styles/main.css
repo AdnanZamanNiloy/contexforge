@@ -5863,14 +5863,16 @@ select.mh-input {
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 2px;
 }
-.mh-chain-flow li {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+.mh-chain-flow li.mh-chain-step {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 .mh-chain-node {
   display: inline-flex;
@@ -5893,9 +5895,9 @@ select.mh-input {
 }
 .mh-chain-arrow {
   color: var(--primary-soft);
-  font-size: 0.9rem;
-  padding-left: 20px;
-  line-height: 1.2;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 2px;
 }
 
 /* ---------- serving ---------- */

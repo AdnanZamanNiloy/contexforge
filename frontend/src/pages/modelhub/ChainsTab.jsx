@@ -255,11 +255,13 @@ export default function ChainsTab({ models, chains, onChanged }) {
 
               <ol className="mh-chain-flow">
                 {chain.model_ids.map((id, index) => (
-                  <li key={`${id}-${index}`}>
-                    <span className="mh-chain-node">{modelName(id)}</span>
-                    {index < chain.model_ids.length - 1 ? (
-                      <span className="mh-chain-arrow">↓</span>
+                  <li key={`${id}-${index}`} className="mh-chain-step">
+                    {index > 0 ? (
+                      <span className="mh-chain-arrow" aria-hidden="true">
+                        →
+                      </span>
                     ) : null}
+                    <span className="mh-chain-node">{modelName(id)}</span>
                   </li>
                 ))}
                 {chain.model_ids.length === 0 ? (
