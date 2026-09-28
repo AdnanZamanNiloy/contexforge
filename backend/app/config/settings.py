@@ -249,6 +249,9 @@ class Settings(BaseSettings):
     # content fingerprint on the same terms.
     TECH_STACK_DB_PATH: Path = Field(default=data_path("tech_stack", "tech_stack.db"))
 
+    # Health Score & Hotspots — structural risk scans, cached on the same terms.
+    HEALTH_DB_PATH: Path = Field(default=data_path("health", "health.db"))
+
     # Model Hub — configured models, fallback chains, and serving selection.
     MODEL_HUB_DB_PATH: Path = Field(default=data_path("model_hub", "model_hub.db"))
 

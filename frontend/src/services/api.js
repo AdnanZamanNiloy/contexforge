@@ -605,3 +605,18 @@ export async function scanTechStack(projectId, { refresh = false } = {}) {
     body: JSON.stringify({ project_id: projectId, refresh }),
   })
 }
+
+// --- Health Score & Hotspots ------------------------------------------------
+
+// A health scan is AST parsing of chunks already in memory, so it lands in
+// milliseconds and needs no streaming or special timeout handling.
+export async function getHealthScan(projectId) {
+  return request(`/health/${encodeURIComponent(projectId)}`)
+}
+
+export async function scanHealth(projectId, { refresh = false } = {}) {
+  return request('/health/scan', {
+    method: 'POST',
+    body: JSON.stringify({ project_id: projectId, refresh }),
+  })
+}

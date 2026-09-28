@@ -6599,3 +6599,362 @@ body.ad-fullscreen-active .app-layout {
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 4px;
 }
+
+/* ---------------------------------------------------------------------------
+ * Health Score & Hotspots (Studio → Health Score & Hotspots)
+ *
+ * A dense report of deterministic structural risk. The score ring is tinted by
+ * the repository's worst band rather than its average, since one critical
+ * function is the thing worth surfacing. The .ad-* chrome (buttons, spinner,
+ * error) is shared with the other two generator views.
+ * ------------------------------------------------------------------------- */
+
+.hs-root {
+  flex: 1;
+  min-height: 0;
+}
+
+.hs-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.hs-overview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.hs-overview-body {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hs-ring-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex: none;
+}
+
+.hs-ring {
+  width: 84px;
+  height: 84px;
+  transform: rotate(-90deg);
+}
+
+.hs-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 7;
+}
+
+.hs-ring-value {
+  fill: none;
+  stroke: #2f9e6e;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.hs-ring-wrap.is-moderate .hs-ring-value {
+  stroke: #c9971f;
+}
+
+.hs-ring-wrap.is-high .hs-ring-value {
+  stroke: #d9803f;
+}
+
+.hs-ring-wrap.is-critical .hs-ring-value {
+  stroke: #e0574f;
+}
+
+.hs-ring-number {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.hs-ring-number strong {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink-strong);
+}
+
+.hs-ring-number span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mute);
+}
+
+.hs-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--ink-strong);
+}
+
+.hs-bands {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hs-band {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--mute);
+}
+
+.hs-band-label {
+  color: var(--ink);
+}
+
+.hs-band-count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.hs-band-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: #2f9e6e;
+}
+
+.hs-band-dot.is-moderate,
+.hs-band.is-moderate .hs-band-dot {
+  background: #c9971f;
+}
+
+.hs-band-dot.is-high,
+.hs-band.is-high .hs-band-dot {
+  background: #d9803f;
+}
+
+.hs-band-dot.is-critical,
+.hs-band.is-critical .hs-band-dot {
+  background: #e0574f;
+}
+
+.hs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hs-section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.hs-hotspots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hs-hotspot {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 0.77rem;
+}
+
+.hs-hotspot:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.hs-hotspot-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hs-hotspot-name code {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--ink-strong);
+  white-space: nowrap;
+}
+
+.hs-hotspot-path {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  direction: rtl;
+  text-align: left;
+}
+
+.hs-metrics {
+  display: inline-flex;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--mute);
+  white-space: nowrap;
+}
+
+.hs-lrs {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+  text-align: right;
+}
+
+.hs-formula {
+  margin: 2px 0 0;
+  font-size: 0.7rem;
+  line-height: 1.55;
+  color: var(--mute);
+}
+
+.hs-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hs-files li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.74rem;
+}
+
+.hs-files code {
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-file-size {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--mute);
+  white-space: nowrap;
+}
+
+.hs-note {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--mute);
+}
+
+/* Loading / empty stage, mirroring the other generator views. */
+.hs-stage {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 26px 22px;
+  text-align: center;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.hs-stage-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.hs-stage-note {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.hs-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: linear-gradient(135deg, #4a2b6e, #1d1230);
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+}
+
+/* Shown instead of the score ring when nothing was measurable. */
+.hs-ring-wrap.is-none .hs-ring-none {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+}
+
+.hs-ring-none strong {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--mute);
+}
+
+.hs-ring-none span {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+}

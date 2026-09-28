@@ -14,6 +14,8 @@ from functools import lru_cache
 from app.architecture.service import ArchitectureService
 from app.architecture.storage import ArchitectureStore
 from app.config.settings import Settings
+from app.health.service import HealthService
+from app.health.storage import HealthStore
 from app.mindmap.service import MindMapService
 from app.mindmap.storage import MindMapStore
 from app.model_hub import factory as model_hub_factory
@@ -51,6 +53,7 @@ __all__ = [
     "apply_serving_configuration",
     "close_all",
     "get_architecture_service",
+    "get_health_service",
     "get_ingest_service",
     "get_model_hub_service",
     "get_projects_service",
@@ -264,6 +267,21 @@ def get_architecture_service() -> ArchitectureService:
 
 
 # ---------------------------------------------------------------------------
+# Health Score & Hotspots — deterministic structural risk from a GitHub source
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_health_store() -> HealthStore:
+    return HealthStore()
+
+
+@lru_cache(maxsize=1)
+def get_health_service() -> HealthService:
+    return HealthService(store=get_health_store(), faiss=get_faiss_store())
+
+
+# ---------------------------------------------------------------------------
 # Dependency & Tech Stack — a manifest-only scan of a GitHub source
 # ---------------------------------------------------------------------------
 
@@ -429,6 +447,12 @@ async def close_all() -> None:
         logger.debug("TechStackStore closed.")
     except Exception as exc:
         logger.warning("Error closing TechStackStore: %s", exc)
+
+    try:
+        get_health_store().close()
+        logger.debug("HealthStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing HealthStore: %s", exc)
 
     try:
         get_model_hub_store().close()

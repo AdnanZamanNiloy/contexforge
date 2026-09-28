@@ -68,15 +68,13 @@ describe('RepoStudio rail', () => {
 })
 
 describe('StudioView (main window)', () => {
-  it('renders each remaining placeholder view without any backend', async () => {
-    // Architecture Diagram and Dependency & Tech Stack are no longer here: both
-    // are real generators now and have their own tests.  The other two are
-    // still static previews.
-    const { rerender } = render(<StudioView tool="health" />)
-    expect(screen.getByText('High churn')).toBeInTheDocument()
-
-    rerender(<StudioView tool="security" />)
+  it('renders the remaining placeholder view without any backend', async () => {
+    // Architecture Diagram, Dependency & Tech Stack and Health Score & Hotspots
+    // are all real generators now and have their own tests.  Only Security &
+    // Quality is still a static preview.
+    render(<StudioView tool="security" />)
     expect(screen.getByText('No hardcoded secrets detected')).toBeInTheDocument()
+    expect(screen.getByText('Branch protection on main')).toBeInTheDocument()
   })
 
   it('routes the architecture tool to the real diagram generator', async () => {
@@ -102,6 +100,21 @@ describe('StudioView (main window)', () => {
 
   it('shows the scanner empty state when the project has no GitHub source', async () => {
     render(<StudioView tool="stack" projectId="p1" hasGithubSource={false} />)
+    expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
+  })
+})
+
+describe('StudioView generator routing', () => {
+  it('routes the health tool to the real scanner, not the placeholder', async () => {
+    render(<StudioView tool="health" projectId={null} />)
+    expect(screen.getByText(/open a project to analyse a repository/i)).toBeInTheDocument()
+    // The old hardcoded "82 / Good" ring and hotspot list are gone.
+    expect(screen.queryByText('Good')).not.toBeInTheDocument()
+    expect(screen.queryByText('High churn')).not.toBeInTheDocument()
+  })
+
+  it('shows the scanner empty state when the project has no GitHub source', async () => {
+    render(<StudioView tool="health" projectId="p1" hasGithubSource={false} />)
     expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
   })
 })

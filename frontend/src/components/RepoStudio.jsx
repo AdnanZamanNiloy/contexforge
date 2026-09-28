@@ -1,14 +1,15 @@
 // Repository Studio — a GitHub-project-only rail of compact analysis tools.
 //
 // The rail itself is buttons only; every tool's output renders in the main
-// window (see `StudioView`).  Architecture Diagram and Dependency & Tech Stack
-// are the two tools backed by real generators — the rest are placeholder
-// previews with no backend.  Document and web projects never see this panel
+// window (see `StudioView`).  Architecture Diagram, Dependency & Tech Stack and
+// Health Score & Hotspots are backed by real generators — Security & Quality is
+// still a placeholder with no backend.  Document and web projects never see this
 // (see Home's project-type gate).
 //
 // Original ContextForge visuals; NotebookLM's Studio is UX inspiration only.
 
 import ArchitectureDiagram from './ArchitectureDiagram'
+import HealthReport from './HealthReport'
 import TechStackReport from './TechStackReport'
 
 function DiagramIcon() {
@@ -160,51 +161,6 @@ function SecurityView() {
   )
 }
 
-function HealthView() {
-  const score = 82
-  const radius = 34
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (circumference * score) / 100
-  const hotspots = [
-    { file: 'auth.py', note: 'High churn', level: 'warn' },
-    { file: 'legacy.py', note: 'No tests', level: 'warn' },
-    { file: 'utils.py', note: 'Complex', level: 'info' },
-  ]
-  return (
-    <div className="rs-view">
-      <div className="rs-view-head">
-        <h3>Health Score & Hotspots</h3>
-      </div>
-      <div className="rs-health-top">
-        <svg className="rs-ring" viewBox="0 0 84 84" aria-hidden="true">
-          <circle cx="42" cy="42" r={radius} className="rs-ring-track" />
-          <circle
-            cx="42"
-            cy="42"
-            r={radius}
-            className="rs-ring-value"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-          />
-        </svg>
-        <div className="rs-health-number">
-          <strong>{score}</strong>
-          <span>Good</span>
-        </div>
-      </div>
-      <ul className="rs-checks">
-        {hotspots.map((item) => (
-          <li key={item.file} className={`rs-check is-${item.level}`}>
-            <span className="rs-dot" aria-hidden="true" />
-            <span className="rs-check-file">{item.file}</span>
-            <span className="rs-check-note">{item.note}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
 export default function RepoStudio({ repoName, active, onSelect }) {
   return (
     <div className="repo-studio">
@@ -264,7 +220,7 @@ export function StudioView({ tool, projectId, hasGithubSource }) {
     case 'stack':
       return <TechStackReport projectId={projectId} hasGithubSource={hasGithubSource} />
     case 'health':
-      return <HealthView />
+      return <HealthReport projectId={projectId} hasGithubSource={hasGithubSource} />
     default:
       return null
   }

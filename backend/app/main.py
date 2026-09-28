@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from app.architecture.routes import router as architecture_router
 from app.config.settings import Settings
 from app.dependencies import close_all
+from app.health.routes import router as health_router
 from app.mindmap.routes import router as mindmap_router
 from app.model_hub.routes import router as model_hub_router
 from app.projects.routes import router as projects_router
@@ -137,6 +138,7 @@ app.include_router(query_router)
 app.include_router(mindmap_router)
 app.include_router(architecture_router)
 app.include_router(techstack_router)
+app.include_router(health_router)
 app.include_router(model_hub_router)
 app.include_router(projects_router)
 
