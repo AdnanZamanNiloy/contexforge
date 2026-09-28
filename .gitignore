@@ -22,3 +22,8 @@ frontend/*.png
 # Upstream semgrep CLI clone (its own repo, ~700MB).  Local tooling only — the
 # app does not import it and no part of it belongs in this repository.
 /semgrep/
+
+# Upstream stack-analyser clone (its own repo, ~8MB).  Read as a design
+# reference for the manifest parsers and detection model in
+# backend/app/techstack/; none of its TypeScript is part of this app.
+/stack-analyser/

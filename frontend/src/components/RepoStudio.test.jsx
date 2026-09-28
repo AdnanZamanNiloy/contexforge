@@ -69,30 +69,39 @@ describe('RepoStudio rail', () => {
 
 describe('StudioView (main window)', () => {
   it('renders each remaining placeholder view without any backend', async () => {
-    // Architecture Diagram is no longer here: it is a real generator now and
-    // has its own tests.  The other three are still static previews.
+    // Architecture Diagram and Dependency & Tech Stack are no longer here: both
+    // are real generators now and have their own tests.  The other two are
+    // still static previews.
     const { rerender } = render(<StudioView tool="health" />)
     expect(screen.getByText('High churn')).toBeInTheDocument()
 
     rerender(<StudioView tool="security" />)
     expect(screen.getByText('No hardcoded secrets detected')).toBeInTheDocument()
-
-    rerender(<StudioView tool="stack" />)
-    expect(screen.getByText('Dependency & Tech Stack')).toBeInTheDocument()
   })
 
   it('routes the architecture tool to the real diagram generator', async () => {
     // No project means nothing to map, and the generator must say so rather
     // than fall back to the old placeholder sketch.
     render(<StudioView tool="architecture" projectId={null} />)
-    expect(
-      screen.getByText(/open a project to map a repository/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/open a project to map a repository/i)).toBeInTheDocument()
     expect(screen.queryByText(/module map of the repository/i)).not.toBeInTheDocument()
   })
 
   it('shows an empty state when the project has no GitHub source', async () => {
     render(<StudioView tool="architecture" projectId="p1" hasGithubSource={false} />)
+    expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
+  })
+
+  it('routes the stack tool to the real scanner, not the placeholder', async () => {
+    render(<StudioView tool="stack" projectId={null} />)
+    expect(screen.getByText(/open a project to scan a repository/i)).toBeInTheDocument()
+    // The old hardcoded chips are gone.
+    expect(screen.queryByText('PostgreSQL')).not.toBeInTheDocument()
+    expect(screen.queryByText(/dependency graph between modules/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the scanner empty state when the project has no GitHub source', async () => {
+    render(<StudioView tool="stack" projectId="p1" hasGithubSource={false} />)
     expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
   })
 })

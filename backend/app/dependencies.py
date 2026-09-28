@@ -22,6 +22,8 @@ from app.model_hub.storage import ModelHubStore
 from app.services.ingest_service import IngestService
 from app.services.query_service import QueryService
 from app.sources.storage import SourceMetaStore
+from app.techstack.service import TechStackService
+from app.techstack.storage import TechStackStore
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
 from core.generation.prompt_builder import PromptBuilder
@@ -55,6 +57,7 @@ __all__ = [
     "get_projects_store",
     "get_query_service",
     "get_settings",
+    "get_techstack_service",
 ]
 
 logger = logging.getLogger(__name__)
@@ -261,6 +264,21 @@ def get_architecture_service() -> ArchitectureService:
 
 
 # ---------------------------------------------------------------------------
+# Dependency & Tech Stack — a manifest-only scan of a GitHub source
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_techstack_store() -> TechStackStore:
+    return TechStackStore()
+
+
+@lru_cache(maxsize=1)
+def get_techstack_service() -> TechStackService:
+    return TechStackService(store=get_techstack_store(), faiss=get_faiss_store())
+
+
+# ---------------------------------------------------------------------------
 # Sources — persisted per-source metadata overrides (e.g. a custom title)
 # ---------------------------------------------------------------------------
 
@@ -405,6 +423,12 @@ async def close_all() -> None:
         logger.debug("ArchitectureStore closed.")
     except Exception as exc:
         logger.warning("Error closing ArchitectureStore: %s", exc)
+
+    try:
+        get_techstack_store().close()
+        logger.debug("TechStackStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing TechStackStore: %s", exc)
 
     try:
         get_model_hub_store().close()

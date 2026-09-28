@@ -1,14 +1,15 @@
 // Repository Studio — a GitHub-project-only rail of compact analysis tools.
 //
 // The rail itself is buttons only; every tool's output renders in the main
-// window (see `StudioView`).  Architecture Diagram is the one tool that is
-// backed by a real generator — the rest are placeholder previews with no
-// backend.  Document and web projects never see this panel (see Home's
-// project-type gate).
+// window (see `StudioView`).  Architecture Diagram and Dependency & Tech Stack
+// are the two tools backed by real generators — the rest are placeholder
+// previews with no backend.  Document and web projects never see this panel
+// (see Home's project-type gate).
 //
 // Original ContextForge visuals; NotebookLM's Studio is UX inspiration only.
 
 import ArchitectureDiagram from './ArchitectureDiagram'
+import TechStackReport from './TechStackReport'
 
 function DiagramIcon() {
   return (
@@ -159,40 +160,6 @@ function SecurityView() {
   )
 }
 
-function StackView() {
-  const stack = ['Python', 'Docker', 'React', 'PostgreSQL']
-  return (
-    <div className="rs-view">
-      <div className="rs-view-head">
-        <h3>Dependency & Tech Stack</h3>
-      </div>
-      <div className="rs-chips">
-        {stack.map((name) => (
-          <span key={name} className="rs-chip">
-            {name}
-          </span>
-        ))}
-      </div>
-      <ul className="rs-checks">
-        {[
-          { file: 'fastapi', note: 'web framework', level: 'info' },
-          { file: 'sqlalchemy', note: 'data layer', level: 'info' },
-          { file: 'httpx', note: 'http client', level: 'info' },
-        ].map((item) => (
-          <li key={item.file} className={`rs-check is-${item.level}`}>
-            <span className="rs-dot" aria-hidden="true" />
-            <span className="rs-check-file">{item.file}</span>
-            <span className="rs-check-note">{item.note}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="rs-view-hint">
-        Languages, frameworks and the dependency graph between modules.
-      </p>
-    </div>
-  )
-}
-
 function HealthView() {
   const score = 82
   const radius = 34
@@ -291,13 +258,11 @@ export const STUDIO_TOOLS = TOOLS.map(({ id, label, hint, Icon }) => ({
 export function StudioView({ tool, projectId, hasGithubSource }) {
   switch (tool) {
     case 'architecture':
-      return (
-        <ArchitectureDiagram projectId={projectId} hasGithubSource={hasGithubSource} />
-      )
+      return <ArchitectureDiagram projectId={projectId} hasGithubSource={hasGithubSource} />
     case 'security':
       return <SecurityView />
     case 'stack':
-      return <StackView />
+      return <TechStackReport projectId={projectId} hasGithubSource={hasGithubSource} />
     case 'health':
       return <HealthView />
     default:

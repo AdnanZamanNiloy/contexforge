@@ -6289,3 +6289,313 @@ select.mh-input {
 body.ad-fullscreen-active .app-layout {
   display: none;
 }
+
+/* ---------------------------------------------------------------------------
+ * Dependency & Tech Stack (Studio → Dependency & Tech Stack)
+ *
+ * A dense, scannable report: language bars, a chip row for recognised
+ * frameworks, then dependencies grouped by the package manager that declared
+ * them. The .ad-* chrome (buttons, spinner, error) is shared with the
+ * Architecture Diagram view above.
+ * ------------------------------------------------------------------------- */
+
+.ts-root {
+  flex: 1;
+  min-height: 0;
+}
+
+.ts-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.ts-summary {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--ink-strong);
+}
+
+.ts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ts-section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+/* Languages: name · proportional bar · file count. */
+.ts-langs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ts-lang {
+  display: grid;
+  grid-template-columns: minmax(88px, 132px) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+
+.ts-lang-name {
+  color: var(--ink-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ts-lang-bar {
+  height: 5px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.ts-lang-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4d7cfe, #2f9e6e);
+}
+
+.ts-lang-files {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--mute);
+}
+
+.ts-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ts-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 550;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: rgba(67, 119, 253, 0.1);
+  border: 1px solid rgba(67, 119, 253, 0.28);
+  color: var(--ink-strong);
+}
+
+.ts-chip.is-quiet {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--hairline);
+  color: var(--ink);
+}
+
+.ts-chip-version {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--mute);
+}
+
+.ts-manifests {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ts-manifest {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ts-manifest-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+
+.ts-manager {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.ts-manager-meta,
+.ts-empty {
+  font-size: 0.7rem;
+  color: var(--mute);
+}
+
+.ts-deps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 2px 14px;
+}
+
+.ts-dep {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 0.76rem;
+  min-width: 0;
+}
+
+.ts-dep-name {
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.ts-dep-version {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--mute);
+  flex: none;
+}
+
+.ts-dep-version.is-unpinned {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.ts-scope {
+  flex: none;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  color: var(--mute);
+}
+
+.ts-scope.is-dev {
+  border-color: rgba(125, 108, 240, 0.4);
+  color: #b9b0ff;
+}
+
+.ts-more {
+  margin-top: 7px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary-soft);
+  font-size: 0.72rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.ts-more:hover {
+  text-decoration: underline;
+}
+
+.ts-files {
+  font-size: 0.74rem;
+  color: var(--mute);
+}
+
+.ts-files summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.ts-files ul {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ts-files li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ts-files code {
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  color: var(--ink);
+}
+
+.ts-note {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--mute);
+}
+
+/* Loading / empty stage, mirroring the architecture view's .ad-stage. */
+.ts-stage {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 26px 22px;
+  text-align: center;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ts-stage-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.ts-stage-note {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.ts-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: linear-gradient(135deg, #33502f, #16210f);
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+}

@@ -590,3 +590,18 @@ export async function regenerateArchitecture(projectId, handlers = {}) {
 export async function getArchitecture(projectId) {
   return request(`/architecture/${encodeURIComponent(projectId)}`)
 }
+
+// --- Dependency & Tech Stack ------------------------------------------------
+
+// A scan is local string processing over chunks already in memory, so it lands
+// in milliseconds and needs no streaming or special timeout handling.
+export async function getTechStack(projectId) {
+  return request(`/tech-stack/${encodeURIComponent(projectId)}`)
+}
+
+export async function scanTechStack(projectId, { refresh = false } = {}) {
+  return request('/tech-stack/scan', {
+    method: 'POST',
+    body: JSON.stringify({ project_id: projectId, refresh }),
+  })
+}

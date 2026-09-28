@@ -15,6 +15,7 @@ _ISOLATED_PATHS = {
     "UPLOAD_DIR": "uploads",
     "MINDMAP_DIR": "mindmaps",
     "ARCHITECTURE_DB_PATH": "architecture/architecture.db",
+    "TECH_STACK_DB_PATH": "tech_stack/tech_stack.db",
     "MODEL_HUB_DB_PATH": "model_hub/model_hub.db",
     "PROJECTS_DB_PATH": "projects/projects.db",
 }

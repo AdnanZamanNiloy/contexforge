@@ -24,6 +24,7 @@ from app.projects.routes import router as projects_router
 from app.routes.github import router as github_router
 from app.routes.ingest import router as ingest_router
 from app.routes.query import router as query_router
+from app.techstack.routes import router as techstack_router
 from observability.tracer import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,7 @@ app.include_router(github_router)
 app.include_router(query_router)
 app.include_router(mindmap_router)
 app.include_router(architecture_router)
+app.include_router(techstack_router)
 app.include_router(model_hub_router)
 app.include_router(projects_router)
 

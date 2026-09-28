@@ -245,6 +245,10 @@ class Settings(BaseSettings):
     # content fingerprint so an unchanged repository is only ever analysed once.
     ARCHITECTURE_DB_PATH: Path = Field(default=data_path("architecture", "architecture.db"))
 
+    # Dependency & Tech Stack — manifest/lockfile scans, cached per project +
+    # content fingerprint on the same terms.
+    TECH_STACK_DB_PATH: Path = Field(default=data_path("tech_stack", "tech_stack.db"))
+
     # Model Hub — configured models, fallback chains, and serving selection.
     MODEL_HUB_DB_PATH: Path = Field(default=data_path("model_hub", "model_hub.db"))
 
