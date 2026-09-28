@@ -7347,3 +7347,1035 @@ body.ad-fullscreen-active .app-layout {
   max-width: 46ch;
   line-height: 1.5;
 }
+
+/* ==========================================================================
+   Generator views — the shared visual language for Studio's output panels
+   (Health Score & Hotspots, Dependency & Tech Stack, Security & Quality).
+
+   These three render very different data, so what they share is not content
+   but structure: a header band carrying the primary numbers as stat tiles,
+   section headings at one consistent weight, real tables with column headers
+   rather than runs of monospace text, and one disclosure treatment for the
+   supporting detail a reader usually does not want in the first screen.
+
+   The failure this replaces was a wall of undifferentiated monospace with
+   every number the same size as every other, so the eye had nothing to land on.
+   ========================================================================== */
+
+.gv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+/* --- Header band: identity on the left, the primary numbers on the right --- */
+
+.gv-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.gv-id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gv-id-repo {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gv-id-note {
+  font-size: 0.7rem;
+  color: var(--mute);
+}
+
+/* --- Stat tiles ---------------------------------------------------------- */
+
+.gv-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gv-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px;
+  min-width: 78px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+}
+
+.gv-stat-value {
+  font-size: 1.02rem;
+  font-weight: 680;
+  line-height: 1.15;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.gv-stat-label {
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.gv-stat.is-accent {
+  border-color: rgba(67, 119, 253, 0.4);
+  background: rgba(67, 119, 253, 0.08);
+}
+
+/* --- Section headings ---------------------------------------------------- */
+
+.gv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gv-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.gv-section-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--ink-strong);
+}
+
+.gv-section-aside {
+  font-size: 0.68rem;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.gv-subhead {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+/* --- Real tables ---------------------------------------------------------
+   A column header per column and tabular numerals, so a reader can follow one
+   column down instead of re-reading the row. Monospace runs of values with no
+   headers are the single thing that made the old panels unreadable. */
+
+.gv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.gv-table th {
+  text-align: left;
+  padding: 0 10px 7px;
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.gv-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(61, 58, 57, 0.5);
+  color: var(--ink);
+  vertical-align: baseline;
+}
+
+.gv-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.gv-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.gv-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.gv-table th.gv-num {
+  text-align: right;
+}
+
+.gv-cell-strong {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.gv-cell-muted {
+  color: var(--mute);
+  font-size: 0.72rem;
+}
+
+.gv-mono {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--mute);
+}
+
+/* --- Badges and chips ---------------------------------------------------- */
+
+.gv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.gv-badge-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.gv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gv-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 550;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(67, 119, 253, 0.3);
+  background: rgba(67, 119, 253, 0.08);
+  color: var(--ink-strong);
+}
+
+.gv-chip-version {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.66rem;
+  color: var(--mute);
+}
+
+/* --- Prose and disclosure ------------------------------------------------
+   Implementation detail, coverage caveats and limitations are all things a
+   reader usually does not want in the first screen, so they share one
+   collapsed treatment rather than each inventing one. */
+
+.gv-note {
+  margin: 0;
+  font-size: 0.73rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.gv-note-bordered {
+  padding: 11px 13px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+}
+
+.gv-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--ink);
+  user-select: none;
+}
+
+.gv-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.gv-disclosure > summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--mute);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.16s var(--ease);
+}
+
+.gv-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.gv-disclosure > summary:hover {
+  border-color: rgba(67, 119, 253, 0.4);
+}
+
+.gv-disclosure-body {
+  padding: 11px 13px 3px;
+}
+
+.gv-disclosure-list {
+  margin: 0;
+  padding: 0 0 9px 4px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gv-disclosure-list li {
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--mute);
+  display: flex;
+  gap: 8px;
+}
+
+.gv-disclosure-list li::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 4px;
+  height: 4px;
+  margin-top: 0.55em;
+  border-radius: 50%;
+  background: var(--hairline-soft);
+  opacity: 0.6;
+}
+
+.gv-more {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease);
+}
+
+.gv-more:hover {
+  border-color: rgba(67, 119, 253, 0.5);
+  background: rgba(67, 119, 253, 0.06);
+}
+
+/* --- Health Score & Hotspots: layout on top of the shared system ------- */
+
+.hs-root {
+  gap: 26px;
+}
+
+.hs-head-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The score is the answer the view exists to give, so it gets the largest
+   element on the page and sits beside a plain-language reading of itself. */
+.hs-overview {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+}
+
+.hs-overview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hs-summary {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.hs-bands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hs-band {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.hs-band-label {
+  color: var(--mute);
+}
+
+.hs-band-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+.hs-table th:first-child,
+.hs-table td:first-child {
+  width: 34%;
+}
+
+.hs-table th:last-child,
+.hs-table td:last-child {
+  width: 118px;
+}
+
+/* The symbol and its file are one unit: the name on top, the path beneath it in
+   muted type, rather than the two racing each other across the row. */
+.hs-hotspot-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.hs-hotspot-name-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.hs-hotspot-name code {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.hs-hotspot-path {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hs-hotspot-kind {
+  text-transform: capitalize;
+}
+
+.hs-lrs-cell {
+  position: relative;
+  font-weight: 680;
+  color: var(--ink-strong);
+}
+
+/* A bar behind the score, scaled to the worst row on screen, so the column
+   reads as a ranking at a glance instead of a column of numbers to compare. */
+.hs-lrs-bar {
+  position: absolute;
+  left: 6px;
+  right: 10px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.hs-lrs-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  opacity: 0.85;
+}
+
+/* Visible to a screen reader, absent from the page. */
+.gv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hs-table th:first-child,
+.hs-table td:first-child {
+  width: 40%;
+}
+
+/* Both the symbol and the path are elided rather than either wrapping a code
+   identifier or pushing the file name off the row: the symbol first (it
+   identifies the function) and the path second, with the symbol yielding
+   before the file does. */
+.hs-hotspot-name code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hs-hotspot-name-text {
+  flex: 1 1 auto;
+}
+
+.hs-file-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hs-file-row code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hs-file-size {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.68rem;
+  color: var(--mute);
+}
+
+/* The four metrics share one cell rather than taking a column each: four
+   columns left the symbol about 150px, which elided the symbol itself. As one
+   grouped reading they cost ~90px and the symbol never has to be truncated. */
+.hs-metrics-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.hs-metrics-cell > span {
+  min-width: 26px;
+  text-align: right;
+  padding: 0 4px;
+  border-right: 1px solid rgba(61, 58, 57, 0.7);
+}
+
+.hs-metrics-cell > span:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.hs-metrics-head {
+  letter-spacing: 0.02em;
+}
+
+/* The band is shown as the row's left edge rather than a dot inside the first
+   cell. The score's colour and the legend already carry the band, so the dot
+   was a second signal spending 12px of a panel that is only ~540px wide. */
+.hs-table tbody tr {
+  position: relative;
+}
+
+.hs-table tbody tr > td:first-child {
+  border-left: 2px solid transparent;
+  padding-left: 10px;
+}
+
+.hs-table tbody tr.is-low > td:first-child {
+  border-left-color: rgba(16, 185, 129, 0.55);
+}
+
+.hs-table tbody tr.is-moderate > td:first-child {
+  border-left-color: rgba(245, 158, 11, 0.6);
+}
+
+.hs-table tbody tr.is-high > td:first-child {
+  border-left-color: rgba(239, 68, 68, 0.7);
+}
+
+.hs-table tbody tr.is-critical > td:first-child {
+  border-left-color: #ef4444;
+}
+
+.hs-table th:first-child,
+.hs-table td:first-child {
+  width: auto;
+}
+
+.hs-table th:last-child,
+.hs-table td:last-child {
+  width: 78px;
+}
+
+.hs-table th:nth-child(2),
+.hs-table td:nth-child(2) {
+  width: 62px;
+}
+
+.hs-metrics-cell > span {
+  min-width: 22px;
+  padding: 0 3px;
+}
+
+/* The symbol is the primary identifier on the row, so it keeps its width and
+   the file path beneath it yields first. */
+.hs-hotspot-name code {
+  overflow: visible;
+}
+
+/* --- Dependency & Tech Stack: layout on the shared system -------------- */
+
+.ts-root {
+  gap: 26px;
+}
+
+.ts-head-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The lead sentence, not a boxed aside: it introduces what follows. */
+.gv-lead {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.ts-langs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ts-lang {
+  display: grid;
+  grid-template-columns: minmax(90px, 132px) 1fr 38px 46px;
+  align-items: center;
+  gap: 10px;
+}
+
+.ts-lang-name {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ts-lang-bar {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.ts-lang-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--primary) 0%, #34d399 100%);
+}
+
+/* The share is stated, so the bar is a reading of a number rather than the only
+   way to get one. */
+.ts-lang-share,
+.ts-lang-files {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.ts-lang-share {
+  color: var(--mute);
+}
+
+.ts-lang-files {
+  color: var(--ink);
+}
+
+.ts-manifests {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ts-manifest {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ts-kind {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ts-kind + .ts-kind {
+  margin-top: 4px;
+}
+
+.ts-more,
+.gv-more {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.ts-more:hover,
+.gv-more:hover {
+  border-color: rgba(67, 119, 253, 0.5);
+  background: rgba(67, 119, 253, 0.06);
+}
+
+.ts-dep-version {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.ts-dep-version.is-unpinned {
+  color: var(--mute);
+  font-style: italic;
+  font-size: 0.68rem;
+}
+
+.ts-scope {
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  color: var(--mute);
+}
+
+/* The manifests list is a file listing: path on the left, its manager and
+   count on the right, so the two never read as one run of text. */
+.gv-disclosure-list li:has(code) {
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.gv-disclosure-list li > code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gv-disclosure-list li > span {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+}
+
+/* Stat tiles and the rescan control share one row rather than the control
+   wrapping onto its own line, which read as a second toolbar. */
+.ts-head-right,
+.hs-head-right {
+  flex-wrap: nowrap;
+}
+
+.gv-stat {
+  min-width: 68px;
+  padding: 7px 12px;
+}
+
+@media (max-width: 1180px) {
+  .ts-head-right,
+  .hs-head-right {
+    flex-wrap: wrap;
+  }
+}
+
+/* The ecosystem block is a sub-section inside Dependencies, so it needs no box
+   of its own: the subheading's hairline and the table's own row rules are
+   enough structure. */
+.ts-manifest {
+  border: none;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* --- Security & Quality: layout on the shared system ------------------- */
+
+.sec-root {
+  gap: 26px;
+}
+
+.sec-head-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .sec-head-right {
+    flex-wrap: wrap;
+  }
+}
+
+.sec-summary {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.sec-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The severity is the row's left edge and a small label, rather than a filled
+   pill repeated on every card: with 19 advisories the pills were most of the
+   ink on the page and told the reader nothing the colour did not. */
+.sec-finding {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 10px 12px 10px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  border-left-width: 3px;
+}
+
+.sec-finding.is-high {
+  border-left-color: #ef4444;
+}
+
+.sec-finding.is-medium {
+  border-left-color: #f59e0b;
+}
+
+.sec-finding.is-low {
+  border-left-color: #3b82f6;
+}
+
+.sec-finding.is-unknown {
+  border-left-color: var(--hairline);
+}
+
+.sec-sev {
+  flex: 0 0 auto;
+  width: 58px;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--mute);
+  padding-top: 3px;
+}
+
+.sec-finding.is-high .sec-sev {
+  color: #fca5a5;
+}
+
+.sec-finding.is-medium .sec-sev {
+  color: #fcd34d;
+}
+
+.sec-finding.is-low .sec-sev {
+  color: #93c5fd;
+}
+
+.sec-finding-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sec-finding-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.sec-finding-detail {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.sec-finding-where {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.68rem;
+  color: var(--mute);
+}
+
+.sec-finding-where code {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+.sec-snippet {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40ch;
+}
+
+.sec-ref {
+  font-size: 0.66rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.sec-ref:hover {
+  text-decoration: underline;
+}
+
+.sec-cwe {
+  font-style: normal;
+  font-size: 0.64rem;
+  font-family: var(--font-mono);
+  color: var(--mute);
+  margin-left: 7px;
+}
+
+.sec-gates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sec-gate {
+  display: grid;
+  grid-template-columns: 8px minmax(130px, auto) 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.74rem;
+}
+
+.sec-gate-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mute);
+  align-self: center;
+}
+
+.sec-gate.is-ok .sec-gate-dot {
+  background: #10b981;
+}
+
+.sec-gate.is-warn .sec-gate-dot {
+  background: #f59e0b;
+}
+
+.sec-gate-title {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.sec-gate-detail {
+  color: var(--mute);
+  min-width: 0;
+}
+
+/* An advisory's summary can run to several lines of prose, and a page of 19 of
+   them is a wall. Two lines carries the description; the rest is one click away
+   on the advisory's own record. */
+.sec-finding-detail {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

@@ -137,14 +137,17 @@ describe('HealthReport', () => {
     await waitFor(() => {
       expect(screen.getByText('72')).toBeInTheDocument()
     })
+    // Scoped to the ring: the header stat tiles carry other numbers, so a bare
+    // query for the score would now be ambiguous.
     // The headline band follows the worst code, not the average — so "High" is
     // shown both as the ring's label and as a legend entry.
     expect(screen.getAllByText('High').length).toBeGreaterThan(0)
     for (const label of ['Low', 'Moderate', 'Critical']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0)
     }
-    // Counts come from the band distribution.
-    expect(screen.getByText('8')).toBeInTheDocument()
+    // Counts come from the band distribution, read inside the legend.
+    const bands = document.querySelector('.hs-bands')
+    expect(bands.textContent).toContain('8')
   })
 
   it('lists hotspots with their raw metrics and score', async () => {
@@ -154,16 +157,15 @@ describe('HealthReport', () => {
     await waitFor(() => {
       expect(screen.getByText('Hotspots')).toBeInTheDocument()
     })
-    const rows = container.querySelectorAll('.hs-hotspot')
+    const rows = container.querySelectorAll('.hs-table tbody tr')
     expect(rows).toHaveLength(2)
     expect(rows[0].textContent).toContain('tangled')
     expect(rows[0].textContent).toContain('app/core.py')
-    // The four raw metrics and the score that came from them.
-    expect(rows[0].textContent).toContain('CC 14')
-    expect(rows[0].textContent).toContain('ND 4')
-    expect(rows[0].textContent).toContain('FO 6')
-    expect(rows[0].textContent).toContain('NS 3')
-    expect(rows[0].textContent).toContain('8.42')
+    // The four raw metrics and the score that came from them, in one grouped
+    // cell so the symbol keeps its width.
+    const metrics = rows[0].querySelector('.hs-metrics-cell')
+    expect(Array.from(metrics.children).map((cell) => cell.textContent)).toEqual(['14', '4', '6', '3'])
+    expect(rows[0].querySelector('.hs-lrs-cell').textContent).toContain('8.42')
   })
 
   it('publishes the formula and weights so the score is reproducible', async () => {
@@ -215,6 +217,9 @@ describe('HealthReport', () => {
       expect(screen.getByText(/no per-function risk could be measured/i)).toBeInTheDocument()
     })
     expect(screen.queryByText('Hotspots')).not.toBeInTheDocument()
+    expect(document.querySelector('.hs-table')).toBeNull()
+    // The worst-score tile falls back to a dash rather than claiming a 0.
+    expect(screen.getByText('Worst LRS').previousSibling).toHaveTextContent('—')
   })
 
   it('surfaces a scan failure as a readable message', async () => {
@@ -295,7 +300,7 @@ describe('HealthReport presentation', () => {
     await waitFor(() => {
       expect(screen.getByText(/largest indexed files/i)).toBeInTheDocument()
     })
-    const details = container.querySelector('.hs-details')
+    const details = container.querySelector('.gv-disclosure')
     expect(details).not.toBeNull()
     expect(details.hasAttribute('open')).toBe(false)
   })
@@ -329,7 +334,7 @@ describe('HealthReport presentation', () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...dupes, cached: true })
     const { container } = render(<HealthReport projectId="p1" />)
     await waitFor(() => {
-      expect(container.querySelectorAll('.hs-hotspot')).toHaveLength(2)
+      expect(container.querySelectorAll('.hs-table tbody tr')).toHaveLength(2)
     })
   })
 })

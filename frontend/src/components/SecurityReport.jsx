@@ -51,8 +51,13 @@ function severityTone(severity) {
 
 function FindingRow({ finding }) {
   const where = finding.line ? `${finding.location}:${finding.line}` : finding.location
+  // A dependency finding's title already reads `pillow 11.3.0 — GHSA-…`, so
+  // repeating `pillow` on a line of its own added a row per advisory for
+  // nothing. The location is only worth its own line when it says something the
+  // title does not: a file and a line number.
+  const showWhere = Boolean(finding.line) || !finding.title.startsWith(finding.location || '\u0000')
   return (
-    <li className="sec-finding">
+    <li className={`sec-finding ${severityTone(finding.severity)}`}>
       <span className={`sec-sev ${severityTone(finding.severity)}`}>{finding.severity}</span>
       <div className="sec-finding-body">
         <p className="sec-finding-title">
@@ -60,7 +65,7 @@ function FindingRow({ finding }) {
           {finding.cwe ? <em className="sec-cwe">{finding.cwe}</em> : null}
         </p>
         {finding.detail ? <p className="sec-finding-detail">{finding.detail}</p> : null}
-        {where ? (
+        {showWhere ? (
           <p className="sec-finding-where">
             <code>{where}</code>
             {finding.snippet ? <span className="sec-snippet">{finding.snippet}</span> : null}
@@ -94,9 +99,11 @@ function SeveritySummary({ counts, worstSeverity }) {
 function QualityChecklist({ gates }) {
   if (!gates?.length) return null
   return (
-    <section className="sec-section">
-      <h4 className="sec-section-title">Quality gates</h4>
-      <p className="sec-note">Facts about the project, not defects in the code.</p>
+    <section className="gv-section">
+      <div className="gv-section-head">
+        <h4 className="gv-section-title">Quality gates</h4>
+        <span className="gv-section-aside">facts about the project, not defects</span>
+      </div>
       <ul className="sec-gates">
         {gates.map((gate) => (
           <li key={gate.id} className={`sec-gate is-${gate.state}`}>
@@ -181,26 +188,42 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
 
   return (
     <div className="sec-root">
-      <div className="sec-head">
-        <div>
-          {scan?.repository ? (
-            <p className="sec-meta">
-              {scan.repository}
-              {scan.cached ? ' · cached' : ''}
-              {scan.code?.files_scanned ? ` · ${scan.code.files_scanned} files scanned` : ''}
-              {scan.dependencies?.checked ? ` · ${scan.dependencies.checked} dependencies checked` : ''}
-            </p>
-          ) : null}
+      <div className="gv-band sec-head">
+        <div className="gv-id">
+          <span className="gv-id-repo">{scan?.repository || 'Repository'}</span>
+          <span className="gv-id-note">
+            {scan?.cached ? 'cached scan' : 'fresh scan'}
+            {scan?.code?.files_scanned ? ` · ${scan.code.files_scanned} files scanned` : ''}
+            {scan?.dependencies?.checked ? ` · ${scan.dependencies.checked} dependencies checked` : ''}
+          </span>
         </div>
-        <button
-          type="button"
-          className="ad-btn"
-          onClick={() => run(true)}
-          disabled={status === 'loading'}
-          title="Re-run the scan"
-        >
-          <span>Rescan</span>
-        </button>
+        <div className="sec-head-right">
+          {scan ? (
+            <div className="gv-stats">
+              <div className="gv-stat is-accent">
+                <span className="gv-stat-value">{scan.finding_count || 0}</span>
+                <span className="gv-stat-label">Findings</span>
+              </div>
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.dependencies?.vulnerable || 0}</span>
+                <span className="gv-stat-label">Vulnerable deps</span>
+              </div>
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.gate_count || 0}</span>
+                <span className="gv-stat-label">Gates</span>
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="ad-btn"
+            onClick={() => run(true)}
+            disabled={status === 'loading'}
+            title="Re-run the scan"
+          >
+            <span>Rescan</span>
+          </button>
+        </div>
       </div>
 
       {status === 'loading' && !scan ? (
@@ -218,8 +241,11 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
           <SeveritySummary counts={scan.counts} worstSeverity={scan.worst_severity} />
 
           {findings.length ? (
-            <section className="sec-section">
-              <h4 className="sec-section-title">Findings ({findings.length})</h4>
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">Findings</h4>
+                <span className="gv-section-aside">worst first</span>
+              </div>
               <ul className="sec-findings">
                 {visible.map((finding) => (
                   <FindingRow key={`${finding.id}-${finding.location}-${finding.line ?? ''}`} finding={finding} />
@@ -239,13 +265,16 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
           )}
 
           {scan.by_category?.length ? (
-            <section className="sec-section">
-              <h4 className="sec-section-title">By category</h4>
-              <div className="sec-chips">
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">By category</h4>
+                <span className="gv-section-aside">worst severity per category</span>
+              </div>
+              <div className="gv-chips">
                 {scan.by_category.map((row) => (
                   <span key={row.category} className={`sec-chip ${severityTone(row.worst_severity)}`}>
                     {row.category}
-                    <em>{row.count}</em>
+                    <span className="gv-badge-count">{row.count}</span>
                   </span>
                 ))}
               </div>
@@ -254,15 +283,21 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
 
           <QualityChecklist gates={scan.quality} />
 
+          {/* What the scan could not do is the last thing a reader needs and
+              the first thing they should find if they go looking, so it is
+              rendered open rather than collapsed behind a summary. */}
           {scan.limitations?.length ? (
-            <section className="sec-section">
-              <h4 className="sec-section-title">What this scan did not do</h4>
-              <ul className="sec-limits">
+            <details className="gv-disclosure" open>
+              <summary>
+                What this scan did not do
+                <span className="gv-badge-count">({scan.limitations.length})</span>
+              </summary>
+              <ul className="gv-disclosure-list">
                 {scan.limitations.map((note) => (
                   <li key={note}>{note}</li>
                 ))}
               </ul>
-            </section>
+            </details>
           ) : null}
         </>
       ) : null}

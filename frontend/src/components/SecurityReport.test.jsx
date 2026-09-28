@@ -91,7 +91,7 @@ describe('SecurityReport', () => {
     await waitFor(() => {
       expect(screen.getByText(/2 high and 1 medium/i)).toBeInTheDocument()
     })
-    expect(screen.getByText('Findings (3)')).toBeInTheDocument()
+    expect(document.querySelector('.gv-section-title').textContent).toBe('Findings')
     // A code pattern, a secret and an advisory are all present and distinguishable.
     expect(screen.getByText('Weak hash algorithm')).toBeInTheDocument()
     expect(screen.getByText('GitHub token')).toBeInTheDocument()
@@ -135,7 +135,9 @@ describe('SecurityReport', () => {
     render(<SecurityReport projectId="p1" />)
 
     await waitFor(() => expect(screen.getByText('Quality gates')).toBeInTheDocument())
-    expect(screen.getByText(/Facts about the project, not defects in the code/i)).toBeInTheDocument()
+    // The aside states that these are observations, not defects, and it is the
+    // reason a reader should not read a missing gate as a vulnerability.
+    expect(screen.getByText(/facts about the project, not defects/i)).toBeInTheDocument()
     expect(screen.getByText('Continuous integration')).toBeInTheDocument()
     expect(screen.getByText('Dependency lockfile')).toBeInTheDocument()
   })
@@ -173,7 +175,7 @@ describe('SecurityReport', () => {
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue(many)
     const { container } = render(<SecurityReport projectId="p1" />)
 
-    await waitFor(() => expect(screen.getByText('Findings (30)')).toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('.gv-section-title').textContent).toBe('Findings'))
     expect(container.querySelectorAll('.sec-finding')).toHaveLength(25)
     expect(screen.getByRole('button', { name: /Show 5 more/i })).toBeInTheDocument()
   })
@@ -188,7 +190,7 @@ describe('SecurityReport', () => {
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue(unknown)
     const { container } = render(<SecurityReport projectId="p1" />)
 
-    await waitFor(() => expect(screen.getByText(/Findings \(1\)/)).toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('.gv-section-title').textContent).toBe('Findings'))
     expect(container.querySelector('.sec-sev').className).toContain('is-unknown')
   })
 

@@ -97,6 +97,9 @@ function DependencyTable({ bucket }) {
   const deps = bucket.dependencies
   const visible = expanded ? deps : deps.slice(0, MAX_ROWS_OPEN)
   const hidden = deps.length - visible.length
+  // A column of em-dashes tells a reader nothing, so Scope only appears when
+  // something in this ecosystem is actually scoped.
+  const hasScopes = deps.some((dep) => dep.scope && dep.scope !== 'runtime')
 
   if (!deps.length) {
     return (
@@ -109,31 +112,50 @@ function DependencyTable({ bucket }) {
 
   return (
     <div className="ts-manifest">
-      <div className="ts-manifest-head">
-        <span className="ts-manager">{bucket.manager}</span>
-        <span className="ts-manager-meta">
+      <div className="gv-section-head">
+        <h5 className="gv-subhead">{bucket.manager}</h5>
+        <span className="gv-section-aside">
           {bucket.language} · {deps.length} {deps.length === 1 ? 'package' : 'packages'}
         </span>
       </div>
-      <ul className="ts-deps">
-        {visible.map((dep) => (
-          <li key={dep.name} className="ts-dep">
-            <span className="ts-dep-name" title={dep.manifest || dep.name}>
-              {dep.name}
-            </span>
-            {dep.version ? (
-              <code className="ts-dep-version">{dep.version}</code>
-            ) : (
-              <span className="ts-dep-version is-unpinned" title="No version is pinned">
-                unpinned
-              </span>
-            )}
-            {dep.scope !== 'runtime' ? (
-              <span className={`ts-scope is-${dep.scope}`}>{dep.scope}</span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <table className="gv-table">
+        <thead>
+          <tr>
+            <th scope="col">Package</th>
+            <th scope="col" className="gv-num">
+              Version
+            </th>
+            {hasScopes ? <th scope="col">Scope</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((dep) => (
+            <tr key={dep.name}>
+              <td className="gv-cell-strong" title={dep.manifest || dep.name}>
+                {dep.name}
+              </td>
+              <td className="gv-num">
+                {dep.version ? (
+                  <code className="ts-dep-version">{dep.version}</code>
+                ) : (
+                  <span className="ts-dep-version is-unpinned" title="No version is pinned">
+                    unpinned
+                  </span>
+                )}
+              </td>
+              {hasScopes ? (
+                <td className="gv-cell-muted">
+                  {dep.scope !== 'runtime' ? (
+                    <span className={`ts-scope is-${dep.scope}`}>{dep.scope}</span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
       {hidden > 0 || expanded ? (
         <button type="button" className="ts-more" onClick={() => setExpanded((value) => !value)}>
           {expanded ? 'Show fewer' : `Show ${hidden} more`}
@@ -236,37 +258,45 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
 
   return (
     <div className="rs-view ts-root">
-      <div className="rs-view-head ts-head">
-        <div>
-          {/* No heading here: the Studio main window already renders the tool
-              name as its h2, and repeating it read as a duplicate. */}
-          {scan?.repository ? (
-            <p className="ad-meta">
-              {scan.repository}
-              {scan.cached ? ' · cached' : ''}
-              {scan.dependency_count
-                ? ` · ${scan.dependency_count} ${
-                    scan.dependency_count === 1 ? 'dependency' : 'dependencies'
-                  }`
-                : ''}
-              {scan.manifest_count
-                ? ` · ${scan.manifest_count} ${
-                    scan.manifest_count === 1 ? 'manifest' : 'manifests'
-                  }`
-                : ''}
-            </p>
-          ) : null}
+      {/* No heading here: the Studio main window already renders the tool
+          name as its h2, and repeating it read as a duplicate. */}
+      <div className="gv-band ts-head">
+        <div className="gv-id">
+          <span className="gv-id-repo">{scan?.repository || 'Repository'}</span>
+          <span className="gv-id-note">{scan?.cached ? 'cached scan' : 'fresh scan'}</span>
         </div>
-        <button
-          type="button"
-          className="ad-btn"
-          onClick={() => run(true)}
-          disabled={status === 'loading'}
-          title="Re-scan the manifests from scratch"
-        >
-          <RefreshIcon />
-          <span>Rescan</span>
-        </button>
+        {scan ? (
+          <div className="ts-head-right">
+            <div className="gv-stats">
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.language_count || 0}</span>
+                <span className="gv-stat-label">Languages</span>
+              </div>
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.technologies?.length || 0}</span>
+                <span className="gv-stat-label">Technologies</span>
+              </div>
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.dependency_count || 0}</span>
+                <span className="gv-stat-label">Dependencies</span>
+              </div>
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.manifest_count || 0}</span>
+                <span className="gv-stat-label">Manifests</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="ad-btn"
+              onClick={() => run(true)}
+              disabled={status === 'loading'}
+              title="Re-scan the manifests from scratch"
+            >
+              <RefreshIcon />
+              <span>Rescan</span>
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {status === 'loading' && !scan ? (
@@ -279,11 +309,14 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
 
       {scan ? (
         <>
-          {scan.summary ? <p className="ts-summary">{scan.summary}</p> : null}
+          {scan.summary ? <p className="gv-lead">{scan.summary}</p> : null}
 
           {programming.length ? (
-            <section className="ts-section">
-              <h4 className="ts-section-title">Languages</h4>
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">Languages</h4>
+                <span className="gv-section-aside">by file count</span>
+              </div>
               <ul className="ts-langs">
                 {programming.map((row) => (
                   <li key={row.name} className="ts-lang">
@@ -291,6 +324,7 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
                     <span className="ts-lang-bar" aria-hidden="true">
                       <span style={{ width: `${Math.max(2, row.share * 100)}%` }} />
                     </span>
+                    <span className="ts-lang-share">{Math.round(row.share * 100)}%</span>
                     <span className="ts-lang-files">{row.files}</span>
                   </li>
                 ))}
@@ -301,31 +335,58 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
           <ServiceGraph graph={scan.graph} />
 
           {byKind.length ? (
-            <section className="ts-section">
-              <h4 className="ts-section-title">Technologies</h4>
-              {byKind.map(([kind, rows]) => (
-                <div key={kind} className="ts-kind">
-                  <h5 className="ts-kind-title">{kind}</h5>
-                  <div className="ts-chips">
-                    {rows.map((tool) => (
-                      <span
-                        key={tool.name}
-                        className="ts-chip"
-                        title={tool.evidence?.length ? `via ${tool.evidence.join(', ')}` : tool.kind}
-                      >
-                        {tool.name}
-                        {tool.version ? <em className="ts-chip-version">{tool.version}</em> : null}
-                      </span>
-                    ))}
-                  </div>
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">Technologies</h4>
+                <span className="gv-section-aside">
+                  {byKind.length === 1 ? byKind[0][0] : `${byKind.length} categories`}
+                </span>
+              </div>
+              {byKind.length === 1 ? (
+                // A single category is a label, not a section of its own.
+                <div className="gv-chips">
+                  {byKind[0][1].map((tool) => (
+                    <span
+                      key={tool.name}
+                      className="gv-chip"
+                      title={tool.evidence?.length ? `via ${tool.evidence.join(', ')}` : tool.kind}
+                    >
+                      {tool.name}
+                      {tool.version ? <em className="gv-chip-version">{tool.version}</em> : null}
+                    </span>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                byKind.map(([kind, rows]) => (
+                  <div key={kind} className="ts-kind">
+                    <h5 className="gv-subhead">{kind}</h5>
+                    <div className="gv-chips">
+                      {rows.map((tool) => (
+                        <span
+                          key={tool.name}
+                          className="gv-chip"
+                          title={tool.evidence?.length ? `via ${tool.evidence.join(', ')}` : tool.kind}
+                        >
+                          {tool.name}
+                          {tool.version ? <em className="gv-chip-version">{tool.version}</em> : null}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </section>
           ) : null}
 
           {scan.dependencies?.length ? (
-            <section className="ts-section">
-              <h4 className="ts-section-title">Dependencies by package manager</h4>
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">Dependencies</h4>
+                <span className="gv-section-aside">
+                  {scan.dependencies.length}{' '}
+                  {scan.dependencies.length === 1 ? 'ecosystem' : 'ecosystems'}
+                </span>
+              </div>
               <div className="ts-manifests">
                 {scan.dependencies.map((bucket) => (
                   <DependencyTable key={bucket.manager} bucket={bucket} />
@@ -335,13 +396,16 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
           ) : null}
 
           {support.length ? (
-            <section className="ts-section">
-              <h4 className="ts-section-title">Config &amp; data formats</h4>
-              <div className="ts-chips is-quiet">
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">Config &amp; data formats</h4>
+                <span className="gv-section-aside">by file count</span>
+              </div>
+              <div className="gv-chips">
                 {support.map((row) => (
-                  <span key={row.name} className="ts-chip is-quiet">
+                  <span key={row.name} className="gv-badge">
                     {row.name}
-                    <em className="ts-chip-version">{row.files}</em>
+                    <span className="gv-badge-count">{row.files}</span>
                   </span>
                 ))}
               </div>
@@ -349,9 +413,12 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
           ) : null}
 
           {scan.manifests?.length ? (
-            <details className="ts-files">
-              <summary>Manifests read ({scan.manifests.length})</summary>
-              <ul>
+            <details className="gv-disclosure">
+              <summary>
+                Manifests read
+                <span className="gv-badge-count">({scan.manifests.length})</span>
+              </summary>
+              <ul className="gv-disclosure-list">
                 {scan.manifests.map((entry) => (
                   <li key={entry.path}>
                     <code>{entry.path}</code>
@@ -366,7 +433,7 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
           ) : null}
 
           {scan.truncated ? (
-            <p className="ts-note">
+            <p className="gv-note gv-note-bordered">
               This repository is large, so the scan used a bounded view of its files.
             </p>
           ) : null}

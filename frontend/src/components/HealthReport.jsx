@@ -102,38 +102,46 @@ function BandDot({ band }) {
   return <span className={`hs-band-dot is-${band}`} aria-hidden="true" />
 }
 
-function MetricCells({ row }) {
-  return (
-    <span className="hs-metrics">
-      <span title="Cyclomatic complexity">CC {row.cc}</span>
-      <span title="Maximum nesting depth">ND {row.nd}</span>
-      <span title="Distinct call targets (fan-out)">FO {row.fo}</span>
-      <span title="Non-structured exits">NS {row.ns}</span>
-    </span>
-  )
-}
-
-function HotspotRow({ row }) {
+// A hotspot row, as table cells rather than a run of monospace spans.
+//
+// The previous version put the symbol, the path, four metrics and the score
+// inline with no column headers, so the eye had to re-read each row to find the
+// score — which is the one number the table exists to show. The score is now a
+// right-aligned column under a header, and the metrics follow their own.
+function HotspotRow({ row, maxLrs }) {
   // Only the tail of the path is shown. The symbol is already on the left, so
   // `accounts/views.py` is what identifies the file, and it fits without being
   // elided — an earlier version truncated the head, which displayed a path
   // that read as a different, wrong one.
   const tail = row.path.split('/').slice(-2).join('/')
+  // Scaled against the worst row present, so the bar compares the ranking
+  // rather than repeating an absolute scale on every row.
+  const width = maxLrs > 0 ? Math.max(3, (row.lrs / maxLrs) * 100) : 0
   return (
-    <li className="hs-hotspot">
-      <BandDot band={row.band} />
-      <span className="hs-hotspot-name">
-        <code>{row.name}</code>
-        <span className="hs-hotspot-kind">{row.kind}</span>
-        <span className="hs-hotspot-path" title={row.path}>
-          {tail}
+    <tr className={`gv-row is-${row.band}`}>
+      <td className="hs-hotspot-name">
+        <BandDot band={row.band} />
+        <span className="hs-hotspot-name-text">
+          <code>{row.name}</code>
+          <span className="hs-hotspot-path" title={row.path}>
+            {tail}
+          </span>
         </span>
-      </span>
-      <MetricCells row={row} />
-      <span className="hs-lrs" title="Local Risk Score">
+      </td>
+      <td className="gv-cell-muted hs-hotspot-kind">{row.kind}</td>
+      <td className="gv-num hs-metrics-cell">
+        <span title="Cyclomatic complexity">{row.cc}</span>
+        <span title="Maximum nesting depth">{row.nd}</span>
+        <span title="Distinct call targets (fan-out)">{row.fo}</span>
+        <span title="Non-structured exits">{row.ns}</span>
+      </td>
+      <td className="gv-num hs-lrs-cell" title="Local Risk Score">
+        <span className="hs-lrs-bar" aria-hidden="true">
+          <span style={{ width: `${width}%` }} />
+        </span>
         {row.lrs}
-      </span>
-    </li>
+      </td>
+    </tr>
   )
 }
 
@@ -221,28 +229,49 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
 
   const bandCounts = scan?.band_counts || {}
   const weights = scan?.weights || {}
+  // The hotspot bar is scaled against the worst row on screen, so it shows
+  // the ranking rather than repeating an absolute scale 15 times.
+  const maxLrs = (scan?.hotspots || []).reduce((worst, row) => Math.max(worst, row.lrs), 0)
 
   return (
     <div className="rs-view hs-root">
       {scan ? (
-        <div className="rs-view-head hs-head">
-          <p className="ad-meta hs-meta">
-            {scan.repository}
-            {scan.cached ? ' · cached' : ''}
-            {scan.symbol_count
-              ? ` · ${scan.symbol_count} ${scan.symbol_count === 1 ? 'function' : 'functions'}`
-              : ''}
-          </p>
-          <button
-            type="button"
-            className="ad-btn"
-            onClick={() => run(true)}
-            disabled={status === 'loading'}
-            title="Re-measure from the current source"
-          >
-            <RefreshIcon />
-            <span>Rescan</span>
-          </button>
+        <div className="gv-band hs-head">
+          <div className="gv-id">
+            <span className="gv-id-repo">{scan.repository}</span>
+            <span className="gv-id-note">
+              {scan.cached ? 'cached scan' : 'fresh scan'}
+              {scan.measured_files != null ? ` · ${scan.measured_files} files measured` : ''}
+            </span>
+          </div>
+          <div className="hs-head-right">
+            <div className="gv-stats">
+              <div className="gv-stat">
+                <span className="gv-stat-value">{scan.symbol_count ?? 0}</span>
+                <span className="gv-stat-label">Functions</span>
+              </div>
+              {scan.file_count ? (
+                <div className="gv-stat">
+                  <span className="gv-stat-value">{scan.file_count}</span>
+                  <span className="gv-stat-label">Files</span>
+                </div>
+              ) : null}
+              <div className="gv-stat">
+                <span className="gv-stat-value">{maxLrs || '—'}</span>
+                <span className="gv-stat-label">Worst LRS</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="ad-btn"
+              onClick={() => run(true)}
+              disabled={status === 'loading'}
+              title="Re-measure from the current source"
+            >
+              <RefreshIcon />
+              <span>Rescan</span>
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -277,21 +306,54 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
           </div>
 
           {scan.hotspots?.length ? (
-            <section className="hs-section">
-              <h4 className="hs-section-title">Hotspots</h4>
-              <ul className="hs-hotspots">
-                {scan.hotspots.map((row, index) => (
-                  // A path and a name are not unique together: one file can
-                  // declare several same-named classes (nested `Meta`, `Config`).
-                  // The index keeps the key stable and unique for this list.
-                  <HotspotRow key={`${row.path}:${row.name}:${index}`} row={row} />
-                ))}
-              </ul>
-              <p className="hs-formula">
-                LRS = {weights.cc}·log₂(CC+1) + {weights.nd}·ND + {weights.fo}·log₂(FO+1) +{' '}
-                {weights.ns}·NS, each term capped. Bands: low &lt; 3, moderate &lt; 6, high &lt; 9,
-                critical above.
-              </p>
+            <section className="gv-section">
+              <div className="gv-section-head">
+                <h4 className="gv-section-title">Hotspots</h4>
+                <span className="gv-section-aside">ranked by local risk score</span>
+              </div>
+              <table className="gv-table hs-table">
+                <caption className="gv-sr-only">
+                  Functions ranked by local risk score, with their complexity metrics.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Symbol</th>
+                    <th scope="col">Kind</th>
+                    <th
+                      scope="col"
+                      className="gv-num hs-metrics-head"
+                      title="Cyclomatic complexity, nesting depth, fan-out, non-structured exits"
+                    >
+                      CC·ND·FO·NS
+                    </th>
+                    <th scope="col" className="gv-num">
+                      LRS
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scan.hotspots.map((row, index) => (
+                    // A path and a name are not unique together: one file can
+                    // declare several same-named classes (nested `Meta`, `Config`).
+                    // The index keeps the key stable and unique for this list.
+                    <HotspotRow key={`${row.path}:${row.name}:${index}`} row={row} maxLrs={maxLrs} />
+                  ))}
+                </tbody>
+              </table>
+              {/* The formula is how the score was arrived at, which is the
+                  right thing to have and the wrong thing to have in the first
+                  screen. */}
+              <details className="gv-disclosure">
+                <summary>How the score is calculated</summary>
+                <div className="gv-disclosure-body">
+                  <p className="gv-note">
+                    LRS = {weights.cc}·log₂(CC+1) + {weights.nd}·ND + {weights.fo}·log₂(FO+1) +{' '}
+                    {weights.ns}·NS, each term capped. Bands: low &lt; 3, moderate &lt; 6, high &lt; 9,
+                    critical above. CC is cyclomatic complexity, ND maximum nesting depth, FO
+                    fan-out, NS non-structured exits.
+                  </p>
+                </div>
+              </details>
             </section>
           ) : null}
 
@@ -299,15 +361,15 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
               could be measured it was the only thing on screen, which made the
               report look like a file listing rather than a health scan. */}
           {scan.largest_files?.length ? (
-            <details className="hs-details">
+            <details className="gv-disclosure">
               <summary>
-                Largest indexed files{' '}
-                <span className="hs-details-count">({scan.largest_files.length})</span>
+                Largest indexed files
+                <span className="gv-badge-count">({scan.largest_files.length})</span>
               </summary>
-              <ul className="hs-files">
+              <ul className="gv-disclosure-list hs-files">
                 {scan.largest_files.map((row) => (
-                  <li key={row.path}>
-                    <code>{row.path}</code>
+                  <li key={row.path} className="hs-file-row">
+                    <code className="gv-mono">{row.path}</code>
                     <span className="hs-file-size">
                       {row.chars.toLocaleString()} chars{row.measured ? '' : ' · size only'}
                     </span>
@@ -317,7 +379,11 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
             </details>
           ) : null}
 
-          {scan.coverage_note ? <p className="hs-note">{scan.coverage_note}</p> : null}
+          {/* The coverage note is a statement about what the scan could and
+              could not see, so it reads as one: bordered, muted, and last. */}
+          {scan.coverage_note ? (
+            <p className="gv-note gv-note-bordered">{scan.coverage_note}</p>
+          ) : null}
         </>
       ) : null}
 

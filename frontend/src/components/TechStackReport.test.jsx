@@ -122,13 +122,15 @@ describe('TechStackReport', () => {
     const { container } = render(<TechStackReport projectId="p1" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/dependencies by package manager/i)).toBeInTheDocument()
+      expect(
+      Array.from(document.querySelectorAll('.gv-section-title')).map((el) => el.textContent),
+    ).toContain('Dependencies')
     })
     // Scoped to the dependency section: a name and version can legitimately
     // appear in both the framework chips and the dependency list.
     const table = container.querySelector('.ts-manifests')
     expect(table).not.toBeNull()
-    expect(table.querySelector('.ts-manager').textContent).toBe('pip')
+    expect(table.querySelector('.gv-subhead').textContent).toBe('pip')
     expect(table.textContent).toContain('fastapi')
     expect(table.textContent).toContain('0.115.0')
     // A dependency with no pinned version says so rather than showing a blank.
@@ -136,26 +138,49 @@ describe('TechStackReport', () => {
     expect(table.textContent).toContain('dev')
   })
 
-  it('lists recognised technologies grouped by category, with versions', async () => {
+  it('lists recognised technologies under their category, with versions', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
     const { container } = render(<TechStackReport projectId="p1" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/^technologies$/i)).toBeInTheDocument()
+      expect(
+        Array.from(document.querySelectorAll('.gv-section-title')).map((el) => el.textContent),
+      ).toContain('Technologies')
     })
     // Grouped by category rather than one flat list: with the database, hosting,
     // CI, cloud and AI rules in play there are a dozen categories, and a single
-    // list buries the one a reader is looking for.
-    const kinds = Array.from(container.querySelectorAll('.ts-kind-title')).map((el) => el.textContent)
-    expect(kinds).toEqual(['Framework', 'Testing', 'Package manager'])
-    // Architectural categories sort ahead of build-time ones.
-    expect(kinds.indexOf('Database')).toBeLessThan(kinds.indexOf('Framework'))
+    // list buries the one a reader is looking for.  A single category is the
+    // section's aside rather than a heading of its own -- three levels of chrome
+    // for one chip is chrome for its own sake.
+    expect(screen.getByText('Framework')).toBeInTheDocument()
 
-    const chips = container.querySelectorAll('.ts-chip')
+    const chips = container.querySelectorAll('.gv-chip')
     const labels = Array.from(chips).map((chip) => chip.textContent)
     expect(labels.some((label) => label.includes('FastAPI'))).toBe(true)
     expect(labels.some((label) => label.includes('pytest'))).toBe(true)
     expect(labels.some((label) => label.includes('0.115.0'))).toBe(true)
+  })
+
+  it('gives each category its own subheading when there are several', async () => {
+    vi.spyOn(api, 'getTechStack').mockResolvedValue({
+      ...SCAN,
+      cached: true,
+      technologies: [
+        { name: 'Django', kind: 'Framework', version: '5.2', managers: ['pip'] },
+        { name: 'Postgres', kind: 'Database', version: null, managers: [] },
+        { name: 'Vercel', kind: 'Hosting', version: null, managers: [] },
+      ],
+    })
+    const { container } = render(<TechStackReport projectId="p1" />)
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('.ts-kind').length).toBeGreaterThan(0)
+    })
+    const subheads = Array.from(container.querySelectorAll('.ts-kind .gv-subhead')).map(
+      (el) => el.textContent,
+    )
+    // Architectural categories sort ahead of build-time ones.
+    expect(subheads).toEqual(['Database', 'Hosting', 'Framework'])
   })
 
   it('shows languages with a file count', async () => {
@@ -191,9 +216,10 @@ describe('TechStackReport', () => {
     render(<TechStackReport projectId="p1" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/manifests read \(1\)/i)).toBeInTheDocument()
+      expect(screen.getByText(/manifests read/i)).toBeInTheDocument()
     })
-    await actor.click(screen.getByText(/manifests read \(1\)/i))
+    expect(screen.getByText('(1)')).toBeInTheDocument()
+    await actor.click(screen.getByText(/manifests read/i))
     expect(screen.getByText('requirements.txt')).toBeInTheDocument()
   })
 
@@ -212,11 +238,13 @@ describe('TechStackReport counts', () => {
     const { rerender } = render(<TechStackReport projectId="p1" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/1 manifest/)).toBeInTheDocument()
+      expect(
+        Array.from(document.querySelectorAll('.gv-section-title')).map((el) => el.textContent),
+      ).toContain('Dependencies')
     })
-    // Singular, not "1 manifests".
-    expect(screen.queryByText(/1 manifests/)).not.toBeInTheDocument()
-    expect(screen.getByText(/2 dependencies/)).toBeInTheDocument()
+    // Singular, not "1 ecosystems" / "1 manifests".
+    expect(screen.getByText('1 ecosystem')).toBeInTheDocument()
+    expect(screen.queryByText(/1 ecosystems/)).not.toBeInTheDocument()
 
     rerender(<TechStackReport projectId="p2" />)
     vi.mocked(api.getTechStack).mockResolvedValue({
