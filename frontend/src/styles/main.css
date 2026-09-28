@@ -6810,6 +6810,17 @@ body.ad-fullscreen-active .app-layout {
   white-space: nowrap;
 }
 
+.hs-hotspot-kind {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mute);
+  flex: none;
+}
+
+/* The path is shown as its last two segments, so it fits without eliding. The
+   `direction: rtl` trick that used to elide the head was removed: it reordered
+   the text and displayed a path that read as a different, wrong one. */
 .hs-hotspot-path {
   font-family: var(--font-mono);
   font-size: 0.68rem;
@@ -6818,8 +6829,7 @@ body.ad-fullscreen-active .app-layout {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  direction: rtl;
-  text-align: left;
+  direction: ltr;
 }
 
 .hs-metrics {
@@ -6933,28 +6943,64 @@ body.ad-fullscreen-active .app-layout {
   margin-bottom: 4px;
 }
 
-/* Shown instead of the score ring when nothing was measurable. */
-.hs-ring-wrap.is-none .hs-ring-none {
-  width: 84px;
-  height: 84px;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
+/* Shown instead of the score ring when nothing was measurable. Sized to its
+   text rather than forcing a circle, which the previous fixed 84px box clipped:
+   "Not measured" wrapped across three lines and spilled past the outline. */
+.hs-ring-wrap.is-none {
+  width: auto;
+  height: auto;
+  display: flex;
+}
+
+.hs-ring-none {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 12px;
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
 }
 
 .hs-ring-none strong {
-  display: block;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
   color: var(--mute);
 }
 
 .hs-ring-none span {
-  font-size: 0.58rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.7rem;
   color: var(--mute);
+}
+
+/* Collapsed supporting detail. */
+.hs-details {
+  font-size: 0.74rem;
+}
+
+.hs-details > summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 550;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hs-details-count {
+  color: var(--mute);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.hs-details .hs-files {
+  margin-top: 8px;
+}
+
+/* The meta line that replaced the duplicated heading. */
+.hs-meta {
+  margin: 0;
+  min-width: 0;
 }

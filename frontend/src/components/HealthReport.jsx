@@ -74,7 +74,6 @@ function ScoreRing({ score, band }) {
       </div>
     )
   }
-
   const radius = 34
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (circumference * score) / 100
@@ -115,13 +114,19 @@ function MetricCells({ row }) {
 }
 
 function HotspotRow({ row }) {
+  // Only the tail of the path is shown. The symbol is already on the left, so
+  // `accounts/views.py` is what identifies the file, and it fits without being
+  // elided — an earlier version truncated the head, which displayed a path
+  // that read as a different, wrong one.
+  const tail = row.path.split('/').slice(-2).join('/')
   return (
     <li className="hs-hotspot">
       <BandDot band={row.band} />
       <span className="hs-hotspot-name">
         <code>{row.name}</code>
+        <span className="hs-hotspot-kind">{row.kind}</span>
         <span className="hs-hotspot-path" title={row.path}>
-          {row.path}
+          {tail}
         </span>
       </span>
       <MetricCells row={row} />
@@ -219,30 +224,27 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
 
   return (
     <div className="rs-view hs-root">
-      <div className="rs-view-head hs-head">
-        <div>
-          <h3>Health Score &amp; Hotspots</h3>
-          {scan?.repository ? (
-            <p className="ad-meta">
-              {scan.repository}
-              {scan.cached ? ' · cached' : ''}
-              {scan.symbol_count
-                ? ` · ${scan.symbol_count} ${scan.symbol_count === 1 ? 'function' : 'functions'}`
-                : ''}
-            </p>
-          ) : null}
+      {scan ? (
+        <div className="rs-view-head hs-head">
+          <p className="ad-meta hs-meta">
+            {scan.repository}
+            {scan.cached ? ' · cached' : ''}
+            {scan.symbol_count
+              ? ` · ${scan.symbol_count} ${scan.symbol_count === 1 ? 'function' : 'functions'}`
+              : ''}
+          </p>
+          <button
+            type="button"
+            className="ad-btn"
+            onClick={() => run(true)}
+            disabled={status === 'loading'}
+            title="Re-measure from the current source"
+          >
+            <RefreshIcon />
+            <span>Rescan</span>
+          </button>
         </div>
-        <button
-          type="button"
-          className="ad-btn"
-          onClick={() => run(true)}
-          disabled={status === 'loading'}
-          title="Re-measure from the current source"
-        >
-          <RefreshIcon />
-          <span>Rescan</span>
-        </button>
-      </div>
+      ) : null}
 
       {status === 'loading' && !scan ? (
         <div className="hs-stage" aria-live="polite">
@@ -258,15 +260,19 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
             <ScoreRing score={scan.health} band={scan.band} />
             <div className="hs-overview-body">
               <p className="hs-summary">{scan.summary}</p>
-              <ul className="hs-bands">
-                {Object.entries(BAND_LABELS).map(([key, label]) => (
-                  <li key={key} className={`hs-band is-${key}`}>
-                    <BandDot band={key} />
-                    <span className="hs-band-label">{label}</span>
-                    <span className="hs-band-count">{bandCounts[key] || 0}</span>
-                  </li>
-                ))}
-              </ul>{' '}
+              {/* A row of zeros is noise, not information. Only shown once
+                  something has actually been measured. */}
+              {scan.symbol_count ? (
+                <ul className="hs-bands">
+                  {Object.entries(BAND_LABELS).map(([key, label]) => (
+                    <li key={key} className={`hs-band is-${key}`}>
+                      <BandDot band={key} />
+                      <span className="hs-band-label">{label}</span>
+                      <span className="hs-band-count">{bandCounts[key] || 0}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           </div>
 
@@ -274,8 +280,11 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
             <section className="hs-section">
               <h4 className="hs-section-title">Hotspots</h4>
               <ul className="hs-hotspots">
-                {scan.hotspots.map((row) => (
-                  <HotspotRow key={`${row.path}:${row.name}`} row={row} />
+                {scan.hotspots.map((row, index) => (
+                  // A path and a name are not unique together: one file can
+                  // declare several same-named classes (nested `Meta`, `Config`).
+                  // The index keeps the key stable and unique for this list.
+                  <HotspotRow key={`${row.path}:${row.name}:${index}`} row={row} />
                 ))}
               </ul>
               <p className="hs-formula">
@@ -286,9 +295,15 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
             </section>
           ) : null}
 
+          {/* Collapsed by default: it is supporting detail, and when nothing
+              could be measured it was the only thing on screen, which made the
+              report look like a file listing rather than a health scan. */}
           {scan.largest_files?.length ? (
-            <section className="hs-section">
-              <h4 className="hs-section-title">Largest indexed files</h4>
+            <details className="hs-details">
+              <summary>
+                Largest indexed files{' '}
+                <span className="hs-details-count">({scan.largest_files.length})</span>
+              </summary>
               <ul className="hs-files">
                 {scan.largest_files.map((row) => (
                   <li key={row.path}>
@@ -299,7 +314,7 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
           ) : null}
 
           {scan.coverage_note ? <p className="hs-note">{scan.coverage_note}</p> : null}

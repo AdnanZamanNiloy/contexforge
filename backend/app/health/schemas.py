@@ -41,6 +41,7 @@ class HealthResponse(BaseModel):
     measured_languages: list[str] = Field(default_factory=list)
     measured_files: int = 0
     unparsed_files: int = 0
+    fetched_files: int = 0
     coverage_note: str = ""
     fingerprint: str = ""
     cached: bool = False

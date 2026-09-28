@@ -194,7 +194,8 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
     <div className="rs-view ts-root">
       <div className="rs-view-head ts-head">
         <div>
-          <h3>Dependency &amp; Tech Stack</h3>
+          {/* No heading here: the Studio main window already renders the tool
+              name as its h2, and repeating it read as a duplicate. */}
           {scan?.repository ? (
             <p className="ad-meta">
               {scan.repository}

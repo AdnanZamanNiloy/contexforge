@@ -8,6 +8,7 @@ every severity band in the report, and the number looks plausible either way.
 from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 import pytest
 
@@ -476,7 +477,10 @@ async def test_unparseable_file_is_skipped_and_counted_not_guessed(tmp_path):
     # Only the parseable function is reported.
     assert result["symbol_count"] == 1
     assert all(row["path"] != "app/broken.py" for row in result["hotspots"])
-    assert "re-ingesting" in result["coverage_note"]
+    # Re-ingesting is no longer the only remedy: unreadable files are fetched.
+    assert "could not be read" in result["coverage_note"]
+    # "1 file ... was", not "were".
+    assert "1 file could not be read and was skipped" in result["coverage_note"]
 
 
 @pytest.mark.asyncio
@@ -493,3 +497,119 @@ async def test_skipped_files_do_not_count_as_low_risk(tmp_path):
     # A file that could not be read must not be silently scored as healthy.
     assert result["health"] is None
     assert "No per-function risk" in result["summary"]
+
+
+# --------------------------------------------------------------------------- #
+# GitHub fetch fallback
+# --------------------------------------------------------------------------- #
+
+
+class StubFetcher:
+    """Stands in for GitFileFetcher, returning canned file bodies."""
+
+    instances: ClassVar[list] = []
+
+    def __init__(self, owner, repo, branch, **kwargs):
+        self.owner, self.repo, self.branch = owner, repo, branch
+        self.paths: list[str] = []
+        StubFetcher.instances.append(self)
+
+    async def fetch(self, paths, deadline_seconds=20.0):
+        from app.health.fetch import FetchOutcome
+
+        self.paths = list(paths)
+        outcome = FetchOutcome()
+        outcome.attempted = len(paths)
+        for path in paths:
+            if path in getattr(self, "bodies", {}):
+                outcome.files[path] = self.bodies[path]
+            else:
+                outcome.failed += 1
+        return outcome
+
+
+@pytest.fixture
+def stub_fetch(monkeypatch):
+    import app.health.service as service_module
+
+    StubFetcher.instances = []
+    monkeypatch.setattr(service_module, "GitFileFetcher", StubFetcher)
+    monkeypatch.setattr(service_module, "default_branch", lambda owner, repo: _async_value("main"))
+    return StubFetcher
+
+
+async def _async_value(value):
+    return value
+
+
+@pytest.mark.asyncio
+async def test_fetches_files_the_index_cannot_supply(tmp_path, stub_fetch):
+    """A text-split index cuts files mid-class, so the rest are read from GitHub.
+
+    This is the path that makes the scan work on a repository indexed before
+    the code chunker was used for GitHub sources, and the one that actually runs
+    for a pre-existing index.
+    """
+    stub_fetch.bodies = {"app/broken.py": COMPLEX}
+    chunks = [
+        # Truncated at the class body, exactly as a text chunker leaves it.
+        FakeChunk("class C:\n", "app/broken.py"),
+        FakeChunk(SIMPLE, "app/util.py", "add"),
+    ]
+    result = await _service(tmp_path, chunks).scan("p1", "repo:acme/widgets")
+    assert result["fetched_files"] == 1
+    assert result["unparsed_files"] == 0
+    names = {row["name"] for row in result["hotspots"]}
+    assert "tangled" in names  # measured from the fetched body
+    assert "add" in names  # measured from the index
+
+
+@pytest.mark.asyncio
+async def test_only_the_unresolved_files_are_fetched(tmp_path, stub_fetch):
+    """A symbol-chunked index needs no network at all."""
+    stub_fetch.bodies = {}
+    chunks = [FakeChunk(COMPLEX, "app/core.py", "tangled")]
+    result = await _service(tmp_path, chunks).scan("p1", "repo:acme/widgets")
+    assert result["fetched_files"] == 0
+    assert stub_fetch.instances == []  # never constructed
+
+
+@pytest.mark.asyncio
+async def test_a_failed_fetch_is_counted_not_faked(tmp_path, stub_fetch):
+    stub_fetch.bodies = {}
+    chunks = [FakeChunk("class C:\n", "app/broken.py")]
+    result = await _service(tmp_path, chunks).scan("p1", "repo:acme/widgets")
+    assert result["fetched_files"] == 0
+    assert result["unparsed_files"] == 1
+    assert result["symbol_count"] == 0
+    # An unreadable index is not a healthy repository.
+    assert result["health"] is None
+    assert "could not be read" in result["coverage_note"]
+
+
+@pytest.mark.asyncio
+async def test_no_repository_identity_means_no_fetch_attempt(tmp_path, monkeypatch):
+    """Without an owner/repo there is nothing to fetch from, so it is skipped."""
+    import app.health.service as service_module
+
+    calls: list = []
+
+    def spy(*args, **kwargs):
+        calls.append(args)
+        return StubFetcher(*args, **kwargs)
+
+    monkeypatch.setattr(service_module, "GitFileFetcher", spy)
+    # No `repo` and no GitHub `url` in the metadata, so owner/repo are unknown.
+    orphan = FakeChunk("class C:\n", "app/broken.py")
+    orphan.metadata = {"path": "app/broken.py"}
+    result = await _service(tmp_path, [orphan]).scan("p1", "not-a-repo-id")
+    assert calls == []
+    assert result["unparsed_files"] == 1
+
+
+@pytest.mark.asyncio
+async def test_coverage_note_reports_how_many_were_fetched(tmp_path, stub_fetch):
+    stub_fetch.bodies = {"app/broken.py": COMPLEX}
+    chunks = [FakeChunk("class C:\n", "app/broken.py")]
+    result = await _service(tmp_path, chunks).scan("p1", "repo:acme/widgets")
+    assert "read from GitHub" in result["coverage_note"]

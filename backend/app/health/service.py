@@ -29,6 +29,7 @@ import re
 import time
 from typing import Any
 
+from app.health.fetch import GitFileFetcher, default_branch
 from app.health.metrics import iter_symbols
 from app.health.risk import BANDS, RISK_WEIGHTS, analyze, health_from_bands
 from app.health.storage import HealthStore
@@ -85,7 +86,7 @@ class HealthService:
         if not chunks:
             raise HealthError("This GitHub source has no indexed files. Re-ingest the repository and try again.")
 
-        paths, repository = self._collect_paths(chunks, source_id)
+        paths, repository, owner, repo = self._collect_paths(chunks, source_id)
         if not paths:
             raise HealthError("This GitHub source has no indexed files to scan.")
 
@@ -99,7 +100,7 @@ class HealthService:
         started = time.perf_counter()
         try:
             payload = await asyncio.wait_for(
-                self._run_scan(chunks, repository, fingerprint),
+                self._run_scan(chunks, repository, owner, repo, fingerprint),
                 timeout=SCAN_TIMEOUT_SECONDS,
             )
         except TimeoutError as exc:  # pragma: no cover - timing guard
@@ -122,9 +123,11 @@ class HealthService:
     # Internals
     # ------------------------------------------------------------------ #
 
-    def _collect_paths(self, chunks: list, source_id: str) -> tuple[list[str], str]:
+    def _collect_paths(self, chunks: list, source_id: str) -> tuple[list[str], str, str, str]:
+        """Indexed file paths, plus the repository's ``owner`` and ``repo``."""
         paths: set[str] = set()
         repository = ""
+        owner = repo = ""
         for chunk in chunks:
             meta = dict(chunk.metadata or {})
             path = (meta.get("path") or "").strip()
@@ -132,11 +135,57 @@ class HealthService:
                 paths.add(path)
             if not repository and meta.get("repo"):
                 repository = str(meta["repo"])
+            if not owner:
+                url = str(meta.get("url") or "")
+                match = re.match(r"https?://github\.com/([^/]+)/([^/]+)", url)
+                if match:
+                    owner, repo = match.group(1), match.group(2).replace(".git", "")
+        if "/" in repository and not owner:
+            owner, _, repo = repository.partition("/")
         if not repository:
-            repository = source_id.replace("repo:", "")
-        return sorted(paths), repository
+            repository = f"{owner}/{repo}" if owner else source_id.replace("repo:", "")
+        return sorted(paths), repository, owner, repo
 
-    async def _run_scan(self, chunks: list, repository: str, fingerprint: str) -> dict[str, Any]:
+    @staticmethod
+    def _rows_for(symbols) -> list[dict[str, Any]]:
+        """Turn measured symbols into report rows, with the LRS workings kept.
+
+        The transformed components travel with each row so a reader can
+        reproduce the score from the raw metrics without rerunning anything.
+        """
+        rows: list[dict[str, Any]] = []
+        for metrics in symbols:
+            components, lrs, band = analyze(metrics)
+            rows.append(
+                {
+                    "name": metrics.name,
+                    "kind": metrics.kind,
+                    "path": metrics.path,
+                    "loc": metrics.loc,
+                    "cc": metrics.cc,
+                    "nd": metrics.nd,
+                    "fo": metrics.fo,
+                    "ns": metrics.ns,
+                    "r_cc": round(components.r_cc, 2),
+                    "r_nd": round(components.r_nd, 2),
+                    "r_fo": round(components.r_fo, 2),
+                    "r_ns": round(components.r_ns, 2),
+                    "lrs": round(lrs, 2),
+                    "band": band.name,
+                    "band_label": band.label,
+                    "test": bool(_TEST_PATH.search(metrics.path)),
+                }
+            )
+        return rows
+
+    async def _run_scan(
+        self,
+        chunks: list,
+        repository: str,
+        owner: str,
+        repo: str,
+        fingerprint: str,
+    ) -> dict[str, Any]:
         # Group the source's chunks by file, keeping them in index order.
         by_path: dict[str, list] = {}
         for chunk in chunks:
@@ -149,20 +198,19 @@ class HealthService:
         rows: list[dict[str, Any]] = []
         measured_paths = 0
         unparseable_paths = 0
+        unresolved: list[str] = []
 
+        # Pass one: everything the index can supply on its own.  A repository
+        # indexed with the code chunker stores one chunk per function tagged
+        # with its symbol, which is the exact source.  Older indexes hold the
+        # file split on text-chunk boundaries, which reassembles only when the
+        # joins land somewhere syntactically whole.
         for path, file_chunks in by_path.items():
             if not path.endswith(_MEASURED_SUFFIX):
                 continue
             if not any((c.text or "").strip() for c in file_chunks):
                 continue
 
-            # Two chunking modes are supported.  A repository indexed with the
-            # code chunker stores one chunk per function, tagged with its symbol,
-            # which is the exact source and needs nothing else.  Older indexes
-            # hold the file split on text-chunk boundaries; those can be
-            # reassembled and parsed, but only when the joins happen to be
-            # syntactically whole.  When they are not, the file is skipped and
-            # counted — never measured from a guess.
             symbol_chunks = [c for c in file_chunks if str((c.metadata or {}).get("symbol") or "").strip()]
             if symbol_chunks:
                 source = "\n\n".join(c.text or "" for c in symbol_chunks)[:MAX_SOURCE_CHARS]
@@ -171,36 +219,36 @@ class HealthService:
 
             symbols = iter_symbols(source, path)
             if symbols is None:
-                # Could not be reassembled into parseable source. Counted
-                # separately so it never looks like a clean, low-risk file.
-                unparseable_paths += 1
+                unresolved.append(path)
                 continue
             measured_paths += 1
+            rows.extend(self._rows_for(symbols))
 
-            for metrics in symbols:
-                components, lrs, band = analyze(metrics)
-                rows.append(
-                    {
-                        "name": metrics.name,
-                        "kind": metrics.kind,
-                        "path": metrics.path,
-                        "loc": metrics.loc,
-                        "cc": metrics.cc,
-                        "nd": metrics.nd,
-                        "fo": metrics.fo,
-                        "ns": metrics.ns,
-                        "r_cc": round(components.r_cc, 2),
-                        "r_nd": round(components.r_nd, 2),
-                        "r_fo": round(components.r_fo, 2),
-                        "r_ns": round(components.r_ns, 2),
-                        "lrs": round(lrs, 2),
-                        "band": band.name,
-                        "band_label": band.label,
-                        "test": bool(_TEST_PATH.search(path)),
-                    }
-                )
-            if len(rows) >= MAX_SYMBOLS:
-                break
+        # Pass two: fetch the rest.  A text-split index often cuts a file mid
+        # class, and the missing text is simply not in the index, so the only way
+        # to measure it exactly is to read the file.  Bounded to the files that
+        # actually need it, and skipped entirely when everything resolved.
+        fetched = 0
+        if unresolved and owner and repo:
+            branch = await default_branch(owner, repo)
+            if branch:
+                outcome = await GitFileFetcher(owner, repo, branch).fetch(unresolved)
+                for path in unresolved:
+                    text = outcome.files.get(path)
+                    if not text:
+                        continue
+                    symbols = iter_symbols(text[:MAX_SOURCE_CHARS], path)
+                    if symbols is None:
+                        continue
+                    fetched += 1
+                    measured_paths += 1
+                    rows.extend(self._rows_for(symbols))
+            else:
+                logger.info("health: could not resolve a branch for %s", repository)
+        unparseable_paths = len(unresolved) - fetched
+
+        if len(rows) >= MAX_SYMBOLS:
+            rows = rows[:MAX_SYMBOLS]
 
         counts = {band.name: 0 for band in BANDS}
         for row in rows:
@@ -252,7 +300,8 @@ class HealthService:
             "measured_languages": measured,
             "measured_files": measured_paths,
             "unparsed_files": unparseable_paths,
-            "coverage_note": _coverage_note(measured, len(all_paths), unparseable_paths),
+            "fetched_files": fetched,
+            "coverage_note": _coverage_note(measured, len(all_paths), unparseable_paths, fetched),
             "fingerprint": fingerprint,
         }
 
@@ -289,16 +338,25 @@ def _summary(health: int, counts: dict[str, int], symbols: int, files: int, meas
     )
 
 
-def _coverage_note(measured: list[str], files: int, unparsed: int) -> str:
+def _count(value: int, noun: str) -> str:
+    """``1 file`` / ``2 files`` — used where the verb has to agree with it."""
+    return f"{value} {noun}" if value == 1 else f"{value} {noun}s"
+
+
+def _coverage_note(measured: list[str], files: int, unparsed: int, fetched: int = 0) -> str:
     scope = f"for {', '.join(measured)} only" if measured else "for Python only"
     note = (
         f"Per-function risk is measured {scope}; other files are listed by size. "
         f"Change frequency is not available, because no git history is indexed, so churn is "
         f"deliberately left out rather than estimated."
     )
-    if unparsed:
+    if fetched:
         note += (
-            f" {unparsed} Python file{'s' if unparsed != 1 else ''} could not be reassembled "
-            f"from the index and were skipped — re-ingesting the repository measures them."
+            f" {_count(fetched, 'file')} had to be read from GitHub, because the index stores "
+            f"them cut at chunk boundaries."
         )
+    if unparsed:
+        # "1 file ... was" and "2 files ... were" both have to read correctly.
+        verb = "was" if unparsed == 1 else "were"
+        note += f" {_count(unparsed, 'file')} could not be read and {verb} skipped."
     return note

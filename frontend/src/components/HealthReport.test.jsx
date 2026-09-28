@@ -35,9 +35,9 @@ const SCAN = {
       test: false,
     },
     {
-      name: 'add',
-      kind: 'function',
-      path: 'app/util.py',
+      name: 'UserForm',
+      kind: 'class',
+      path: 'app/forms.py',
       loc: 2,
       cc: 1,
       nd: 0,
@@ -248,5 +248,88 @@ describe('HealthReport unmeasured state', () => {
     // A perfect score would be a claim the data does not support.
     expect(screen.queryByText('100')).not.toBeInTheDocument()
     expect(screen.queryByText('72')).not.toBeInTheDocument()
+  })
+})
+
+describe('HealthReport presentation', () => {
+  it('does not repeat the tool name that the main window already shows', async () => {
+    vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
+    const { container } = render(<HealthReport projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText(/health 72\/100/i)).toBeInTheDocument()
+    })
+    // The Studio main window renders the tool label as its own h2; repeating it
+    // inside the view read as a duplicated heading.
+    expect(container.querySelector('.hs-root h3')).toBeNull()
+  })
+
+  it('shows the file tail, so no path is displayed truncated', async () => {
+    vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
+    const { container } = render(<HealthReport projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText('Hotspots')).toBeInTheDocument()
+    })
+    const path = container.querySelector('.hs-hotspot-path')
+    expect(path.textContent).toBe('app/core.py')
+    // The full path is still available on hover.
+    expect(path.getAttribute('title')).toBe('app/core.py')
+  })
+
+  it('labels whether a row is a function or a class', async () => {
+    vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
+    const { container } = render(<HealthReport projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText('Hotspots')).toBeInTheDocument()
+    })
+    // Two same-named classes in one file are otherwise indistinguishable.
+    const kinds = Array.from(container.querySelectorAll('.hs-hotspot-kind')).map(
+      (n) => n.textContent,
+    )
+    expect(kinds).toContain('function')
+    expect(kinds).toContain('class')
+  })
+
+  it('collapses the largest-files list by default', async () => {
+    vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
+    const { container } = render(<HealthReport projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText(/largest indexed files/i)).toBeInTheDocument()
+    })
+    const details = container.querySelector('.hs-details')
+    expect(details).not.toBeNull()
+    expect(details.hasAttribute('open')).toBe(false)
+  })
+
+  it('hides the band legend when nothing was measured', async () => {
+    vi.spyOn(api, 'getHealthScan').mockResolvedValue({
+      ...SCAN,
+      health: null,
+      symbol_count: 0,
+      band_counts: { low: 0, moderate: 0, high: 0, critical: 0 },
+      hotspots: [],
+    })
+    const { container } = render(<HealthReport projectId="p1" />)
+    await waitFor(() => {
+      expect(screen.getByText('Not measured')).toBeInTheDocument()
+    })
+    // A row of zeros is noise, not information.
+    expect(container.querySelector('.hs-bands')).toBeNull()
+  })
+
+  it('gives same-named symbols in one file distinct keys', async () => {
+    // One file can declare several nested `Meta` classes; identical
+    // path+name keys made React drop rows and warn.
+    const dupes = {
+      ...SCAN,
+      hotspots: [
+        { ...SCAN.hotspots[0], name: 'Meta', path: 'app/forms.py' },
+        { ...SCAN.hotspots[0], name: 'Meta', path: 'app/forms.py', loc: 4 },
+      ],
+    }
+    vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...dupes, cached: true })
+    const { container } = render(<HealthReport projectId="p1" />)
+    await waitFor(() => {
+      expect(container.querySelectorAll('.hs-hotspot')).toHaveLength(2)
+    })
   })
 })

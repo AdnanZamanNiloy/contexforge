@@ -436,7 +436,8 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
     <div className="rs-view ad-root">
       <div className="rs-view-head ad-head">
         <div>
-          <h3>Architecture Diagram</h3>
+          {/* No heading here: the Studio main window already renders the tool
+              name as its h2, and repeating it read as a duplicate. */}
           {diagram?.repository ? (
             <p className="ad-meta">
               {diagram.repository}
