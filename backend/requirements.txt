@@ -53,3 +53,14 @@ python-docx>=1.1,<2.0
 trafilatura>=1.12,<2.0
 langdetect>=1.0,<2.0
 youtube-transcript-api>=1.2.4,<2.0
+
+# ── Security & Quality scanning ──────────────────────────────
+# The structural code scanner.  A single static binary (~50 MB installed from an
+# 8 MB wheel) that matches the shape of code rather than its text, so a password
+# in a comment is not a finding and a real call to eval() is.  This is the same
+# design principle as semgrep, at roughly a fifteenth of the weight, and it
+# deliberately does not include semgrep's cross-file taint tracking.
+#
+# Optional at runtime: the scan reports that patterns were not checked if the
+# binary is absent, rather than reporting nothing found.
+ast-grep-cli>=0.38,<1.0

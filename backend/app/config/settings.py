@@ -252,6 +252,10 @@ class Settings(BaseSettings):
     # Health Score & Hotspots — structural risk scans, cached on the same terms.
     HEALTH_DB_PATH: Path = Field(default=data_path("health", "health.db"))
 
+    # Security & Quality — code patterns, dependency advisories and repository
+    # gates, cached on the same terms.
+    SECURITY_DB_PATH: Path = Field(default=data_path("security", "security.db"))
+
     # Model Hub — configured models, fallback chains, and serving selection.
     MODEL_HUB_DB_PATH: Path = Field(default=data_path("model_hub", "model_hub.db"))
 

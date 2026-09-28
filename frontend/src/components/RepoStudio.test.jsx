@@ -68,13 +68,12 @@ describe('RepoStudio rail', () => {
 })
 
 describe('StudioView (main window)', () => {
-  it('renders the remaining placeholder view without any backend', async () => {
-    // Architecture Diagram, Dependency & Tech Stack and Health Score & Hotspots
-    // are all real generators now and have their own tests.  Only Security &
-    // Quality is still a static preview.
+  it('routes the security tool to the real scan view', async () => {
+    // Every Studio tool is a real generator now, and each has its own tests.
+    // With no project the security view must ask for one rather than falling
+    // back to a static preview of results that were never computed.
     render(<StudioView tool="security" />)
-    expect(screen.getByText('No hardcoded secrets detected')).toBeInTheDocument()
-    expect(screen.getByText('Branch protection on main')).toBeInTheDocument()
+    expect(screen.getByText('Open a project to scan a repository')).toBeInTheDocument()
   })
 
   it('routes the architecture tool to the real diagram generator', async () => {

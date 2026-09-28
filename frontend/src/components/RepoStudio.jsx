@@ -10,6 +10,7 @@
 
 import ArchitectureDiagram from './ArchitectureDiagram'
 import HealthReport from './HealthReport'
+import SecurityReport from './SecurityReport'
 import TechStackReport from './TechStackReport'
 
 function DiagramIcon() {
@@ -135,32 +136,6 @@ const TOOLS = [
   { id: 'chat', label: 'Repo Chat', hint: 'Ask about the repo', Icon: ChatIcon },
 ]
 
-function SecurityView() {
-  const rows = [
-    { state: 'ok', label: 'No hardcoded secrets detected', detail: 'Clean' },
-    { state: 'warn', label: '2 outdated dependencies', detail: 'Review' },
-    { state: 'ok', label: 'Branch protection on main', detail: 'On' },
-    { state: 'info', label: 'License file present', detail: 'MIT' },
-  ]
-  return (
-    <div className="rs-view">
-      <div className="rs-view-head">
-        <h3>Security & Quality</h3>
-      </div>
-      <ul className="rs-checks">
-        {rows.map((row) => (
-          <li key={row.label} className={`rs-check is-${row.state}`}>
-            <span className="rs-dot" aria-hidden="true" />
-            <span className="rs-check-file">{row.label}</span>
-            <span className="rs-check-note">{row.detail}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="rs-view-hint">Secrets, vulnerable packages and quality gates per module.</p>
-    </div>
-  )
-}
-
 export default function RepoStudio({ repoName, active, onSelect }) {
   return (
     <div className="repo-studio">
@@ -216,7 +191,7 @@ export function StudioView({ tool, projectId, hasGithubSource }) {
     case 'architecture':
       return <ArchitectureDiagram projectId={projectId} hasGithubSource={hasGithubSource} />
     case 'security':
-      return <SecurityView />
+      return <SecurityReport projectId={projectId} hasGithubSource={hasGithubSource} />
     case 'stack':
       return <TechStackReport projectId={projectId} hasGithubSource={hasGithubSource} />
     case 'health':

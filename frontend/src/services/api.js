@@ -606,6 +606,22 @@ export async function scanTechStack(projectId, { refresh = false } = {}) {
   })
 }
 
+// --- Security & Quality -----------------------------------------------------
+
+// A security scan reads the indexed source and, when a manifest pins a
+// resolvable version, asks OSV.dev about it.  That makes it seconds rather than
+// milliseconds -- still a plain request, so still no streaming.
+export async function getSecurityScan(projectId) {
+  return request(`/security/${encodeURIComponent(projectId)}`)
+}
+
+export async function scanSecurity(projectId, { refresh = false } = {}) {
+  return request('/security/scan', {
+    method: 'POST',
+    body: JSON.stringify({ project_id: projectId, refresh }),
+  })
+}
+
 // --- Health Score & Hotspots ------------------------------------------------
 
 // A health scan is AST parsing of chunks already in memory, so it lands in

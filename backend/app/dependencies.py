@@ -21,6 +21,8 @@ from app.mindmap.storage import MindMapStore
 from app.model_hub import factory as model_hub_factory
 from app.model_hub.service import ModelHubService
 from app.model_hub.storage import ModelHubStore
+from app.security.service import SecurityService
+from app.security.storage import SecurityStore
 from app.services.ingest_service import IngestService
 from app.services.query_service import QueryService
 from app.sources.storage import SourceMetaStore
@@ -59,6 +61,8 @@ __all__ = [
     "get_projects_service",
     "get_projects_store",
     "get_query_service",
+    "get_security_service",
+    "get_security_store",
     "get_settings",
     "get_techstack_service",
 ]
@@ -284,6 +288,16 @@ def get_health_service() -> HealthService:
 # ---------------------------------------------------------------------------
 # Dependency & Tech Stack — a manifest-only scan of a GitHub source
 # ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_security_store() -> SecurityStore:
+    return SecurityStore(db_path=get_settings().SECURITY_DB_PATH)
+
+
+@lru_cache(maxsize=1)
+def get_security_service() -> SecurityService:
+    return SecurityService(store=get_security_store(), faiss=get_faiss_store())
 
 
 @lru_cache(maxsize=1)
