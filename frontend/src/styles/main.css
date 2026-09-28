@@ -5580,36 +5580,6 @@ select.mh-input {
   color: var(--mute);
 }
 
-.rs-diagram {
-  width: 100%;
-  height: auto;
-  border-radius: 14px;
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.015);
-}
-
-.rs-diagram rect {
-  fill: rgba(67, 119, 253, 0.08);
-  stroke: rgba(255, 255, 255, 0.14);
-  stroke-width: 1;
-}
-
-.rs-diagram path {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.22);
-  stroke-width: 1.2;
-}
-
-.rs-diagram text {
-  fill: var(--body-color);
-  font-size: 10px;
-  font-family: var(--font-sans);
-}
-
-.rs-diagram-dot {
-  fill: var(--primary);
-}
-
 .rs-checks {
   list-style: none;
   margin: 0;
@@ -5999,5 +5969,269 @@ select.mh-input {
   }
   .rs-main .rs-checks {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Architecture Diagram (Studio → Architecture Diagram)
+ *
+ * A scrollable, zoomable surface for a Mermaid graph.  The Mermaid classDefs
+ * (toneBlue/toneMint/…) are emitted by the backend compiler, so the dark
+ * palette lives there; only the chrome around the SVG is styled here.
+ * ------------------------------------------------------------------------- */
+
+.ad-root {
+  flex: 1;
+  min-height: 0;
+}
+
+.ad-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.ad-meta {
+  margin: 3px 0 0;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--mute);
+}
+
+.ad-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ad-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink-strong);
+  font-size: 0.74rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.ad-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.ad-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ad-explanation {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--ink-strong);
+}
+
+/* The scroll container.  `touch-action: none` hands drags to the pan handler
+   instead of the browser, so dragging the diagram never scrolls the page. */
+.ad-surface {
+  flex: 1;
+  min-height: 260px;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.045) 1px, transparent 0) 0 0 / 22px
+      22px,
+    #0b0b0c;
+  cursor: grab;
+  touch-action: none;
+}
+
+.ad-surface.is-panning {
+  cursor: grabbing;
+}
+
+.ad-surface::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ad-surface::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+}
+
+.ad-surface::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Transform origin is pinned so zooming expands around the top-left of the
+   viewport rather than drifting the graph out of view. */
+.ad-canvas {
+  display: inline-block;
+  min-width: 100%;
+  padding: 22px;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.ad-canvas svg {
+  display: block;
+  height: auto;
+  max-width: none;
+}
+
+/* Mermaid emits its own dark fills; these only align markers and edges with the
+   surrounding chrome. */
+.ad-canvas .marker {
+  fill: #5b6472;
+  stroke: #5b6472;
+}
+
+.ad-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ad-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ad-zoom button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-strong);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ad-zoom button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ad-zoom button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ad-zoom-level {
+  min-width: 46px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--mute);
+}
+
+.ad-foot-hint {
+  font-size: 0.71rem;
+  color: var(--mute);
+}
+
+/* Loading / empty stage. */
+.ad-stage {
+  flex: 1;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 22px;
+  text-align: center;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ad-stage-title {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.ad-stage-note {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.ad-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: linear-gradient(135deg, #2b3a6e, #141a33);
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 4px;
+}
+
+.ad-spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--primary);
+  animation: ad-spin 0.8s linear infinite;
+  margin-bottom: 4px;
+}
+
+@keyframes ad-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ad-rebuilding {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--mute);
+}
+
+.ad-error {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(225, 29, 72, 0.4);
+  background: rgba(225, 29, 72, 0.1);
+  color: #ffd7de;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-spinner {
+    animation: none;
   }
 }

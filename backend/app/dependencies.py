@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
+from app.architecture.service import ArchitectureService
+from app.architecture.storage import ArchitectureStore
 from app.config.settings import Settings
 from app.mindmap.service import MindMapService
 from app.mindmap.storage import MindMapStore
@@ -46,6 +48,7 @@ from core.storage.faiss_store import FaissStore
 __all__ = [
     "apply_serving_configuration",
     "close_all",
+    "get_architecture_service",
     "get_ingest_service",
     "get_model_hub_service",
     "get_projects_service",
@@ -239,6 +242,25 @@ def get_mindmap_service() -> MindMapService:
 
 
 # ---------------------------------------------------------------------------
+# Architecture Diagram — a bounded Mermaid map built from a GitHub source
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_architecture_store() -> ArchitectureStore:
+    return ArchitectureStore()
+
+
+@lru_cache(maxsize=1)
+def get_architecture_service() -> ArchitectureService:
+    return ArchitectureService(
+        store=get_architecture_store(),
+        faiss=get_faiss_store(),
+        llm=get_llm(),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Sources — persisted per-source metadata overrides (e.g. a custom title)
 # ---------------------------------------------------------------------------
 
@@ -312,6 +334,10 @@ def _rewire_llm_consumers(llm) -> None:
         get_mindmap_service().swap_llm(llm)
     except Exception as exc:
         logger.warning("Model Hub: could not rewire Mind Map LLM (%s).", exc)
+    try:
+        get_architecture_service().swap_llm(llm)
+    except Exception as exc:
+        logger.warning("Model Hub: could not rewire Architecture LLM (%s).", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -373,6 +399,12 @@ async def close_all() -> None:
         logger.debug("MindMapStore closed.")
     except Exception as exc:
         logger.warning("Error closing MindMapStore: %s", exc)
+
+    try:
+        get_architecture_store().close()
+        logger.debug("ArchitectureStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing ArchitectureStore: %s", exc)
 
     try:
         get_model_hub_store().close()

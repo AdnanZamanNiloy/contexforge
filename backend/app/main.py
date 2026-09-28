@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.architecture.routes import router as architecture_router
 from app.config.settings import Settings
 from app.dependencies import close_all
 from app.mindmap.routes import router as mindmap_router
@@ -133,6 +134,7 @@ app.include_router(ingest_router)
 app.include_router(github_router)
 app.include_router(query_router)
 app.include_router(mindmap_router)
+app.include_router(architecture_router)
 app.include_router(model_hub_router)
 app.include_router(projects_router)
 

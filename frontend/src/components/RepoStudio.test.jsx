@@ -68,11 +68,10 @@ describe('RepoStudio rail', () => {
 })
 
 describe('StudioView (main window)', () => {
-  it('renders each placeholder view without any backend', async () => {
-    const { rerender } = render(<StudioView tool="architecture" />)
-    expect(screen.getByText(/module map of the repository/i)).toBeInTheDocument()
-
-    rerender(<StudioView tool="health" />)
+  it('renders each remaining placeholder view without any backend', async () => {
+    // Architecture Diagram is no longer here: it is a real generator now and
+    // has its own tests.  The other three are still static previews.
+    const { rerender } = render(<StudioView tool="health" />)
     expect(screen.getByText('High churn')).toBeInTheDocument()
 
     rerender(<StudioView tool="security" />)
@@ -80,5 +79,20 @@ describe('StudioView (main window)', () => {
 
     rerender(<StudioView tool="stack" />)
     expect(screen.getByText('Dependency & Tech Stack')).toBeInTheDocument()
+  })
+
+  it('routes the architecture tool to the real diagram generator', async () => {
+    // No project means nothing to map, and the generator must say so rather
+    // than fall back to the old placeholder sketch.
+    render(<StudioView tool="architecture" projectId={null} />)
+    expect(
+      screen.getByText(/open a project to map a repository/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/module map of the repository/i)).not.toBeInTheDocument()
+  })
+
+  it('shows an empty state when the project has no GitHub source', async () => {
+    render(<StudioView tool="architecture" projectId="p1" hasGithubSource={false} />)
+    expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
   })
 })

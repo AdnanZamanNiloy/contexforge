@@ -13,3 +13,8 @@ frontend/dist/
 # Visual-testing artifacts (screenshots + harness scripts)
 frontend/scripts/
 frontend/*.png
+
+# Upstream GitDiagram clone, kept locally as a design reference only.  Its
+# path-validation rules, Mermaid compiler and prompt guidance were reimplemented
+# in backend/app/architecture/; none of its Next.js code is part of this app.
+/gitdiagram/

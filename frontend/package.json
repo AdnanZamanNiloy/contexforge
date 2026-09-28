@@ -34,6 +34,7 @@
     "@tailwindcss/vite": "^4.3.0",
     "@xiangfa/mindmap": "^0.7.1",
     "framer-motion": "^12.38.0",
+    "mermaid": "^11.17.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-markdown": "^10.1.0",

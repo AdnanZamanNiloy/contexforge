@@ -526,7 +526,11 @@ export default function Home() {
             </button>
           </div>
           <div className="rs-main-body">
-            <StudioView tool={effectiveStudio} />
+            <StudioView
+              tool={effectiveStudio}
+              projectId={projectId}
+              hasGithubSource={Boolean(repoStudioSource)}
+            />
           </div>
         </div>
       ) : activeView === 'chat' ? (

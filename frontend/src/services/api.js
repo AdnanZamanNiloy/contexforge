@@ -452,3 +452,138 @@ export async function detachSourceFromProject(projectId, sourceId) {
     { method: 'DELETE' },
   )
 }
+
+// --- Architecture Diagram ---------------------------------------------------
+
+// The server caps a cold generation at 55s (MAX_GENERATION_SECONDS) and serves a
+// cached diagram immediately.  This window stays above that cap so the browser
+// never aborts first and reports an opaque network error instead of the
+// server's readable timeout message.
+const ARCHITECTURE_TIMEOUT_MS = 90000
+
+// Stream the finished diagram over SSE.  A cold run spends most of its time in a
+// single model call, so the stream exists to let the client show progress and to
+// carry a readable failure rather than a bare network drop.  Deliberately does
+// not share code with `streamQuery`, so the chat transport stays untouched.
+export async function streamArchitecture(payload, handlers = {}, path = '/architecture/generate') {
+  const controller = new AbortController()
+  const externalSignal = handlers.signal
+  const onExternalAbort = () => controller.abort()
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort()
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true })
+    }
+  }
+
+  let idleTimer = null
+  let timedOut = false
+  const resetIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, ARCHITECTURE_TIMEOUT_MS)
+  }
+
+  try {
+    const response = await fetch(buildUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    })
+
+    resetIdle()
+
+    if (!response.ok || !response.body) {
+      let detail = 'Architecture request failed to start'
+      try {
+        const data = await response.json()
+        detail = data.detail || data.message || detail
+      } catch {
+        /* keep the default message */
+      }
+      if (handlers.onError) handlers.onError(detail)
+      return
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      resetIdle()
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const cleaned = line.replace(/\r$/, '')
+        if (!cleaned.startsWith('data:')) continue
+        let data = cleaned.slice(5)
+        if (data.startsWith(' ')) data = data.slice(1)
+        if (!data) continue
+
+        if (data.startsWith('[DIAGRAM]')) {
+          const json = data.replace('[DIAGRAM]', '').trim()
+          if (handlers.onDiagram) {
+            try {
+              handlers.onDiagram(JSON.parse(json))
+            } catch {
+              handlers.onError('The diagram could not be read — please try again.')
+            }
+          }
+          continue
+        }
+
+        if (data.startsWith('[ERROR]')) {
+          let message = 'Architecture generation failed — please retry.'
+          try {
+            message = JSON.parse(data.replace('[ERROR]', '').trim()).message || message
+          } catch {
+            message = data.replace('[ERROR]', '').trim() || message
+          }
+          if (handlers.onError) handlers.onError(message)
+          return
+        }
+
+        if (data.startsWith('[DONE]')) {
+          if (handlers.onDone) handlers.onDone()
+          return
+        }
+      }
+    }
+
+    if (handlers.onDone) handlers.onDone()
+  } catch (error) {
+    if (timedOut) {
+      if (handlers.onError) {
+        handlers.onError('The backend stopped responding — please try again.')
+      }
+      return
+    }
+    if (error && error.name === 'AbortError') return
+    if (handlers.onError) handlers.onError('Could not reach the backend — please try again.')
+  } finally {
+    if (idleTimer) clearTimeout(idleTimer)
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort)
+  }
+}
+
+export async function regenerateArchitecture(projectId, handlers = {}) {
+  return streamArchitecture(
+    { project_id: projectId, refresh: true },
+    handlers,
+    '/architecture/regenerate',
+  )
+}
+
+export async function getArchitecture(projectId) {
+  return request(`/architecture/${encodeURIComponent(projectId)}`)
+}

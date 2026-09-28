@@ -1,10 +1,14 @@
 // Repository Studio — a GitHub-project-only rail of compact analysis tools.
 //
-// Frontend UI + local interactions only: every tool renders a clearly-labelled
-// placeholder preview.  No backend calls, no data processing.  Document and
-// web projects never see this panel (see Home's project-type gate).
+// The rail itself is buttons only; every tool's output renders in the main
+// window (see `StudioView`).  Architecture Diagram is the one tool that is
+// backed by a real generator — the rest are placeholder previews with no
+// backend.  Document and web projects never see this panel (see Home's
+// project-type gate).
 //
 // Original ContextForge visuals; NotebookLM's Studio is UX inspiration only.
+
+import ArchitectureDiagram from './ArchitectureDiagram'
 
 function DiagramIcon() {
   return (
@@ -128,51 +132,6 @@ const TOOLS = [
   },
   { id: 'chat', label: 'Repo Chat', hint: 'Ask about the repo', Icon: ChatIcon },
 ]
-
-function ArchitectureView() {
-  return (
-    <div className="rs-view">
-      <div className="rs-view-head">
-        <h3>Architecture Diagram</h3>
-      </div>
-      <svg className="rs-diagram" viewBox="0 0 300 176" role="img" aria-label="Module map sketch">
-        <rect x="14" y="14" width="82" height="36" rx="10" />
-        <rect x="109" y="14" width="82" height="36" rx="10" />
-        <rect x="204" y="14" width="82" height="36" rx="10" />
-        <rect x="14" y="92" width="82" height="36" rx="10" />
-        <rect x="109" y="92" width="82" height="36" rx="10" />
-        <rect x="204" y="92" width="82" height="36" rx="10" />
-        <path d="M96 32h13M191 32h13M55 50v26a8 8 0 0 0 8 8h-8M150 50v26a8 8 0 0 0 8 8h-8M245 50v26M96 110h13M191 110h13" />
-        <circle cx="150" cy="152" r="3.5" className="rs-diagram-dot" />
-        <path d="M150 128v16" />
-        <text x="55" y="36">
-          client
-        </text>
-        <text x="150" y="36">
-          api
-        </text>
-        <text x="245" y="36">
-          db
-        </text>
-        <text x="55" y="114">
-          auth
-        </text>
-        <text x="150" y="114">
-          core
-        </text>
-        <text x="245" y="114">
-          jobs
-        </text>
-        <text x="150" y="170">
-          entry
-        </text>
-      </svg>
-      <p className="rs-view-hint">
-        Module map of the repository — areas, dependencies and entry points at a glance.
-      </p>
-    </div>
-  )
-}
 
 function SecurityView() {
   const rows = [
@@ -329,16 +288,19 @@ export const STUDIO_TOOLS = TOOLS.map(({ id, label, hint, Icon }) => ({
   Icon,
 }))
 
-export function StudioView({ tool }) {
+export function StudioView({ tool, projectId, hasGithubSource }) {
   switch (tool) {
+    case 'architecture':
+      return (
+        <ArchitectureDiagram projectId={projectId} hasGithubSource={hasGithubSource} />
+      )
     case 'security':
       return <SecurityView />
     case 'stack':
       return <StackView />
     case 'health':
       return <HealthView />
-    case 'architecture':
     default:
-      return <ArchitectureView />
+      return null
   }
 }

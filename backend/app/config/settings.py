@@ -241,6 +241,10 @@ class Settings(BaseSettings):
     # Persisted generated mind maps (keyed by source_id).
     MINDMAP_DIR: Path = Field(default=data_path("mindmaps"))
 
+    # Architecture Diagram — generated Mermaid maps, cached per project +
+    # content fingerprint so an unchanged repository is only ever analysed once.
+    ARCHITECTURE_DB_PATH: Path = Field(default=data_path("architecture", "architecture.db"))
+
     # Model Hub — configured models, fallback chains, and serving selection.
     MODEL_HUB_DB_PATH: Path = Field(default=data_path("model_hub", "model_hub.db"))
 
