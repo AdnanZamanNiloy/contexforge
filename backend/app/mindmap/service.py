@@ -46,7 +46,14 @@ MAX_CONTEXT_CHARS = 6_000
 # backoff — left unchecked that can hang the request for minutes, which the
 # frontend reads as a stuck "Creating mind map…" button.  We bound the work so a
 # request resolves (success or a clear error) instead of dragging on.
-MAX_GENERATION_SECONDS = 45
+#
+# Raised from 45s to 135s: a multi-source selection aggregates chunks from every
+# chosen source into one prompt, so the same budget that suited a single source
+# left too little room for a combined map.  The client timeout is set above this
+# value (see MIND_MAP_TIMEOUT_MS in frontend/src/services/api.js) so the server
+# always gets to return its explicit timeout error rather than the browser
+# aborting the request with an opaque network failure.
+MAX_GENERATION_SECONDS = 135
 
 _SYSTEM_PROMPT = (
     "You turn document content into an organised mind map. "

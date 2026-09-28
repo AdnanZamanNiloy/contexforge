@@ -6,6 +6,13 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').
 // to fetch resource".
 const DEFAULT_TIMEOUT_MS = 120000
 
+// Mind map generation gets a longer window than an ordinary request: the server
+// caps a single generation at 135s (MAX_GENERATION_SECONDS), and a multi-source
+// map feeds chunks from every selected source into one prompt.  This must stay
+// above that cap, otherwise the browser would abort first and the user would see
+// an opaque network error instead of the server's clear timeout message.
+const MIND_MAP_TIMEOUT_MS = 165000
+
 function buildUrl(path) {
   if (!path.startsWith('/')) {
     return `${API_BASE}/${path}`
@@ -14,8 +21,9 @@ function buildUrl(path) {
 }
 
 async function request(path, options = {}) {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...fetchOptions } = options
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
@@ -23,7 +31,7 @@ async function request(path, options = {}) {
 
   try {
     const response = await fetch(buildUrl(path), {
-      ...options,
+      ...fetchOptions,
       headers,
       signal: controller.signal,
     })
@@ -311,6 +319,7 @@ export async function createMindMap(sourceIds, options = {}) {
   return request('/mindmap/generate', {
     method: 'POST',
     body: JSON.stringify(body),
+    timeoutMs: MIND_MAP_TIMEOUT_MS,
   })
 }
 

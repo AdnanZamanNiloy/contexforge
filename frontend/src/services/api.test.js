@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
+  createMindMap,
   createModel,
   deleteModel,
   fetchSources,
@@ -10,6 +14,23 @@ import {
   updateModel,
   updateServing,
 } from './api'
+
+// Reads a numeric constant out of a source file so cross-file invariants are
+// checked against the real values rather than restated copies of them.  Paths are
+// resolved from the frontend project root, which is vitest's cwd.
+const SOURCE_FILES = ['src/services/api.js', '../backend/app/mindmap/service.py']
+
+function readInt(name) {
+  for (const rel of SOURCE_FILES) {
+    const text = readFileSync(resolve(process.cwd(), rel), 'utf8')
+    const at = text.indexOf(name)
+    if (at !== -1) {
+      const value = text.slice(at + name.length).match(/^\s*([0-9_]+)/)
+      if (value) return Number.parseInt(value[1].replace(/_/g, ''), 10)
+    }
+  }
+  throw new Error(`constant ${name} not found`)
+}
 
 function mockFetch(response) {
   const fn = vi.fn(async () => response)
@@ -131,5 +152,45 @@ describe('model hub API', () => {
     expect(url).toBe('http://localhost:8000/serving')
     expect(options.method).toBe('PUT')
     expect(JSON.parse(options.body)).toEqual({ tier: 'llm', mode: 'single', target: 'm1' })
+  })
+})
+
+describe('mind map timeouts', () => {
+  it('posts source_ids and carries a client timeout above the server cap', async () => {
+    const fetchMock = mockFetch({ ok: true, status: 200, json: async () => ({ markdown: '- a' }) })
+    await createMindMap(['a', 'b'])
+
+    const [, init] = fetchMock.mock.calls[0]
+    const body = JSON.parse(init.body)
+    expect(body.source_ids).toEqual(['a', 'b'])
+
+    // The real invariant, read from both source files: the client window must
+    // exceed the server's cap, or the browser aborts first and the user sees an
+    // opaque network error instead of the server's clear timeout message.
+    const clientWindowMs = readInt('MIND_MAP_TIMEOUT_MS = ')
+    const serverCapMs = readInt('MAX_GENERATION_SECONDS = ') * 1000
+    expect(clientWindowMs).toBeGreaterThan(serverCapMs)
+  })
+
+  it('uses source_id for a single source so the cached entry stays addressable', async () => {
+    const fetchMock = mockFetch({ ok: true, status: 200, json: async () => ({ markdown: '- a' }) })
+    await createMindMap('a')
+    const [, init] = fetchMock.mock.calls[0]
+    expect(JSON.parse(init.body).source_id).toBe('a')
+  })
+
+  it('forwards refresh so a changed selection can be regenerated', async () => {
+    const fetchMock = mockFetch({ ok: true, status: 200, json: async () => ({ markdown: '- a' }) })
+    await createMindMap(['a'], { refresh: true })
+    const [, init] = fetchMock.mock.calls[0]
+    expect(JSON.parse(init.body).refresh).toBe(true)
+  })
+
+  it('does not leak the internal timeoutMs option into fetch', async () => {
+    const fetchMock = mockFetch({ ok: true, status: 200, json: async () => ({ markdown: '- a' }) })
+    await createMindMap(['a'])
+    const [, init] = fetchMock.mock.calls[0]
+    // It is consumed by request(), never forwarded to the network layer.
+    expect(init).not.toHaveProperty('timeoutMs')
   })
 })
