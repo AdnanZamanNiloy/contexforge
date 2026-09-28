@@ -27,3 +27,8 @@ frontend/*.png
 # reference for the manifest parsers and detection model in
 # backend/app/techstack/; none of its TypeScript is part of this app.
 /stack-analyser/
+
+# Upstream hotspots clone (its own repo, ~13MB).  Read as the source of the
+# Local Risk Score formula and the per-function metric definitions ported into
+# backend/app/health/; none of its Rust is part of this app.
+/hotspots/
