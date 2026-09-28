@@ -7004,3 +7004,92 @@ body.ad-fullscreen-active .app-layout {
   margin: 0;
   min-width: 0;
 }
+
+/* --- Technology categories ------------------------------------------------ */
+
+.ts-kind + .ts-kind {
+  margin-top: 12px;
+}
+
+.ts-kind-title {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+/* --- Service graph -------------------------------------------------------- */
+
+.ts-graph,
+.ts-graph-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ts-graph-children {
+  margin-left: 14px;
+  padding-left: 12px;
+  border-left: 1px solid var(--hairline);
+}
+
+.ts-graph-node + .ts-graph-node {
+  margin-top: 10px;
+}
+
+.ts-graph-children > .ts-graph-node + .ts-graph-node {
+  margin-top: 8px;
+}
+
+.ts-graph-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ts-graph-name {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+.ts-graph-meta {
+  font-size: 0.68rem;
+  color: var(--mute);
+}
+
+.ts-graph-host {
+  font-size: 0.68rem;
+  color: var(--mute);
+}
+
+.ts-graph-host strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ts-graph-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.ts-graph-link {
+  font-size: 0.68rem;
+  font-weight: 550;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--ink-strong);
+}
+
+.ts-graph-libs {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  color: var(--mute);
+}

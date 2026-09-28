@@ -6,11 +6,12 @@ Two ideas are carried over from stack-analyser:
   exists **or** a dependency by its name is declared in some manifest, and
 * languages come from a histogram of file extensions.
 
-Its 700-plus rule tree and its 4,300-line copy of GitHub Linguist are not
-carried over — a full catalogue is heavy to load and most of it (hosting
-providers, SaaS, payment gateways) is out of scope for a report about a
-repository's own stack.  What is here is the subset that shows up in real
-projects, chosen so the common cases are exact rather than exhaustive.
+Its 4,300-line copy of GitHub Linguist is not carried over: language detection
+here is a curated extension table, which is enough to rank the languages a
+repository is actually written in without loading a 645-entry catalogue.  The
+*rule* tree is a different matter -- :mod:`app.techstack.rules` carries 282 of
+its rules, generated from its own source, so the database, hosting, CI, cloud
+and AI categories are complete rather than sampled.
 """
 
 from __future__ import annotations
@@ -18,11 +19,16 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from app.techstack.manifests import SOURCE_KINDS
+from app.techstack.models import normalise_path
+from app.techstack.rules import COMPONENT_KINDS, RULES, build_index
+
 __all__ = [
+    "COMPONENT_KINDS",
     "LANGUAGES",
-    "TECH_RULES",
     "detect_technologies",
     "language_histogram",
+    "languages_for_path",
     "summarise",
 ]
 
@@ -84,97 +90,6 @@ LANGUAGES: tuple[Language, ...] = (
 )
 
 
-# --- Technology rules ------------------------------------------------------ #
-# key -> (display name, kind, matched package-manager names).  A key is matched
-# case-insensitively against declared dependency names, so "Django" and "django"
-# both hit the same rule.
-TECH_RULES: dict[str, tuple[str, str, tuple[str, ...]]] = {
-    # --- web frameworks ---
-    "fastapi": ("FastAPI", "Framework", ("pip", "PEP 621 / Poetry", "setuptools", "Pipenv", "Conda")),
-    "django": ("Django", "Framework", ("pip", "PEP 621 / Poetry", "setuptools", "Pipenv", "Conda")),
-    "flask": ("Flask", "Framework", ("pip", "PEP 621 / Poetry", "setuptools", "Pipenv", "Conda")),
-    "starlette": ("Starlette", "Framework", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "sanic": ("Sanic", "Framework", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "tornado": ("Tornado", "Framework", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "aiohttp": ("aiohttp", "Framework", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "express": ("Express", "Framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "koa": ("Koa", "Framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "fastify": ("Fastify", "Framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "nestjs": ("NestJS", "Framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "@nestjs/core": ("NestJS", "Framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "hapi": ("hapi", "Framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "gin-gonic/gin": ("Gin", "Framework", ("Go modules",)),
-    "gorm.io/gorm": ("GORM", "Framework", ("Go modules",)),
-    "actix-web": ("Actix Web", "Framework", ("Cargo",)),
-    "axum": ("Axum", "Framework", ("Cargo",)),
-    "rocket": ("Rocket", "Framework", ("Cargo",)),
-    "rails": ("Ruby on Rails", "Framework", ("Bundler",)),
-    "laravel/framework": ("Laravel", "Framework", ("Composer",)),
-    "symfony/framework-bundle": ("Symfony", "Framework", ("Composer",)),
-    # --- frontend frameworks / UI ---
-    "react": ("React", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "react-dom": ("React", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "next": ("Next.js", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "vue": ("Vue", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "nuxt": ("Nuxt", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "svelte": ("Svelte", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "@sveltejs/kit": ("SvelteKit", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "angular": ("Angular", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "@angular/core": ("Angular", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "solid-js": ("SolidJS", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "tailwindcss": ("Tailwind CSS", "UI framework", ("npm", "Yarn", "pnpm", "Bun")),
-    "bootstrap": ("Bootstrap", "UI framework", ("npm", "Yarn", "pnpm", "Bun", "pip")),
-    # --- runtimes ---
-    "node": ("Node.js", "Runtime", ()),
-    "typescript": ("TypeScript", "Language", ("npm", "Yarn", "pnpm", "Bun")),
-    "deno": ("Deno", "Runtime", ()),
-    "bun": ("Bun", "Runtime", ()),
-    # --- data stores / infra clients ---
-    "sqlalchemy": ("SQLAlchemy", "Database", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "psycopg2": ("psycopg2", "Database", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "psycopg": ("psycopg", "Database", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "pymongo": ("PyMongo", "Database", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "redis": ("Redis (client)", "Database", ("pip", "PEP 621 / Poetry", "setuptools", "npm", "Yarn", "pnpm", "Bun")),
-    "elasticsearch": ("Elasticsearch", "Database", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "prisma": ("Prisma", "Database", ("npm", "Yarn", "pnpm", "Bun")),
-    "mongoose": ("Mongoose", "Database", ("npm", "Yarn", "pnpm", "Bun")),
-    "typeorm": ("TypeORM", "Database", ("npm", "Yarn", "pnpm", "Bun")),
-    "diesel": ("Diesel", "Database", ("Cargo",)),
-    "gorm": ("GORM", "Database", ("Go modules",)),
-    # --- AI / ML ---
-    "openai": ("OpenAI", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "anthropic": ("Anthropic", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "langchain": ("LangChain", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "langchain-openai": ("LangChain", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "llama-index": ("LlamaIndex", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "transformers": ("Transformers", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "torch": ("PyTorch", "AI", ("pip", "PEP 621 / Poetry", "Cargo")),
-    "tensorflow": ("TensorFlow", "AI", ("pip", "PEP 621 / Poetry", "npm", "Yarn", "pnpm", "Bun")),
-    "scikit-learn": ("scikit-learn", "AI", ("pip", "PEP 621 / Poetry", "setuptools")),
-    # --- testing ---
-    "pytest": ("pytest", "Testing", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "unittest2": ("unittest", "Testing", ("pip", "PEP 621 / Poetry")),
-    "jest": ("Jest", "Testing", ("npm", "Yarn", "pnpm", "Bun")),
-    "vitest": ("Vitest", "Testing", ("npm", "Yarn", "pnpm", "Bun")),
-    "mocha": ("Mocha", "Testing", ("npm", "Yarn", "pnpm", "Bun")),
-    "cypress": ("Cypress", "Testing", ("npm", "Yarn", "pnpm", "Bun")),
-    "@playwright/test": ("Playwright", "Testing", ("npm", "Yarn", "pnpm", "Bun")),
-    "playwright": ("Playwright", "Testing", ("npm", "Yarn", "pnpm", "Bun")),
-    # --- tooling / quality ---
-    "eslint": ("ESLint", "Linting", ("npm", "Yarn", "pnpm", "Bun")),
-    "ruff": ("Ruff", "Linting", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "black": ("Black", "Linting", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "flake8": ("flake8", "Linting", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "mypy": ("mypy", "Linting", ("pip", "PEP 621 / Poetry", "setuptools")),
-    "prettier": ("Prettier", "Linting", ("npm", "Yarn", "pnpm", "Bun")),
-    "webpack": ("webpack", "Build", ("npm", "Yarn", "pnpm", "Bun")),
-    "vite": ("Vite", "Build", ("npm", "Yarn", "pnpm", "Bun")),
-    "rollup": ("Rollup", "Build", ("npm", "Yarn", "pnpm", "Bun")),
-    "esbuild": ("esbuild", "Build", ("npm", "Yarn", "pnpm", "Bun")),
-    "babel": ("Babel", "Build", ("npm", "Yarn", "pnpm", "Bun")),
-    "@babel/core": ("Babel", "Build", ("npm", "Yarn", "pnpm", "Bun")),
-}
-
 # Managers detected purely from a lockfile or manifest existing, since they
 # declare no dependency of their own.
 _MANAGER_FILES: dict[str, str] = {
@@ -227,6 +142,22 @@ def _extension_of(path: str) -> str | None:
     return base[base.rfind(".") :].lower()
 
 
+def languages_for_path(path: str) -> list[dict]:
+    """The languages a single path contributes, as at most one row.
+
+    A file has one extension, so this is one language or nothing.  It exists so
+    the service graph can count languages per service: the repository-wide
+    histogram says a project is 60% TypeScript, but not which of its services.
+    """
+    ext = _extension_of(path)
+    if not ext:
+        return []
+    for language in LANGUAGES:
+        if ext in language.extensions:
+            return [{"name": language.name, "kind": language.kind, "files": 1}]
+    return []
+
+
 def language_histogram(paths: list[str]) -> list[dict]:
     """Count files per language across *paths*, ignoring vendored and built trees.
 
@@ -237,14 +168,9 @@ def language_histogram(paths: list[str]) -> list[dict]:
     for path in paths:
         if _SKIP_DIR.search(path) or _SKIP_FILE.search(path):
             continue
-        ext = _extension_of(path)
-        if not ext:
-            continue
-        for language in LANGUAGES:
-            if ext in language.extensions:
-                key = (language.name, language.kind)
-                counts[key] = counts.get(key, 0) + 1
-                break
+        for row in languages_for_path(path):
+            key = (row["name"], row["kind"])
+            counts[key] = counts.get(key, 0) + row["files"]
 
     total = sum(counts.values())
     rows = [
@@ -264,55 +190,138 @@ def language_histogram(paths: list[str]) -> list[dict]:
     return rows
 
 
-def detect_technologies(manifest_results, package_managers: list[str]) -> list[dict]:
-    """Match declared dependencies against the rule table.
+#: Built once at import: the rule table is static, and rebuilding the index per
+#: scan would recompile every pattern for nothing.
+_INDEX = build_index(RULES)
+
+
+def match_rules(name: str, manager: str) -> list:
+    """Rules that *name* declares as evidence of *manager*'s technology.
+
+    Both index levels are consulted: a literal dependency name, and a regular
+    expression carried over from stack-analyser (an AWS SDK client is any name
+    starting ``@aws-sdk/``, so those rules are patterns rather than literals).
+    A rule fires only if it also applies to the declaring package manager, which
+    is what keeps a ``redis`` in a Go project from being reported as a Python
+    client while still letting a Terraform ``aws_s3_bucket`` light up AWS.
+    """
+    found: list = []
+    seen: set[str] = set()
+
+    for rule in _INDEX.exact.get(name.lower(), ()):
+        if rule.key not in seen and rule.matches_manager(manager):
+            seen.add(rule.key)
+            found.append(rule)
+
+    for entry in _INDEX.patterns:
+        if entry.rule.key in seen or not entry.rule.matches_manager(manager):
+            continue
+        # The shared literal prefix of an anchored rule is a sound prefilter.
+        if entry.prefix and not name.startswith(entry.prefix):
+            continue
+        if any(pattern.search(name) for pattern in entry.patterns):
+            seen.add(entry.rule.key)
+            found.append(entry.rule)
+    return found
+
+
+def match_path(path: str) -> list:
+    """Rules for which *path* is evidence, by file name or directory name.
+
+    This is the other half of stack-analyser's two-tier rule, and for CI and
+    hosting it is the half that matters: CircleCI is declared by a
+    ``.circleci/config.yml`` and nothing else, Jenkins by a ``Jenkinsfile``,
+    Vercel by a ``vercel.json``.  No manifest in the repository names them.
+    """
+    path = normalise_path(path)
+    found: dict[str, object] = {}
+
+    for segment in path.split("/"):
+        for rule in _INDEX.files.get(segment, ()):
+            found[rule.key] = rule
+    basename = path.rsplit("/", 1)[-1]
+    for rule in _INDEX.files.get(basename, ()):
+        found[rule.key] = rule
+
+    for prefix, rules in _INDEX.file_prefixes:
+        if path.startswith(prefix + "/") or path == prefix or ("/" + prefix + "/") in ("/" + path + "/"):
+            for rule in rules:
+                found[rule.key] = rule
+
+    return list(found.values())
+
+
+
+def detect_technologies(
+    manifest_results,
+    package_managers: list[str],
+    paths: list[str] | None = None,
+) -> list[dict]:
+    """Match declared dependencies and repository files against the rule table.
 
     A rule fires when a dependency name matches and its declaring package
     manager is one the rule applies to, which keeps a stray ``redis`` in a Go
-    project from being reported as a Python client.
+    project from being reported as a Python client; or when a file the rule
+    names is present, which is how CI and hosting are actually declared.
     """
     managers = set(package_managers)
     found: dict[str, dict] = {}
 
+    def record(rule, manager: str | None, version: str | None, dependency: str | None) -> None:
+        entry = found.get(rule.name)
+        if entry is None:
+            entry = found[rule.name] = {
+                "name": rule.name,
+                "key": rule.key,
+                "kind": rule.kind,
+                "version": version,
+                "managers": [],
+                "dependency": dependency,
+                "evidence": [],
+                "dependency_names": [],
+            }
+        if manager and manager not in entry["managers"]:
+            entry["managers"].append(manager)
+        # Prefer a concrete version when one manifest had it and another did not.
+        if not entry["version"] and version:
+            entry["version"] = version
+        if dependency and dependency not in entry["dependency_names"]:
+            entry["dependency_names"].append(dependency)
+        if len(entry["evidence"]) < 6:
+            marker = f"{dependency} ({manager})" if dependency else (manager or "file")
+            if marker not in entry["evidence"]:
+                entry["evidence"].append(marker)
+
     for result in manifest_results:
         for dep in result.dependencies:
-            key = dep.name.lower()
-            rule = TECH_RULES.get(key)
-            if not rule:
-                continue
-            display, kind, allowed = rule
-            if allowed and result.manager not in allowed:
-                continue
-            entry = found.setdefault(
-                display,
-                {
-                    "name": display,
-                    "kind": kind,
-                    "version": dep.version,
-                    "managers": [],
-                    "dependency": dep.name,
-                },
-            )
-            if result.manager not in entry["managers"]:
-                entry["managers"].append(result.manager)
-            # Prefer a concrete version when one manifest had it and another did not.
-            if not entry["version"] and dep.version:
-                entry["version"] = dep.version
+            for rule in match_rules(dep.name, result.manager):
+                # Several rules can share a display name; the first one to fire
+                # wins so a technology is not listed twice under one heading.
+                record(rule, result.manager, dep.version, dep.name)
 
-    # Managers inferred from a lockfile are reported too: a repo can use npm
+    # File evidence: which rule matched, and where.
+    for path in paths or ():
+        for rule in match_path(path):
+            record(rule, None, None, None)
+            marker = path
+            if marker not in found[rule.name]["evidence"] and len(found[rule.name]["evidence"]) < 6:
+                found[rule.name]["evidence"].append(marker)
+
+    # Sources inferred from a manifest are reported too: a repo can use npm
     # without depending on anything that names it.
     for manager in sorted(managers):
         if manager not in {m for entry in found.values() for m in entry["managers"]}:
-            found.setdefault(
-                manager,
-                {
-                    "name": manager,
-                    "kind": "Package manager",
-                    "version": None,
-                    "managers": [manager],
-                    "dependency": None,
-                },
-            )
+            found[manager] = {
+                "name": manager,
+                # Namespaced so it cannot collide with a real tech key.
+                "key": f"manager:{manager}",
+                "kind": SOURCE_KINDS.get(manager, "Package manager"),
+                "version": None,
+                "managers": [manager],
+                "dependency": None,
+                "evidence": [manager],
+                "dependency_names": [],
+            }
 
     rows = list(found.values())
     rows.sort(key=lambda row: (row["kind"], row["name"].lower()))

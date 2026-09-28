@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import ServiceGraph from './ServiceGraph'
 import { getTechStack, scanTechStack } from '../services/api'
 
 // The Dependency & Tech Stack view.
@@ -14,6 +15,44 @@ import { getTechStack, scanTechStack } from '../services/api'
 // scan at all.  Scanning is explicit, and the whole thing is local server work
 // that finishes in milliseconds.
 const MAX_ROWS_OPEN = 12
+
+// Category order, most architectural first: what the system is made of, where it
+// runs, then what it is built with.  Anything not listed follows, alphabetically.
+const KIND_ORDER = [
+  'Database',
+  'Cloud',
+  'Hosting',
+  'Container',
+  'Infrastructure',
+  'CI/CD',
+  'AI',
+  'Framework',
+  'UI framework',
+  'Language',
+  'Runtime',
+  'Testing',
+  'Linting',
+  'Build',
+  'Package manager',
+]
+
+function groupByKind(rows) {
+  const groups = new Map()
+  rows.forEach((row) => {
+    const kind = row.kind || 'Other'
+    if (!groups.has(kind)) groups.set(kind, [])
+    groups.get(kind).push(row)
+  })
+  return [...groups.entries()].sort(([a], [b]) => {
+    const ai = KIND_ORDER.indexOf(a)
+    const bi = KIND_ORDER.indexOf(b)
+    // An unlisted category sorts after every listed one, not at index -1.
+    if (ai === -1 && bi === -1) return a.localeCompare(b)
+    if (ai === -1) return 1
+    if (bi === -1) return -1
+    return ai - bi
+  })
+}
 
 function RefreshIcon() {
   return (
@@ -188,7 +227,12 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
 
   const programming = (scan?.languages || []).filter((row) => row.kind === 'programming')
   const support = (scan?.languages || []).filter((row) => row.kind !== 'programming')
-  const tools = (scan?.technologies || []).filter((row) => row.kind !== 'Package manager')
+
+  // Technologies are grouped by category rather than listed flat.  With the
+  // database, hosting, CI, cloud and AI rules in play there are a dozen
+  // categories, and a single flat list of everything buries the ones a reader
+  // is looking for: which database, deployed where, built by what.
+  const byKind = groupByKind(scan?.technologies || [])
 
   return (
     <div className="rs-view ts-root">
@@ -254,17 +298,28 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
             </section>
           ) : null}
 
-          {tools.length ? (
+          <ServiceGraph graph={scan.graph} />
+
+          {byKind.length ? (
             <section className="ts-section">
-              <h4 className="ts-section-title">Frameworks &amp; tooling</h4>
-              <div className="ts-chips">
-                {tools.map((tool) => (
-                  <span key={tool.name} className="ts-chip" title={tool.kind}>
-                    {tool.name}
-                    {tool.version ? <em className="ts-chip-version">{tool.version}</em> : null}
-                  </span>
-                ))}
-              </div>
+              <h4 className="ts-section-title">Technologies</h4>
+              {byKind.map(([kind, rows]) => (
+                <div key={kind} className="ts-kind">
+                  <h5 className="ts-kind-title">{kind}</h5>
+                  <div className="ts-chips">
+                    {rows.map((tool) => (
+                      <span
+                        key={tool.name}
+                        className="ts-chip"
+                        title={tool.evidence?.length ? `via ${tool.evidence.join(', ')}` : tool.kind}
+                      >
+                        {tool.name}
+                        {tool.version ? <em className="ts-chip-version">{tool.version}</em> : null}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </section>
           ) : null}
 

@@ -19,7 +19,13 @@ import re
 import time
 from typing import Any
 
-from app.techstack.detectors import detect_technologies, language_histogram, summarise
+from app.techstack.detectors import (
+    detect_technologies,
+    language_histogram,
+    languages_for_path,
+    summarise,
+)
+from app.techstack.graph import build_graph
 from app.techstack.manifests import is_manifest, parse_manifest
 from app.techstack.storage import TechStackStore
 from core.storage.faiss_store import FaissStore
@@ -178,7 +184,13 @@ class TechStackService:
 
         languages = language_histogram(scanable)
         managers = sorted({r.manager for r in results})
-        technologies = detect_technologies(results, managers)
+        technologies = detect_technologies(results, managers, scanable)
+        graph = build_graph(
+            results,
+            scanable,
+            repository,
+            {path: languages_for_path(path) for path in scanable},
+        )
 
         grouped: dict[str, dict[str, Any]] = {}
         dependency_total = 0
@@ -230,6 +242,7 @@ class TechStackService:
             "languages": languages,
             "frameworks": frameworks,
             "technologies": technologies,
+            "graph": graph,
             "package_managers": [
                 {"name": m, "dependency_count": next((b["count"] for b in manager_rows if b["manager"] == m), 0)}
                 for m in managers

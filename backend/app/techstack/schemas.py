@@ -24,6 +24,10 @@ class TechStackResponse(BaseModel):
     that is how a reader thinks about them: "my Go modules" and "my npm dev
     tooling" are different questions.  ``managers`` carries that grouping, and
     ``technologies`` is the recognised-software list the summary is written from.
+
+    ``graph`` is the service graph: a tree of services with the databases,
+    platforms and providers they connect to.  It is the part that says how a
+    repository is put together, where a flat technology list cannot.
     """
 
     repository: str = ""
@@ -31,6 +35,7 @@ class TechStackResponse(BaseModel):
     languages: list[dict] = Field(default_factory=list)
     frameworks: list[dict] = Field(default_factory=list)
     technologies: list[dict] = Field(default_factory=list)
+    graph: dict = Field(default_factory=dict)
     package_managers: list[dict] = Field(default_factory=list)
     dependencies: list[dict] = Field(default_factory=list)
     manifests: list[dict] = Field(default_factory=list)

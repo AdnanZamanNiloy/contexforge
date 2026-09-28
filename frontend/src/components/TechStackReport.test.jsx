@@ -136,13 +136,21 @@ describe('TechStackReport', () => {
     expect(table.textContent).toContain('dev')
   })
 
-  it('lists recognised frameworks with their versions', async () => {
+  it('lists recognised technologies grouped by category, with versions', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
     const { container } = render(<TechStackReport projectId="p1" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/frameworks & tooling/i)).toBeInTheDocument()
+      expect(screen.getByText(/^technologies$/i)).toBeInTheDocument()
     })
+    // Grouped by category rather than one flat list: with the database, hosting,
+    // CI, cloud and AI rules in play there are a dozen categories, and a single
+    // list buries the one a reader is looking for.
+    const kinds = Array.from(container.querySelectorAll('.ts-kind-title')).map((el) => el.textContent)
+    expect(kinds).toEqual(['Framework', 'Testing', 'Package manager'])
+    // Architectural categories sort ahead of build-time ones.
+    expect(kinds.indexOf('Database')).toBeLessThan(kinds.indexOf('Framework'))
+
     const chips = container.querySelectorAll('.ts-chip')
     const labels = Array.from(chips).map((chip) => chip.textContent)
     expect(labels.some((label) => label.includes('FastAPI'))).toBe(true)

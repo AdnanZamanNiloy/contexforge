@@ -357,6 +357,141 @@ _DOCKER_FROM = re.compile(r"^\s*FROM\s+([^\s]+)", re.IGNORECASE | re.MULTILINE)
 # the line rather than at its start.
 _DOCKER_INSTALL = re.compile(r"(?:apt-get|apt)\s+install|apk\s+add|yum\s+install", re.IGNORECASE)
 
+# Terraform block headers.  The first group is the block kind, the second its
+# first label -- for a `resource` that label is the resource *type*, which is the
+# useful part since `aws_s3_bucket` says AWS is in play no matter what the block
+# is named.
+_TF_BLOCK = re.compile(
+    r"^\s*(resource|provider|module|data)\s+\"([^\"]+)\"",
+    re.MULTILINE,
+)
+# A module's `source` is the real signal, as in
+# `source = "terraform-aws-modules/vpc/aws"`; the block name is usually opaque.
+# It is deliberately unanchored so the one-line form
+# `module "vpc" { source = "..." }` is read too.
+_TF_SOURCE = re.compile(r"\bsource\s*=\s*\"([^\"]+)\"")
+
+#: How a manifest source should be described when it turns up as a technology in
+#: its own right.  Only genuine package managers are labelled as such: Terraform
+#: and a GitHub Actions workflow are not package managers, and calling them that
+#: mislabels the stack.
+SOURCE_KINDS: dict[str, str] = {
+    "Docker": "Container",
+    "Docker Compose": "Container",
+    "Terraform": "Infrastructure",
+    "Helm": "Infrastructure",
+    "GitHub Actions": "CI/CD",
+}
+
+#: A ``required_providers`` source is written as ``hashicorp/aws`` or bare
+#: ``aws``, but the rules are keyed on the full registry path, so it is
+#: normalised to match.  A source that already names a registry host is left
+#: alone.
+_TF_REGISTRY_HOSTS = ("registry.terraform.io",)
+_TF_PROVIDER_SOURCE = re.compile(
+    r"^\s*(\w[\w-]*)\s*=\s*\{[^}]*?\bsource\s*=\s*\"([^\"]+)\"",
+    re.MULTILINE | re.DOTALL,
+)
+
+
+def _normalise_provider_source(source: str) -> str:
+    """``aws`` or ``hashicorp/aws`` -> ``registry.terraform.io/hashicorp/aws``.
+
+    An unnamespaced provider name is assumed to be published by HashiCorp, which
+    is true of every provider Terraform's own documentation covers; the raw name
+    is emitted as well, so a rule keyed on the short form still matches.
+    """
+    source = source.strip()
+    if any(host in source for host in _TF_REGISTRY_HOSTS) or source.startswith(("http", "git::")):
+        return source
+    parts = source.split("/")
+    if len(parts) == 1:
+        namespace = "hashicorp"
+    elif len(parts) == 2:
+        namespace = parts[0]
+    else:
+        # Already host/namespace/name, or a path.
+        return source
+    return f"{_TF_REGISTRY_HOSTS[0]}/{namespace}/{parts[-1]}"
+
+
+def _parse_terraform(text: str) -> list[Dependency]:
+    """Resource types, providers and module sources declared in ``*.tf`` files.
+
+    Terraform is how a repository states its cloud footprint, and it is the only
+    place many projects mention AWS, Azure or GCP at all -- a ``package.json``
+    will not contain ``aws_s3_bucket``.
+    """
+    deps: list[Dependency] = []
+    seen: set[str] = set()
+
+    def add(name: str) -> None:
+        name = name.strip()
+        if not name or name in seen:
+            return
+        # A local or remote path is not a dependency name; a registry source is.
+        if name.startswith(("http://", "https://", "git::", "./", "../", "/")):
+            return
+        seen.add(name)
+        deps.append(Dependency(name=name, version=None))
+
+    blocks = list(_TF_BLOCK.finditer(text))
+    for index, match in enumerate(blocks):
+        kind, value = match.group(1), match.group(2)
+        if kind == "module":
+            # Take the source from inside this block only, so a `data` block's
+            # own `source` attribute is never mistaken for a module reference.
+            end = blocks[index + 1].start() if index + 1 < len(blocks) else len(text)
+            source = _TF_SOURCE.search(text, match.end(), end)
+            if source:
+                add(source.group(1))
+        elif kind == "provider":
+            add(value)
+            add(_normalise_provider_source(value))
+        else:
+            add(value)
+
+    # `required_providers` names the registry path a provider comes from, which
+    # is what distinguishes a genuine cloud provider from a resource prefix.
+    for _, source in _TF_PROVIDER_SOURCE.findall(text):
+        add(source)
+        add(_normalise_provider_source(source))
+    return deps
+
+
+# GitHub Actions: every `uses: owner/repo[@ref]` in a workflow is the action
+# being run, which is the only place a repository names most of its CI.
+_GH_USES = re.compile(r"^\s*-?\s*uses:\s*['\"]?([^'\"\s#]+)", re.MULTILINE)
+
+
+def _parse_github_actions(text: str) -> list[Dependency]:
+    """Actions referenced by a workflow under ``.github/workflows``.
+
+    The ref after ``@`` is kept as the version when it is a tag rather than a
+    branch or a commit SHA, since a moving target like ``@main`` or a 40-character
+    SHA is not a version anyone can rely on.
+    """
+    deps: list[Dependency] = []
+    seen: set[str] = set()
+    for uses in _GH_USES.findall(text):
+        if uses.startswith("./") or uses.startswith("docker://"):
+            # A local composite action, or an image reference: neither names a
+            # published action.
+            continue
+        name, sep, ref = uses.partition("@")
+        parts = name.split("/")
+        if len(parts) < 2:
+            continue
+        owner_repo = "/".join(parts[:2])
+        if owner_repo.lower() in seen:
+            continue
+        seen.add(owner_repo.lower())
+        version: str | None = None
+        if sep and ref and not re.fullmatch(r"[0-9a-f]{7,40}", ref) and ref not in ("main", "master"):
+            version = ref
+        deps.append(Dependency(name=owner_repo, version=version))
+    return deps
+
 
 def _parse_dockerfile(text: str) -> list[Dependency]:
     """A Dockerfile is not a package manager, but its base image and its system
@@ -434,9 +569,13 @@ MANIFESTS: dict[str, tuple[str, str, object]] = {
     "Dockerfile": ("Docker", "Dockerfile", _parse_dockerfile),
     "docker-compose.yml": ("Docker Compose", "YAML", lambda t: []),
     "docker-compose.yaml": ("Docker Compose", "YAML", lambda t: []),
-    "terraform.tf": ("Terraform", "HCL", lambda t: []),
+    "terraform.tf": ("Terraform", "HCL", _parse_terraform),
     "Chart.yaml": ("Helm", "YAML", lambda t: []),
 }
+
+# Terraform files are named after the resource they declare, so the extension
+# is the only way to recognise one.
+_TF_SUFFIX_RE = re.compile(r"^.+\.tf(\.json)?$", re.IGNORECASE)
 
 # requirements*.txt is a family rather than a fixed set of names.
 _REQUIREMENTS_RE = re.compile(r"^requirements([-\w.]*)\.txt$", re.IGNORECASE)
@@ -457,6 +596,16 @@ def _lookup(basename: str, parent: str = "") -> tuple[str, str, object] | None:
     # appear as any dot-separated segment, not just the first.
     if "Dockerfile" in basename.split("."):
         return MANIFESTS["Dockerfile"]
+    if _TF_SUFFIX_RE.match(basename):
+        return ("Terraform", "HCL", _parse_terraform)
+    # A workflow file is named freely (ci.yml, release.yaml), so it is
+    # recognised by living under .github/workflows rather than by its name.
+    if (
+        parent.rsplit("/", 1)[-1].lower() == "workflows"
+        and ".github" in parent.lower()
+        and basename.lower().endswith((".yml", ".yaml"))
+    ):
+        return ("GitHub Actions", "YAML", _parse_github_actions)
     return None
 
 
@@ -466,6 +615,43 @@ def is_manifest(path: str) -> bool:
     basename = parts[-1]
     parent = parts[0] if len(parts) > 1 else ""
     return _lookup(basename, parent) is not None
+
+
+#: Manifests that mean "this folder is a deployable thing": it holds source code
+#: with its own dependency list.  Config files do not, so they are evidence
+#: *about* the folder they sit in rather than a service of their own.  Without
+#: this split, ``infra/main.tf`` would appear in the service graph as a service
+#: called "infra", and ``.github/workflows`` as one called "workflows".
+_SERVICE_MANIFESTS = frozenset(
+    {
+        "package.json",
+        "deno.json",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "Pipfile",
+        "conda.yaml",
+        "environment.yml",
+        "go.mod",
+        "Cargo.toml",
+        "Gemfile",
+        "composer.json",
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "packages.config",
+        "mix.exs",
+        "rebar.config",
+    }
+)
+
+
+def is_service_manifest(path: str) -> bool:
+    """True when *path* declares the dependencies of a service in its folder."""
+    basename = path.rsplit("/", 1)[-1]
+    if basename in _SERVICE_MANIFESTS:
+        return True
+    return bool(_REQUIREMENTS_RE.match(basename))
 
 
 def parse_manifest(path: str, text: str) -> ManifestResult | None:
