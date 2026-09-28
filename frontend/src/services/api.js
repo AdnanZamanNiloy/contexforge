@@ -455,11 +455,14 @@ export async function detachSourceFromProject(projectId, sourceId) {
 
 // --- Architecture Diagram ---------------------------------------------------
 
-// The server caps a cold generation at 55s (MAX_GENERATION_SECONDS) and serves a
+// The server caps a cold generation at 110s (MAX_GENERATION_SECONDS) and serves a
 // cached diagram immediately.  This window stays above that cap so the browser
 // never aborts first and reports an opaque network error instead of the
-// server's readable timeout message.
-const ARCHITECTURE_TIMEOUT_MS = 90000
+// server's readable timeout message.  Both were doubled together: a 55s server
+// cap abandoned runs that were still making progress through the provider
+// fallback chain, and the client window has to track it or the browser becomes
+// the thing that gives up first.
+const ARCHITECTURE_TIMEOUT_MS = 180000
 
 // Stream the finished diagram over SSE.  A cold run spends most of its time in a
 // single model call, so the stream exists to let the client show progress and to

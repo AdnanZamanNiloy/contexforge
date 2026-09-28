@@ -22,14 +22,20 @@ const SOURCE_FILES = ['src/services/api.js', '../backend/app/mindmap/service.py'
 
 function readInt(name) {
   for (const rel of SOURCE_FILES) {
-    const text = readFileSync(resolve(process.cwd(), rel), 'utf8')
-    const at = text.indexOf(name)
-    if (at !== -1) {
-      const value = text.slice(at + name.length).match(/^\s*([0-9_]+)/)
-      if (value) return Number.parseInt(value[1].replace(/_/g, ''), 10)
-    }
+    const value = readIntIn(rel, name)
+    if (value !== null) return value
   }
   throw new Error(`constant ${name} not found`)
+}
+
+// Single-file variant.  Needed because `MAX_GENERATION_SECONDS` exists in more
+// than one service, so searching a list would silently return the wrong one.
+function readIntIn(rel, name) {
+  const text = readFileSync(resolve(process.cwd(), rel), 'utf8')
+  const at = text.indexOf(name)
+  if (at === -1) return null
+  const value = text.slice(at + name.length).match(/^\s*([0-9_]+)/)
+  return value ? Number.parseInt(value[1].replace(/_/g, ''), 10) : null
 }
 
 function mockFetch(response) {
@@ -192,5 +198,31 @@ describe('mind map timeouts', () => {
     const [, init] = fetchMock.mock.calls[0]
     // It is consumed by request(), never forwarded to the network layer.
     expect(init).not.toHaveProperty('timeoutMs')
+  })
+})
+
+describe('architecture timeouts', () => {
+  it('carries a client window above the architecture server cap', () => {
+    // The real invariant, read from both source files: the client window must
+    // exceed the server's cap, or the browser aborts first and the user sees an
+    // opaque network error instead of the server's clear timeout message.
+    // `MAX_GENERATION_SECONDS` also exists in the mind map service, so this reads
+    // the architecture file explicitly rather than searching a list.
+    const clientWindowMs = readIntIn('src/services/api.js', 'ARCHITECTURE_TIMEOUT_MS = ')
+    const serverCapMs =
+      readIntIn('../backend/app/architecture/service.py', 'MAX_GENERATION_SECONDS = ') * 1000
+
+    expect(clientWindowMs).toBeGreaterThan(serverCapMs)
+  })
+
+  it('leaves enough headroom for the stream to deliver its error frame', () => {
+    // The server writes a comment frame immediately, then goes quiet for the
+    // whole model call.  If the idle window were only marginally above the cap,
+    // an abort could race the error frame and the user would never see it.
+    const clientWindowMs = readIntIn('src/services/api.js', 'ARCHITECTURE_TIMEOUT_MS = ')
+    const serverCapMs =
+      readIntIn('../backend/app/architecture/service.py', 'MAX_GENERATION_SECONDS = ') * 1000
+
+    expect(clientWindowMs - serverCapMs).toBeGreaterThanOrEqual(30000)
   })
 })

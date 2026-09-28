@@ -54,7 +54,14 @@ MAX_README_CHARS = 2_000
 # Hard cap on the whole generation.  The fallback chain can walk several
 # rate-limited providers, each retrying with backoff, so without a ceiling the
 # request can hang for minutes and the client reads it as a stuck button.
-MAX_GENERATION_SECONDS = 55  # below the client timeout so we return a real error
+#
+# Raised from 55s to 110s.  A 55s cap was measurably too tight: the fallback
+# chain's per-provider retries can consume the whole budget before a single
+# provider answers, and a run that was making progress was being abandoned with
+# a timeout error.  The client window (ARCHITECTURE_TIMEOUT_MS) sits above this
+# value so the server always gets to return its explicit timeout rather than the
+# browser aborting first and reporting an opaque network failure.
+MAX_GENERATION_SECONDS = 110
 
 # Files whose paths suggest they are entry points, routing or orchestration.
 # Sampled first because they carry the most architectural signal per character.
