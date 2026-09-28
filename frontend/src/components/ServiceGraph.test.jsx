@@ -117,14 +117,23 @@ describe('ServiceGraph', () => {
   })
 
   it('says a single-service repository is not a monorepo', () => {
+    // One service is not a monorepo even when it connects to something, and the
+    // section says so rather than implying the repository has several parts.
     const single = {
       ...GRAPH,
-      services: [service({ techs: [{ name: 'Django', kind: 'Framework' }], manifests: ['requirements.txt'] })],
-      components: [],
-      edges: [],
+      services: [
+        service({
+          techs: [{ name: 'Django', kind: 'Framework' }],
+          manifests: ['requirements.txt'],
+          childs: [component()],
+          edges: [{ target: '.#postgresql' }],
+        }),
+      ],
+      components: [component()],
+      edges: [{ from: '.', to: '.#postgresql' }],
       service_count: 1,
-      component_count: 0,
-      edge_count: 0,
+      component_count: 1,
+      edge_count: 1,
       monorepo: false,
     }
     const { container } = render(<ServiceGraph graph={single} />)
@@ -176,21 +185,27 @@ describe('ServiceGraph', () => {
   })
 
   it('reports how many technologies a service carries without listing them all', () => {
+    // In a monorepo each service's line is what tells them apart, so a service
+    // with a long dependency list is counted rather than spelled out.
     const many = {
       ...GRAPH,
       services: [
         service({
-          techs: Array.from({ length: 9 }, (_, i) => ({ name: `lib-${i}`, kind: 'Framework' })),
-          manifests: ['package.json'],
+          childs: [
+            service({
+              id: 'apps/big',
+              name: 'big',
+              path: ['apps', 'big'],
+              techs: Array.from({ length: 9 }, (_, i) => ({ name: `lib-${i}`, kind: 'Framework' })),
+              manifests: ['apps/big/package.json'],
+            }),
+          ],
         }),
       ],
-      service_count: 1,
-      monorepo: false,
     }
     const { container } = render(<ServiceGraph graph={many} />)
     const line = container.querySelector('.ts-graph-libs').textContent
     expect(line).toContain('9 technologies')
-    // A short list is spelled out; a long one is only counted.
     expect(line).not.toContain('lib-0')
   })
 
@@ -235,6 +250,7 @@ describe('ServiceGraph component coverage', () => {
     // on its list -- an AI vendor a service calls vanished from the graph even
     // though the backend had correctly reported it as a component.
     const withAi = {
+      ...GRAPH,
       services: [
         service({
           childs: [
@@ -261,6 +277,7 @@ describe('ServiceGraph component coverage', () => {
 
   it('does not repeat a nested component that also has an edge to it', () => {
     const both = {
+      ...GRAPH,
       services: [
         service({
           childs: [
@@ -282,6 +299,7 @@ describe('ServiceGraph component coverage', () => {
 
   it('falls back to the raw target when a component name is unknown', () => {
     const dangling = {
+      ...GRAPH,
       services: [
         service({
           childs: [service({ id: 'a', name: 'a', edges: [{ target: '.#unknown' }] })],
@@ -292,5 +310,108 @@ describe('ServiceGraph component coverage', () => {
     const { container } = render(<ServiceGraph graph={dangling} />)
     // Better a visible id than a silently missing relationship.
     expect(container.querySelector('.ts-graph-link').textContent).toBe('.#unknown')
+  })
+})
+
+describe('ServiceGraph when there is nothing to connect', () => {
+  // A plain single-service repository: one manifest, no database client, no
+  // infrastructure.  This is the common case, and the section used to render an
+  // empty shell reading "0 connected components - 0 connections".
+  const BARE = {
+    repository: 'acme/django-app',
+    services: [
+      service({
+        name: 'acme/django-app',
+        techs: [{ name: 'Django', kind: 'Framework' }],
+        manifests: ['requirements.txt'],
+      }),
+    ],
+    components: [],
+    edges: [],
+    service_count: 1,
+    service_total: 1,
+    service_truncated: false,
+    component_count: 0,
+    edge_count: 0,
+    monorepo: false,
+  }
+
+  it('renders nothing at all for a single service with no connections', () => {
+    const { container } = render(<ServiceGraph graph={BARE} />)
+    // The technologies list below already names Django, so an empty graph
+    // section adds nothing but noise.
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('renders a single service that does connect to something', () => {
+    // A declared Postgres client is exactly what the graph is for, so the
+    // section must still appear for one service.
+    const withDb = {
+      ...BARE,
+      services: [
+        service({
+          name: 'acme/django-app',
+          techs: [{ name: 'Django', kind: 'Framework' }, { name: 'Postgres', kind: 'Database' }],
+          manifests: ['requirements.txt'],
+          childs: [component()],
+          edges: [{ target: '.#postgresql' }],
+        }),
+      ],
+      components: [component()],
+      component_count: 1,
+      edge_count: 1,
+    }
+    render(<ServiceGraph graph={withDb} />)
+    expect(screen.getByText('acme/django-app')).toBeInTheDocument()
+    expect(screen.getByText('Postgres')).toBeInTheDocument()
+  })
+
+  it('omits the per-service technology line for a single service', () => {
+    // With one service the line just repeated the technologies list below it.
+    const withDb = {
+      ...BARE,
+      services: [
+        service({
+          name: 'acme/django-app',
+          techs: [{ name: 'Django', kind: 'Framework' }],
+          manifests: ['requirements.txt'],
+          childs: [component()],
+          edges: [{ target: '.#postgresql' }],
+        }),
+      ],
+      components: [component()],
+      component_count: 1,
+      edge_count: 1,
+    }
+    const { container } = render(<ServiceGraph graph={withDb} />)
+    expect(container.querySelector('.ts-graph-libs')).toBeNull()
+  })
+
+  it('keeps the per-service technology line when services must be told apart', () => {
+    render(<ServiceGraph graph={GRAPH} />)
+    // In a monorepo the line says which service carries which technologies.
+    expect(document.querySelectorAll('.ts-graph-libs').length).toBeGreaterThan(0)
+  })
+
+  it('shows a monorepo even when nothing connects yet', () => {
+    // Two services and no components is still worth drawing: the shape of the
+    // repository is the information.
+    const shapeOnly = {
+      ...BARE,
+      services: [
+        service({
+          childs: [
+            service({ id: 'apps/web', name: 'web', path: ['apps', 'web'], manifests: ['apps/web/package.json'] }),
+            service({ id: 'apps/api', name: 'api', path: ['apps', 'api'], manifests: ['apps/api/package.json'] }),
+          ],
+        }),
+      ],
+      service_count: 3,
+      service_total: 3,
+      monorepo: true,
+    }
+    const { container } = render(<ServiceGraph graph={shapeOnly} />)
+    expect(container.querySelector('.ts-graph')).not.toBeNull()
+    expect(screen.getByText('web')).toBeInTheDocument()
   })
 })

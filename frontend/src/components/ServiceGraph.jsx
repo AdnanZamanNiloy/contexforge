@@ -14,7 +14,7 @@ import { useMemo } from 'react'
 // layout pass to be correct.  Edges are shown on the service that owns them,
 // which keeps the relationship next to the thing it belongs to.
 
-function ServiceNode({ node, nameById }) {
+function ServiceNode({ node, nameById, showLibraries }) {
   const services = (node.childs || []).filter((child) => child.node_type === 'service')
 
   // Everything a service reaches.  The backend has already decided what counts
@@ -64,7 +64,10 @@ function ServiceNode({ node, nameById }) {
         </div>
       ) : null}
 
-      {libraries.length ? (
+      {/* The per-service technology count only earns its place when there is
+          more than one service to tell apart.  With a single service it would
+          just repeat the technologies list directly below the graph. */}
+      {showLibraries && libraries.length ? (
         <p className="ts-graph-libs">
           {libraries.length} technolog{libraries.length === 1 ? 'y' : 'ies'}
           {libraries.length <= 3 ? `: ${libraries.map((t) => t.name).join(', ')}` : ''}
@@ -74,7 +77,7 @@ function ServiceNode({ node, nameById }) {
       {services.length ? (
         <ul className="ts-graph-children">
           {services.map((child) => (
-            <ServiceNode key={child.id} node={child} nameById={nameById} />
+            <ServiceNode key={child.id} node={child} nameById={nameById} showLibraries={showLibraries} />
           ))}
         </ul>
       ) : null}
@@ -96,6 +99,18 @@ export default function ServiceGraph({ graph }) {
   const roots = graph.services.filter((service) => !service.path?.length)
   const nested = graph.services.filter((service) => service.path?.length && !isNestedIn(graph, service))
   const shown = roots.length ? roots : nested
+
+  // A single service with nothing it connects to has no graph to show: the only
+  // thing the section could say is "0 connections", and the technologies list
+  // directly below already names everything the service uses.  Rendering an
+  // empty shell there is noise, so the section only appears once it says
+  // something the flat list cannot -- a monorepo's shape, or a real connection.
+  const hasConnections = (graph.component_count || 0) > 0 || (graph.edge_count || 0) > 0
+  if (!graph.monorepo && !hasConnections) return null
+
+  // With one service there is nothing to tell apart, so the per-service library
+  // summary is dropped along with the nesting.
+  const showLibraries = shown.length > 1 || shown.some((node) => (node.childs || []).some((c) => c.node_type === 'service'))
 
   return (
     <section className="ts-section">
@@ -119,7 +134,7 @@ export default function ServiceGraph({ graph }) {
       ) : null}
       <ul className="ts-graph">
         {shown.map((service) => (
-          <ServiceNode key={service.id} node={service} nameById={nameById} />
+          <ServiceNode key={service.id} node={service} nameById={nameById} showLibraries={showLibraries} />
         ))}
       </ul>
     </section>
