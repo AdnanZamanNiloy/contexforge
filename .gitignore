@@ -18,3 +18,7 @@ frontend/*.png
 # path-validation rules, Mermaid compiler and prompt guidance were reimplemented
 # in backend/app/architecture/; none of its Next.js code is part of this app.
 /gitdiagram/
+
+# Upstream semgrep CLI clone (its own repo, ~700MB).  Local tooling only — the
+# app does not import it and no part of it belongs in this repository.
+/semgrep/
