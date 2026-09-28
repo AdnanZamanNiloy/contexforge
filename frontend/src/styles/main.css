@@ -2709,7 +2709,6 @@ h3 {
   min-width: 0;
 }
 
-
 /* --- stack ----------------------------------------------------------------- */
 .lp-stack {
   display: grid;
@@ -5409,4 +5408,596 @@ select.mh-input {
 .confirm-danger:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Repository Studio — GitHub-project-only rail.
+   --------------------------------------------------------------------------
+   Original ContextForge visuals (NotebookLM's Studio is UX inspiration
+   only): compact rounded tool tiles, single full-height card, local
+   placeholder previews.  No backend coupling.
+   ========================================================================== */
+
+.repo-studio {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  box-shadow: none;
+  padding: 22px;
+}
+
+.rs-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 auto;
+  margin-bottom: 16px;
+}
+
+.rs-title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.rs-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--body-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.rs-tool svg {
+  flex: none;
+  color: var(--mute);
+  transition: color 0.18s ease;
+}
+
+.rs-tool:hover {
+  border-color: var(--hairline-soft);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.rs-tool:hover svg {
+  color: var(--primary-soft);
+}
+
+.rs-tool.is-active {
+  border-color: rgba(67, 119, 253, 0.55);
+  background: var(--accent-soft);
+  color: var(--ink-strong);
+}
+
+.rs-tool.is-active svg {
+  color: var(--primary-soft);
+}
+
+.rs-tool.is-wide {
+  grid-column: 1 / -1;
+}
+
+.rs-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: rs-view-in 0.2s ease;
+}
+
+@keyframes rs-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rs-view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rs-view-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+}
+
+.rs-tool-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+.rs-tool-icon.is-architecture {
+  background: linear-gradient(135deg, #2b3a6e, #141a33);
+}
+.rs-tool-icon.is-security {
+  background: linear-gradient(135deg, #33502f, #16210f);
+}
+.rs-tool-icon.is-stack {
+  background: linear-gradient(135deg, #1f4a52, #0f2226);
+}
+.rs-tool-icon.is-health {
+  background: linear-gradient(135deg, #4a3670, #1c1530);
+}
+.rs-tool-icon.is-chat {
+  background: linear-gradient(135deg, #5a3a26, #241a12);
+}
+.rs-tool.is-active .rs-tool-icon {
+  border-color: rgba(67, 119, 253, 0.5);
+  color: #fff;
+}
+
+.rs-view-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--mute);
+}
+
+.rs-diagram {
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.rs-diagram rect {
+  fill: rgba(67, 119, 253, 0.08);
+  stroke: rgba(255, 255, 255, 0.14);
+  stroke-width: 1;
+}
+
+.rs-diagram path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1.2;
+}
+
+.rs-diagram text {
+  fill: var(--body-color);
+  font-size: 10px;
+  font-family: var(--font-sans);
+}
+
+.rs-diagram-dot {
+  fill: var(--primary);
+}
+
+.rs-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rs-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--body-color);
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.rs-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--mute);
+}
+
+.rs-check.is-ok .rs-dot {
+  background: var(--primary);
+}
+
+.rs-check.is-warn .rs-dot {
+  background: #e8b93e;
+}
+
+.rs-check.is-info .rs-dot {
+  background: var(--mute);
+}
+
+.rs-check-file {
+  font-weight: 650;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
+.rs-check-note {
+  margin-left: auto;
+  color: var(--mute);
+  font-size: 0.74rem;
+  flex: none;
+}
+
+.rs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rs-chip {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+}
+
+.rs-health-top {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 6px 0 2px;
+}
+
+.rs-ring {
+  width: 120px;
+  height: 120px;
+}
+
+.rs-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 9;
+}
+
+.rs-ring-value {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 9;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 42px 42px;
+}
+
+.rs-health-number {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.rs-health-number strong {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+  line-height: 1;
+}
+
+.rs-health-number span {
+  font-size: 0.68rem;
+  color: var(--mute);
+}
+
+.rs-chat {
+  min-height: 100%;
+}
+
+.rs-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rs-msg {
+  max-width: 92%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.rs-msg.is-assistant {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  border-bottom-left-radius: 6px;
+}
+
+.rs-msg.is-user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border: 1px solid rgba(67, 119, 253, 0.35);
+  color: var(--ink-strong);
+  border-bottom-right-radius: 6px;
+}
+
+.rs-chat-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.rs-chat-form input {
+  flex: 1;
+  min-width: 0;
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 9px 14px;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: border-color 0.18s ease;
+}
+
+.rs-chat-form input::placeholder {
+  color: var(--mute);
+}
+
+.rs-chat-form input:focus {
+  outline: none;
+  border-color: var(--primary-soft);
+}
+
+.rs-chat-form button {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: filter 0.18s ease;
+}
+
+.rs-chat-form button:hover {
+  filter: brightness(1.1);
+}
+
+.rs-footnote {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.7rem;
+  color: var(--mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-tool,
+  .rs-view {
+    transition: none;
+  }
+  .rs-view {
+    animation: none;
+  }
+  .rs-tool:hover {
+    transform: none;
+  }
+}
+
+/* ---------- studio previews in the empty chat state ---------- */
+
+.studio-preview-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.studio-preview-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.studio-preview-card:hover {
+  border-color: rgba(67, 119, 253, 0.45);
+  background: var(--accent-soft);
+  transform: translateY(-2px);
+}
+
+.studio-preview-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(67, 119, 253, 0.12);
+  border: 1px solid rgba(67, 119, 253, 0.28);
+  color: var(--primary-soft);
+}
+
+.studio-preview-label {
+  font-size: 0.74rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.studio-preview-hint {
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: var(--mute);
+}
+
+@media (max-width: 720px) {
+  .studio-preview-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio-preview-card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-preview-card {
+    transition: none;
+  }
+  .studio-preview-card:hover {
+    transform: none;
+  }
+}
+
+/* ---------- studio in the main window ---------- */
+
+.rs-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.rs-main-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  padding: 0 24px 20px 0;
+}
+
+.rs-main-head h2 {
+  margin: 6px 0 0;
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  color: var(--ink-strong);
+}
+
+.rs-main-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 32px 0;
+  scrollbar-gutter: stable;
+}
+
+.rs-main .rs-view {
+  max-width: 880px;
+  gap: 16px;
+}
+
+.rs-main .rs-view-head h3 {
+  font-size: 1.05rem;
+}
+
+.rs-main .rs-view-hint {
+  font-size: 0.88rem;
+  max-width: 72ch;
+}
+
+.rs-main .rs-diagram {
+  max-width: 640px;
+}
+
+.rs-main .rs-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 880px;
+}
+
+.rs-main .rs-chips {
+  max-width: 880px;
+}
+
+.rs-main .rs-health-top {
+  justify-items: start;
+  max-width: 880px;
+}
+
+.rs-main .rs-ring {
+  width: 148px;
+  height: 148px;
+}
+
+.rs-main .rs-chat {
+  min-height: 480px;
+  max-width: 880px;
+}
+
+.rs-main .rs-chat-log {
+  flex: 1;
+}
+
+@media (max-width: 720px) {
+  .rs-main-head {
+    padding-right: 0;
+  }
+  .rs-main-head h2 {
+    font-size: 1.3rem;
+  }
+  .rs-main-body {
+    padding-right: 0;
+  }
+  .rs-main .rs-checks {
+    grid-template-columns: 1fr;
+  }
 }

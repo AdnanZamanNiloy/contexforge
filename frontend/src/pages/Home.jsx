@@ -6,6 +6,7 @@ import Sidebar from '../components/layout/Sidebar'
 import ChatBox from '../components/ChatBox'
 import SourceViewer from '../components/SourceViewer'
 import MindMapPanel from '../components/MindMapPanel'
+import RepoStudio, { STUDIO_TOOLS, StudioView } from '../components/RepoStudio'
 import {
   ingestFile,
   ingestGithub,
@@ -87,6 +88,41 @@ export default function Home() {
     return sidebarTypesFor(activeProject.source_category)
   }, [projectId, activeProject, projectMissing])
 
+  // Repository Studio replaces the evidence rail inside a project workspace
+  // that holds GitHub sources — or was created for them (Code Repositories
+  // family), so the options are visible even before the first repo lands.
+  // Document, web and global workspaces keep the standard evidence rail.
+  const repoStudioSource = useMemo(() => {
+    if (!projectId) return null
+    return visibleSources.find((s) => s.type === 'github') || null
+  }, [projectId, visibleSources])
+  const showRepoStudio = useMemo(() => {
+    if (!projectId) return false
+    if (repoStudioSource) return true
+    return activeProject?.source_category === 'github'
+  }, [projectId, repoStudioSource, activeProject])
+
+  // Studio tool outputs render in the main window; the rail only holds the
+  // five tool buttons.  Cleared when leaving the project or returning to chat.
+  // Repo Chat is the main composer itself — not a separate view.
+  const [studioView, setStudioView] = useState(null)
+  const [chatFocusRequest, setChatFocusRequest] = useState(0)
+  useEffect(() => {
+    setStudioView(null)
+  }, [projectId])
+  const effectiveStudio = showRepoStudio ? studioView : null
+  const handleStudioSelect = useCallback((id) => {
+    if (id === 'chat') {
+      setStudioView(null)
+      setActiveView('chat')
+      setChatFocusRequest((n) => n + 1)
+      return
+    }
+    setStudioView(id)
+    setActiveView('chat')
+  }, [])
+  const studioLabel = STUDIO_TOOLS.find((t) => t.id === effectiveStudio)?.label || ''
+
   // The sidebar owns source selection.  That one selection drives chat, the mind
   // map and every other AI capability in this workspace.
   const selection = useSourceSelection(visibleSources)
@@ -111,6 +147,7 @@ export default function Home() {
   // The Mind Map is reached from a button in the evidence rail, not a tab.
   const [activeView, setActiveView] = useState('chat')
   const handleOpenMindMap = useCallback(() => {
+    setStudioView(null)
     setActiveView((view) => (view === 'mindmap' ? 'chat' : 'mindmap'))
   }, [])
 
@@ -464,7 +501,35 @@ export default function Home() {
         </div>
       ) : null}
 
-      {activeView === 'chat' ? (
+      {effectiveStudio ? (
+        <div className="rs-main">
+          <div className="rs-main-head">
+            <div>
+              <span className="ev-eyebrow">Studio</span>
+              <h2>{studioLabel}</h2>
+            </div>
+            <button className="mh-back" onClick={() => setStudioView(null)}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              <span>Back to chat</span>
+            </button>
+          </div>
+          <div className="rs-main-body">
+            <StudioView tool={effectiveStudio} />
+          </div>
+        </div>
+      ) : activeView === 'chat' ? (
         <ChatBox
           messages={messages}
           input={input}
@@ -476,6 +541,10 @@ export default function Home() {
           uploadHint={showUploadHint}
           onNewChat={resetChat}
           sourceCount={chatScopeCount}
+          focusRequest={chatFocusRequest}
+          studioPreviews={
+            showRepoStudio ? { tools: STUDIO_TOOLS, onSelect: handleStudioSelect } : null
+          }
         />
       ) : (
         <MindMapPanel
@@ -487,7 +556,13 @@ export default function Home() {
     </div>
   )
 
-  const right = (
+  const right = showRepoStudio ? (
+    <RepoStudio
+      repoName={repoStudioSource?.title || activeProject?.name}
+      active={effectiveStudio}
+      onSelect={handleStudioSelect}
+    />
+  ) : (
     <SourceViewer
       sources={querySources}
       latency={latency}

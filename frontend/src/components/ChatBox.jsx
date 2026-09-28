@@ -13,6 +13,8 @@ export default function ChatBox({
   uploadHint,
   onNewChat,
   sourceCount = null,
+  studioPreviews = null,
+  focusRequest = 0,
 }) {
   const MAX_TEXTAREA_HEIGHT = 200
   const textareaRef = useRef(null)
@@ -53,6 +55,10 @@ export default function ChatBox({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (focusRequest > 0) textareaRef.current?.focus()
+  }, [focusRequest])
 
   const textareaBase =
     'chat-composer-input flex-1 min-w-0 resize-none bg-transparent border-none outline-none ' +
@@ -159,6 +165,31 @@ export default function ChatBox({
         </div>
 
         <div className="flex-1" />
+
+        {studioPreviews && studioPreviews.tools?.length ? (
+          <div className="w-full max-w-[768px] mx-auto px-2">
+            <div
+              className="studio-preview-row"
+              role="group"
+              aria-label="Repository studio previews"
+            >
+              {studioPreviews.tools.map(({ id, label, hint, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="studio-preview-card"
+                  onClick={() => studioPreviews.onSelect?.(id)}
+                >
+                  <span className="studio-preview-icon" aria-hidden="true">
+                    {Icon ? <Icon /> : null}
+                  </span>
+                  <span className="studio-preview-label">{label}</span>
+                  {hint ? <span className="studio-preview-hint">{hint}</span> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="w-full max-w-[768px] mx-auto px-2 pb-8">{inputArea}</div>
       </motion.section>
