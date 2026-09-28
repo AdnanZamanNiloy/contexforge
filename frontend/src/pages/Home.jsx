@@ -546,9 +546,6 @@ export default function Home() {
           onNewChat={resetChat}
           sourceCount={chatScopeCount}
           focusRequest={chatFocusRequest}
-          studioPreviews={
-            showRepoStudio ? { tools: STUDIO_TOOLS, onSelect: handleStudioSelect } : null
-          }
         />
       ) : (
         <MindMapPanel

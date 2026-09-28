@@ -9,11 +9,6 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
 })
 
-async function user() {
-  const { default: userEvent } = await import('@testing-library/user-event')
-  return userEvent.setup()
-}
-
 function baseProps(overrides = {}) {
   return {
     messages: [],
@@ -29,36 +24,16 @@ function baseProps(overrides = {}) {
   }
 }
 
-describe('ChatBox studio previews', () => {
-  it('shows one preview card per studio tool when the thread is empty', async () => {
-    const onSelect = vi.fn()
-    const u = await user()
-    render(<ChatBox {...baseProps()} studioPreviews={{ tools: STUDIO_TOOLS, onSelect }} />)
-
+describe('ChatBox does not duplicate the studio tools', () => {
+  it('offers no tool grid, because the Studio rail already carries them', () => {
+    // The chat used to render a row of the same four tool cards as the rail
+    // beside it. Two identical entry points to the same four views is one too
+    // many, and the chat one is the one that goes.
+    render(<ChatBox {...baseProps()} />)
+    expect(screen.queryByRole('group', { name: /studio previews/i })).not.toBeInTheDocument()
     for (const tool of STUDIO_TOOLS) {
-      expect(screen.getByRole('button', { name: new RegExp(tool.label) })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: new RegExp(tool.label) })).not.toBeInTheDocument()
     }
-
-    await u.click(screen.getByRole('button', { name: /repo chat/i }))
-    expect(onSelect).toHaveBeenCalledWith('chat')
-  })
-
-  it('hides previews once messages exist and without studio tools', () => {
-    const { rerender } = render(
-      <ChatBox {...baseProps()} studioPreviews={{ tools: STUDIO_TOOLS, onSelect: vi.fn() }} />,
-    )
-    expect(screen.getByRole('group', { name: /studio previews/i })).toBeInTheDocument()
-
-    rerender(
-      <ChatBox
-        {...baseProps({ messages: [{ id: 'u1', role: 'user', text: 'hi' }] })}
-        studioPreviews={{ tools: STUDIO_TOOLS, onSelect: vi.fn() }}
-      />,
-    )
-    expect(screen.queryByRole('group', { name: /studio previews/i })).not.toBeInTheDocument()
-
-    rerender(<ChatBox {...baseProps()} studioPreviews={null} />)
-    expect(screen.queryByRole('group', { name: /studio previews/i })).not.toBeInTheDocument()
   })
 
   it('focuses the composer when focusRequest bumps (Repo Chat shortcut)', () => {
