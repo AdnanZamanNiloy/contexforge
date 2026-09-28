@@ -238,19 +238,6 @@ class Settings(BaseSettings):
     # in test/CI contexts that stub providers (e.g. VALIDATE_ON_START=false).
     VALIDATE_ON_START: bool = Field(default=True)
 
-    # ------------------------------------------------------------------
-    # Repository Intelligence — configurable analysis limits
-    # ------------------------------------------------------------------
-    # A cloned repository is analysed up to MAX_REPO_FILES files; binary and
-    # lock files are always skipped.  Larger repos are truncated at the top
-    # level of the tree to keep analysis bounded on CPU-only hardware.
-    REPO_MAX_FILES: int = Field(default=800)
-    REPO_CLONE_TIMEOUT: int = Field(default=180)
-    REPO_ANALYSIS_DIR: Path = Field(default=data_path("repo_analysis"))
-    REPO_GIT_HISTORY_DAYS: int = Field(default=180)
-    # Set to 0 to analyse the full history regardless of window.
-    REPO_GIT_HISTORY_FULL: bool = Field(default=False)
-    REPO_BLAME_FILE_LIMIT: int = Field(default=400)
     # Persisted generated mind maps (keyed by source_id).
     MINDMAP_DIR: Path = Field(default=data_path("mindmaps"))
 
@@ -265,13 +252,6 @@ class Settings(BaseSettings):
     # Sources themselves stay in FAISS/BM25; this DB only maps projects to
     # source_ids so the library survives restarts without changing retrieval.
     PROJECTS_DB_PATH: Path = Field(default=data_path("projects", "projects.db"))
-
-    # Scoring / health thresholds (transparent, explainable — no opaque AI)
-    RISK_FANOUT_WEIGHT: float = Field(default=0.30)
-    RISK_CHURN_WEIGHT: float = Field(default=0.25)
-    RISK_COMPLEXITY_WEIGHT: float = Field(default=0.20)
-    RISK_COVERAGE_WEIGHT: float = Field(default=0.15)
-    RISK_OWNERSHIP_WEIGHT: float = Field(default=0.10)
 
     # ------------------------------------------------------------------
     # Validation — fail loudly instead of running with missing credentials

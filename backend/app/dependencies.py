@@ -17,9 +17,6 @@ from app.mindmap.storage import MindMapStore
 from app.model_hub import factory as model_hub_factory
 from app.model_hub.service import ModelHubService
 from app.model_hub.storage import ModelHubStore
-from app.repository_intelligence.analyzer import RepositoryAnalyzer
-from app.repository_intelligence.service import RepositoryIntelligenceService
-from app.repository_intelligence.storage import RepositoryStore
 from app.services.ingest_service import IngestService
 from app.services.query_service import QueryService
 from app.sources.storage import SourceMetaStore
@@ -222,29 +219,6 @@ def get_query_service() -> QueryService:
 
 
 # ---------------------------------------------------------------------------
-# Repository Intelligence — route -> service -> analyzer -> storage
-# ---------------------------------------------------------------------------
-
-
-@lru_cache(maxsize=1)
-def get_repository_store() -> RepositoryStore:
-    return RepositoryStore()
-
-
-@lru_cache(maxsize=1)
-def get_repository_analyzer() -> RepositoryAnalyzer:
-    return RepositoryAnalyzer()
-
-
-@lru_cache(maxsize=1)
-def get_repository_intelligence_service() -> RepositoryIntelligenceService:
-    return RepositoryIntelligenceService(
-        store=get_repository_store(),
-        analyzer=get_repository_analyzer(),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Mind Map — generated from a source's chunks via the existing LLM chain
 # ---------------------------------------------------------------------------
 
@@ -393,12 +367,6 @@ async def close_all() -> None:
         logger.debug("BM25Index closed.")
     except Exception as exc:
         logger.warning("Error closing BM25Index: %s", exc)
-
-    try:
-        get_repository_store().close()
-        logger.debug("RepositoryStore closed.")
-    except Exception as exc:
-        logger.warning("Error closing RepositoryStore: %s", exc)
 
     try:
         get_mindmap_store().close()

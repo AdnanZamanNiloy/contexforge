@@ -20,7 +20,6 @@ from app.dependencies import close_all
 from app.mindmap.routes import router as mindmap_router
 from app.model_hub.routes import router as model_hub_router
 from app.projects.routes import router as projects_router
-from app.repository_intelligence.routes import router as repository_router
 from app.routes.github import router as github_router
 from app.routes.ingest import router as ingest_router
 from app.routes.query import router as query_router
@@ -133,7 +132,6 @@ app.add_middleware(
 app.include_router(ingest_router)
 app.include_router(github_router)
 app.include_router(query_router)
-app.include_router(repository_router)
 app.include_router(mindmap_router)
 app.include_router(model_hub_router)
 app.include_router(projects_router)

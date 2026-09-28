@@ -8,7 +8,7 @@ Server-Sent Events (SSE).
 
 - **`app/`** — the FastAPI application: `main.py` (app + lifespan + CORS), route
   handlers, Pydantic schemas, and singleton service wiring in `dependencies.py`.
-  Feature modules (`mindmap/`, `repository_intelligence/`) are self-contained
+  Feature modules (`mindmap/`, `model_hub/`, `projects/`) are self-contained
   packages.
 - **`core/`** — the engine. Every RAG stage is a small, testable module:
   ingestion loaders, chunkers (text + AST code), embedders, storage (FAISS dense,
@@ -35,12 +35,10 @@ Source ──► loader ──► chunker ──► embedder ──► FAISS + B
 
 ## Frontend layers
 
-- **`pages/`** — routes (Home, Projects, Repository Intelligence, Model Hub);
-  the project workspace owns the Chat and Mind Map views, and the repository
-  page owns several tabbed sub-views.
-- **`components/`** — reusable UI (chat, source header, mind-map canvas, repo
-  CTA).
-- **`hooks/`** — data hooks (`useChat`, `useSources`, `useRepository`).
+- **`pages/`** — routes (Landing, Projects, Model Hub); the project workspace
+  owns the Chat and Mind Map views.
+- **`components/`** — reusable UI (chat, source header, mind-map canvas).
+- **`hooks/`** — data hooks (`useChat`, `useSources`).
 - **`services/api.js`** — REST client + SSE stream parser; **`lib/sources.jsx`**
   — shared source model and formatters.
 

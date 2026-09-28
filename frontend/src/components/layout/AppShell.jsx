@@ -1,6 +1,6 @@
 // Shared application shell for ContextForge.  One layout, one chrome — the
-// workspace, source exploration, chat and Repository Intelligence all render
-// inside the same three-column frame so nothing reads as a separate product.
+// workspace, chat and the mind map all render inside the same three-column
+// frame so nothing reads as a separate product.
 export default function AppShell({
   sidebar,
   main,

@@ -17,7 +17,7 @@ ContextForge is worth self-hosting. They scan for:
 
 1. What it does (grounded answers, not a chatbot).
 2. What it ingests (PDF · DOCX · Web · YouTube · GitHub · Text).
-3. Whether it is real (hybrid retrieval, RRF, reranking, repo intelligence).
+3. Whether it is real (hybrid retrieval, RRF, reranking, streaming citations).
 4. How they hold it (local-first, own hardware, cited answers).
 
 ## 3 · Tone

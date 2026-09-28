@@ -274,38 +274,6 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
   }
 }
 
-// --- Repository Intelligence -------------------------------------------------
-
-export async function repositoryLatest(repoUrl) {
-  return request(`/repository/latest?repo_url=${encodeURIComponent(repoUrl)}`, {
-    method: 'GET',
-  })
-}
-
-export async function repositoryStatus(analysisId) {
-  return request(`/repository/${analysisId}/status`, { method: 'GET' })
-}
-
-export async function repositoryGet(analysisId) {
-  return request(`/repository/${analysisId}`, { method: 'GET' })
-}
-
-export async function getRepositoryDependencies(analysisId, { selected, depth = 3 } = {}) {
-  const params = new URLSearchParams()
-  if (selected) params.set('selected', selected)
-  params.set('depth', String(depth))
-  const qs = params.toString()
-  return request(`/repository/${analysisId}/dependencies?${qs}`, { method: 'GET' })
-}
-
-export async function repositoryDataFlow(analysisId) {
-  return request(`/repository/${analysisId}/data-flow`, { method: 'GET' })
-}
-
-export async function reanalyzeRepository(analysisId) {
-  return request(`/repository/${analysisId}/reanalyze`, { method: 'POST' })
-}
-
 // --- Mind Map ---------------------------------------------------------------
 
 // The workspace can build a map from one source or from several at once.  A

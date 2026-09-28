@@ -492,10 +492,9 @@ class Orchestrator:
         k_retrieve = top_k_retrieval if top_k_retrieval is not None else settings.TOP_K_RETRIEVAL
         k_rerank = top_k_rerank if top_k_rerank is not None else settings.TOP_K_RERANK
         # When the query is scoped to a selection of sources (the project
-        # workspace picks one or many; Repository Intelligence chat picks a single
-        # repository), exclude every other source's chunks so the answer is
-        # grounded only in the selected sources.  The exclusion set is the
-        # store's full source list minus the selection.
+        # workspace picks one or many), exclude every other source's chunks so
+        # the answer is grounded only in the selected sources.  The exclusion
+        # set is the store's full source list minus the selection.
         exclude_source_ids = self._source_exclude_set(source_id, source_ids)
         # Use the (possibly HyDE-expanded) query text for the BM25 + dense
         # legs too, so expansion is consistent across the whole pipeline.

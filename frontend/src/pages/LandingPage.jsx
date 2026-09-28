@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import ContextForgeMark from '../components/ContextForgeMark'
@@ -74,16 +74,6 @@ const CAPABILITIES = [
       ['Vector store', 'FAISS IndexFlatIP'],
       ['Sparse index', 'SQLite FTS5 · BM25'],
       ['Reranker', 'ms-marco-MiniLM-L-6-v2'],
-    ],
-  },
-  {
-    tag: 'Repository Intelligence',
-    title: 'Static + historical code analysis',
-    body: 'Point it at a GitHub repo and it clones, then builds architecture, dependency and data-flow graphs, reads git churn and ownership, and scores health and change impact.',
-    facts: [
-      ['Graphs', 'architecture · deps · data-flow'],
-      ['History', 'churn · branches · bus-factor'],
-      ['Scoring', 'health · weighted risk'],
     ],
   },
   {
@@ -258,7 +248,6 @@ function Nav() {
         <nav className="lp-nav-links" aria-label="Sections">
           <a href="#pipeline">Pipeline</a>
           <a href="#capabilities">Capabilities</a>
-          <a href="#intelligence">Repo Intel</a>
           <a href="#stack">Stack</a>
         </nav>
         <div className="lp-nav-actions">
@@ -473,119 +462,6 @@ function CapabilitiesSection() {
   )
 }
 
-// A static, deterministic architecture-graph sketch — the same idea the
-// Repository Intelligence architecture view renders, drawn small as evidence.
-function ArchSketch() {
-  const cols = [
-    {
-      x: 34,
-      nodes: [
-        ['repo', 70],
-        ['area', 130],
-        ['dir', 190],
-      ],
-    },
-    {
-      x: 150,
-      nodes: [
-        ['module', 100],
-        ['module', 160],
-      ],
-    },
-    { x: 262, nodes: [['file', 130]] },
-  ]
-  const edges = [
-    [34, 70, 150, 100],
-    [34, 70, 150, 160],
-    [34, 130, 150, 100],
-    [34, 190, 150, 160],
-    [150, 100, 262, 130],
-    [150, 160, 262, 130],
-  ]
-  return (
-    <svg
-      className="lp-arch"
-      viewBox="0 0 320 240"
-      role="img"
-      aria-label="Architecture graph sketch"
-    >
-      <defs>
-        <linearGradient id="lp-edge" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="var(--lp-teal)" stopOpacity="0.7" />
-        </linearGradient>
-      </defs>
-      {edges.map(([x1, y1, x2, y2], index) => (
-        <path
-          key={index}
-          d={`M${x1 + 22} ${y1} C ${x1 + 70} ${y1}, ${x2 - 70} ${y2}, ${x2} ${y2}`}
-          fill="none"
-          stroke="url(#lp-edge)"
-          strokeWidth="1.4"
-        />
-      ))}
-      {cols.map((col) =>
-        col.nodes.map(([kind, y]) => (
-          <g key={`${kind}-${y}`} className="lp-arch-node" data-kind={kind}>
-            <rect x={col.x} y={y - 13} width="66" height="26" rx="7" />
-            <text x={col.x + 33} y={y + 4} textAnchor="middle">
-              {kind}
-            </text>
-          </g>
-        )),
-      )}
-    </svg>
-  )
-}
-
-function IntelligenceSection() {
-  const ref = useReveal()
-  const facts = useMemo(
-    () => [
-      ['Architecture graph', 'repo → area → directory → module → file'],
-      ['Dependency subgraph', 'module-level, configurable depth'],
-      ['Data-flow paths', 'execution and value flow across the codebase'],
-      ['Git history', 'churn, branches, commits, contributors'],
-      ['Ownership & bus factor', 'contributor distribution per module'],
-      ['Health & risk', 'weighted, explainable per-module scoring'],
-      ['Change impact', 'blast radius for a proposed change'],
-      ['Interactive Q&A', 'natural-language questions about the repo'],
-    ],
-    [],
-  )
-  return (
-    <section id="intelligence" className="lp-section lp-section-split">
-      <div className="lp-split">
-        <div ref={ref} className="lp-split-copy" data-reveal="out">
-          <span className="lp-eyebrow">Repository Intelligence</span>
-          <h2 className="lp-h2">Read a codebase like a senior engineer would</h2>
-          <p className="lp-lede">
-            Ingest a GitHub repository and ContextForge clones it for deeper static analysis —
-            graphs, history, ownership and risk — then lets you interrogate the result in natural
-            language.
-          </p>
-          <dl className="lp-intel-facts">
-            {facts.map(([term, value]) => (
-              <div key={term} className="lp-intel-fact">
-                <dt>{term}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <Link className="lp-btn lp-btn-primary" to="/projects">
-            Analyze a repository
-          </Link>
-        </div>
-        <div className="lp-split-visual">
-          <HudFrame rail="architecture graph · hierarchical decomposition">
-            <ArchSketch />
-          </HudFrame>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function StackSection() {
   const ref = useReveal()
   const backend = [
@@ -705,7 +581,6 @@ function Footer() {
             <Link to="/workspace">Workspace</Link>
             <a href="#pipeline">Pipeline</a>
             <a href="#capabilities">Capabilities</a>
-            <a href="#intelligence">Repository Intelligence</a>
           </div>
           <div className="lp-footer-col">
             <span className="lp-footer-head">Resources</span>
@@ -755,7 +630,6 @@ export default function LandingPage() {
         <StatsStrip />
         <PipelineSection />
         <CapabilitiesSection />
-        <IntelligenceSection />
         <StackSection />
         <CtaBand />
       </main>

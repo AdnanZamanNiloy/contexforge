@@ -4,9 +4,9 @@ import { fetchSources, updateSourceTitle } from '../services/api'
 import { normalizeSource } from '../lib/sources'
 
 // Shared source store for the ContextForge workspace.  Every page — the
-// workspace, source exploration, chat and Repository Intelligence — consumes
-// the same source list so navigation and source representation are identical
-// no matter which capability is in focus.
+// workspace, chat and the mind map — consumes the same source list so
+// navigation and source representation are identical no matter which
+// capability is in focus.
 export function useSources() {
   const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(true)

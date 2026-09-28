@@ -77,8 +77,7 @@ async def ingest_github(
 
     # Map service errors to clean HTTP responses.
     # The RAG ingest is best-effort: a failure here (e.g. the embedding
-    # service being rate-limited) must not block the Repository Intelligence
-    # analysis, which is the primary deliverable for GitHub sources.
+    # service being rate-limited) must not fail the request outright.
     source_id: str | None = None
     chunks_indexed = 0
     rag_message = ""
@@ -106,30 +105,8 @@ async def ingest_github(
     if source_id is None:
         source_id = str(uuid.uuid4())
 
-    # Auto-trigger Repository Intelligence analysis for the ingested repo.
-    # Best-effort: analysis failures must not fail the ingest response.
-    analysis_id = None
-    try:
-        from app.dependencies import get_repository_intelligence_service
-
-        analysis = await get_repository_intelligence_service().start_analysis(request.repo_url, branch=request.branch)
-        analysis_id = analysis.get("analysis_id")
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.warning(
-            "Could not auto-start repository intelligence for %s: %s",
-            request.repo_url,
-            exc,
-        )
-
-    message = rag_message
-    if analysis_id:
-        message += " Repository Intelligence analysis started."
-    else:
-        message += " Repository Intelligence analysis was not started."
-
     return IngestResponse(
         source_id=source_id,
         chunks_indexed=chunks_indexed,
-        analysis_id=analysis_id,
-        message=message,
+        message=rag_message,
     )

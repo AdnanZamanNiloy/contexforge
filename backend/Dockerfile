@@ -16,7 +16,7 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Application code. Data dirs (data/, uploads, repo_analysis) are created at
+# Application code. Data dirs (data/, uploads) are created at
 # runtime under /app/data and should be mounted as a named volume.
 COPY app ./app
 COPY core ./core

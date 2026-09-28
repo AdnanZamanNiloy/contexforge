@@ -51,6 +51,6 @@ describe('LandingPage', () => {
     renderPage()
     const nav = screen.getByRole('navigation', { name: /sections/i })
     const targets = Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))
-    expect(targets).toEqual(['#pipeline', '#capabilities', '#intelligence', '#stack'])
+    expect(targets).toEqual(['#pipeline', '#capabilities', '#stack'])
   })
 })

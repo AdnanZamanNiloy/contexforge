@@ -4,7 +4,6 @@ import {
   formatSourceMeta,
   formatTypeLabel,
   normalizeSource,
-  sourceRepoUrl,
 } from './sources'
 
 describe('formatFileSize', () => {
@@ -68,24 +67,5 @@ describe('normalizeSource', () => {
   it('provides a fallback title when missing', () => {
     const normalized = normalizeSource({ source_id: 'abc', type: 'web' })
     expect(normalized.title).toBe('abc')
-  })
-})
-
-describe('sourceRepoUrl', () => {
-  it('prefers an explicit url', () => {
-    expect(sourceRepoUrl({ type: 'github', url: 'https://github.com/o/r' })).toBe(
-      'https://github.com/o/r',
-    )
-  })
-
-  it('recovers the URL from an owner/repo title', () => {
-    expect(sourceRepoUrl({ type: 'github', title: 'owner/repo' })).toBe(
-      'https://github.com/owner/repo',
-    )
-  })
-
-  it('returns empty for non-GitHub or unparseable titles', () => {
-    expect(sourceRepoUrl({ type: 'pdf' })).toBe('')
-    expect(sourceRepoUrl({ type: 'github', title: 'no-slash' })).toBe('')
   })
 })

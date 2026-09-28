@@ -1,8 +1,7 @@
 // Shared source representation for ContextForge.  Every capability in the
-// product — the workspace, source exploration, chat, mind maps and Repository
-// Intelligence — speaks the same source model so a YouTube video, a PDF, a web
-// page and a GitHub repository all present identically and feel native to the
-// same knowledge layer.
+// product — the workspace, chat and mind maps — speaks the same source model so
+// a YouTube video, a PDF, a web page and a GitHub repository all present
+// identically and feel native to the same knowledge layer.
 
 export const SOURCE_TYPE_LABEL = {
   pdf: 'PDF',
@@ -171,16 +170,4 @@ export function normalizeSource(raw) {
     url: raw.url || '',
     meta: raw.metadata || {},
   }
-}
-
-// Resolve the canonical GitHub repo URL for a source.  Newly indexed repos
-// carry `url` in their metadata, but repos indexed before that field existed do
-// not — recover those from the `owner/repo` title so Repository Intelligence can
-// always be reached from a GitHub source.
-export function sourceRepoUrl(source) {
-  if (source?.url) return source.url
-  if (source?.type === 'github' && source?.title?.includes('/')) {
-    return `https://github.com/${source.title.trim()}`
-  }
-  return ''
 }

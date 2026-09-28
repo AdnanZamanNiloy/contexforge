@@ -94,16 +94,9 @@ class FailingIngestService(FakeIngestService):
 
 
 @pytest.mark.asyncio
-async def test_github_ingest_survives_rag_failure(monkeypatch):
+async def test_github_ingest_survives_rag_failure():
     """RAG ingest failure (e.g. embedding rate-limit) must not fail the endpoint;
-    it should still return 200 with an analysis_id."""
-    import app.dependencies as deps
-
-    class FakeRIntelligence:
-        async def start_analysis(self, repo_url, branch=None):
-            return {"analysis_id": "ri-123"}
-
-    monkeypatch.setattr(deps, "get_repository_intelligence_service", lambda: FakeRIntelligence())
+    it should still return 200 with a usable source_id."""
     app.dependency_overrides[get_ingest_service] = lambda: FailingIngestService()
 
     transport = httpx.ASGITransport(app=app)
@@ -118,9 +111,8 @@ async def test_github_ingest_survives_rag_failure(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["chunks_indexed"] == 0
-    assert body["analysis_id"] == "ri-123"
+    assert body["source_id"]
     assert "skipped" in body["message"]
-    assert "Repository Intelligence analysis started" in body["message"]
 
 
 @pytest.mark.asyncio

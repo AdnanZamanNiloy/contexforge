@@ -23,8 +23,8 @@ _GITHUB_URL_RE = re.compile(r"https?://github\.com/([^/]+)/([^/]+)", re.IGNORECA
 def _github_source_id(url: str) -> str:
     """Deterministic, idempotent source_id for a GitHub repository.
 
-    Matches the ``repo:<owner>/<name>`` id used by Repository Intelligence chat
-    so the same repo is never indexed twice under different ids.
+    Derived from the repo URL so re-ingesting the same repository reuses its
+    existing id instead of creating a duplicate source.
     """
     match = _GITHUB_URL_RE.match(url)
     if not match:

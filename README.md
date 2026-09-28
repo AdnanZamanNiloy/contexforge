@@ -17,7 +17,7 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
 
 <br>
 
-> **Project status —** Active development. The core RAG pipeline, Repository Intelligence, and Mind Map features are implemented and tested.
+> **Project status —** Active development. The core RAG pipeline, GitHub Repository Chat, and Mind Map features are implemented and tested.
 
 <br>
 
@@ -28,7 +28,6 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
   - [Source Ingestion](#source-ingestion)
   - [Retrieval Pipeline](#retrieval-pipeline)
   - [Answer Delivery](#answer-delivery)
-  - [Repository Intelligence](#repository-intelligence)
   - [Mind Map](#mind-map)
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
@@ -86,24 +85,6 @@ Most LLM chat tools are disconnected from your actual data. ContextForge is buil
 - **Confidence metrics** — server-side `answer_confidence`, `source_coverage`, `sources_used`, `retrieved_chunks`
 - **Latency breakdown** — per-stage timing across retrieval, rerank, and generation
 
-### Repository Intelligence
-
-Point ContextForge at a GitHub repository and it runs a multi-phase static + historical analysis:
-
-| Capability | Description |
-|---|---|
-| Architecture graph | Hierarchical decomposition: repo → area → directory → module → file |
-| Dependency graph | Module-level dependency subgraphs with configurable depth |
-| Data-flow analysis | Execution and data-flow paths across the codebase |
-| Git history | Churn, branches, commits, and contributor activity |
-| Ownership analysis | Contributor distribution and bus-factor estimation |
-| Health scoring | Weighted scoring across fanout, churn, complexity, coverage, ownership |
-| Risk assessment | Explainable, weighted risk levels per module |
-| Change impact | Blast-radius analysis for a proposed change to a file or module |
-| Interactive Q&A | Ask natural-language questions about the repository's architecture |
-
-The ingestion layer indexes a repository from the GitHub API; Repository Intelligence additionally clones the repo for deeper static analysis.
-
 ### Mind Map
 
 Generate an interactive SVG mind map from any ingested source — with zoom, pan, search, and fullscreen mode.
@@ -125,12 +106,11 @@ flowchart TB
         direction TB
         Chat["Chat UI (REST + SSE)"]
         Workspace["Project Workspace<br/>Chat · Mind Map"]
-        Repo["Repository Intelligence"]
     end
 
     subgraph API["API LAYER — FastAPI"]
         direction TB
-        Routes["App Routers<br/>/ingest · /query · /mindmap<br/>/repository"]
+        Routes["App Routers<br/>/ingest · /github · /query<br/>/mindmap"]
         Schemas["Pydantic Schemas<br/>request + response validation"]
         Services["Application Services<br/>IngestService · QueryService"]
     end
@@ -347,7 +327,6 @@ All configuration lives in `backend/app/config/settings.py` via `pydantic-settin
 | `USE_HYDE` | `false` | Enable HyDE query expansion |
 | `FAISS_INDEX_PATH` | `data/vector_store/index.faiss` | FAISS index path |
 | `ALLOWED_ORIGINS` | `["http://localhost:5173"]` | CORS allowed origins |
-| `REPO_MAX_FILES` | `800` | Max files for repo analysis |
 | `LOG_LEVEL` | `INFO` | Logging level |
 
 ### Frontend
@@ -361,9 +340,7 @@ All configuration lives in `backend/app/config/settings.py` via `pydantic-settin
 <br>
 
 - **Model selection** — `GEMINI_MODEL`, `GROQ_MODEL`, `VOYAGE_MODEL`, `RERANK_MODEL`
-- **Repository analysis** — `REPO_MAX_FILES`, `REPO_CLONE_TIMEOUT`, `REPO_GIT_HISTORY_DAYS`
-- **Risk scoring weights** — `RISK_FANOUT_WEIGHT`, `RISK_CHURN_WEIGHT`, `RISK_COMPLEXITY_WEIGHT`, `RISK_COVERAGE_WEIGHT`, `RISK_OWNERSHIP_WEIGHT`
-- **Paths** — `FAISS_INDEX_PATH`, `BM25_DB_PATH`, `CACHE_PATH`, `UPLOAD_DIR`, `REPO_ANALYSIS_DIR`, `MINDMAP_DIR`
+- **Paths** — `FAISS_INDEX_PATH`, `BM25_DB_PATH`, `CACHE_PATH`, `UPLOAD_DIR`, `MINDMAP_DIR`
 
 </details>
 
@@ -388,7 +365,6 @@ contextforge/
 │   │   │   ├── ingest_service.py    # Ingestion orchestration
 │   │   │   └── query_service.py     # Query + SSE streaming
 │   │   ├── mindmap/                 # Mind map generation (routes, service, storage)
-│   │   └── repository_intelligence/ # Repo analysis (graph, risk, git, dependencies, etc.)
 │   ├── core/
 │   │   ├── orchestrator.py          # Central coordinator for the RAG pipeline
 │   │   ├── ingestion/               # Loaders: base, pdf, docx, text, web, github, youtube
@@ -405,10 +381,10 @@ contextforge/
 │       └── integration/             # API-level integration tests
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx                  # Routes (/, /projects, /projects/:id, /repository, /models)
-│   │   ├── pages/                   # Page components (Home, Projects, Repository, ModelHub)
+│   │   ├── App.jsx                  # Routes (/, /projects, /projects/:id, /models)
+│   │   ├── pages/                   # Page components (Home, Projects, ModelHub)
 │   │   ├── components/              # Reusable UI (ChatBox, MindMapCanvas, SourceViewer, etc.)
-│   │   ├── hooks/                   # useChat, useSources, useRepository
+│   │   ├── hooks/                   # useChat, useSources
 │   │   ├── services/api.js          # API client (REST + SSE streaming)
 │   │   ├── lib/sources.jsx          # Source helper utilities
 │   │   └── styles/main.css          # Tailwind CSS v4 + custom styles
@@ -458,31 +434,6 @@ DELETE  /ingest/clear                            Wipe the entire knowledge base
 ```
 POST    /query                                  Answer a question (JSON: sources + confidence)
 POST    /query/stream                           Stream answer tokens via SSE
-```
-
-</details>
-
-<details open>
-<summary><strong>Repository Intelligence</strong></summary>
-<br>
-
-```
-POST    /repository/analyze?repo_url=...         Start an analysis (background)
-GET     /repository/latest?repo_url=...          Latest completed analysis for a URL
-GET     /repository/{id}                         Full analysis bundle
-GET     /repository/{id}/status                  Poll analysis status
-GET     /repository/{id}/architecture            Architecture graph
-GET     /repository/{id}/dependencies?selected=&depth=   Dependency subgraph
-GET     /repository/{id}/data-flow               Data flow graph
-GET     /repository/{id}/git-history?range=      Git churn and commits
-GET     /repository/{id}/ownership               Contributor and bus-factor analysis
-GET     /repository/{id}/health                  Health scores
-GET     /repository/{id}/repository              Repository header metadata
-GET     /repository/{id}/risk-explanations       Risk level descriptions
-GET     /repository/{id}/change-impact?path=     Blast radius of a change
-GET     /repository/{id}/node?path=              Node / module inspector
-POST    /repository/{id}/ask                     Interactive Q&A about the repo
-POST    /repository/{id}/reanalyze               Re-run analysis
 ```
 
 </details>
