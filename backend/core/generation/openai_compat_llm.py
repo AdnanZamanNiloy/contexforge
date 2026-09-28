@@ -22,7 +22,27 @@ _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 1.0
 _RETRY_MAX_DELAY = 16.0
 
-_GENERATE_TIMEOUT = httpx.Timeout(timeout=60.0)
+# Connect and read are budgeted separately.  A single flat 60s timeout meant an
+# unreachable or blackholed endpoint burned a full minute *per attempt*, so one
+# dead provider in the chain cost up to three minutes of backoff before
+# FallbackLLM ever advanced.  Connecting is either immediate or hopeless, so it
+# gets a short leash.
+#
+# The read budget is deliberately much larger than it looks.  It is a per-read
+# budget, and long structured generations (a mind map outline) legitimately take
+# over a minute to stream back — a 60s read cut them off mid-answer, failed the
+# provider, and burned the whole fallback chain on a request that was never in
+# trouble.  It sits above the longest generation budget elsewhere in the app
+# (MAX_GENERATION_SECONDS = 135s) so that timeout, which produces an explicit
+# error, is what fires rather than a bare transport failure.
+_CONNECT_TIMEOUT = 8.0
+_READ_TIMEOUT = 150.0
+_GENERATE_TIMEOUT = httpx.Timeout(
+    connect=_CONNECT_TIMEOUT,
+    read=_READ_TIMEOUT,
+    write=30.0,
+    pool=8.0,
+)
 _STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=5.0)
 
 _CLEAN_FINISH_REASONS = {"stop", ""}

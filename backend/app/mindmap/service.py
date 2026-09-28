@@ -41,6 +41,14 @@ MAX_CHUNKS = 16
 MAX_CHUNK_CHARS = 280
 MAX_CONTEXT_CHARS = 6_000
 
+# Output budget.  The input is capped above, but the outline itself was not, so
+# generation time scaled with however many branches the model felt like writing
+# (a single source produced 65 lines and took ~77s on a free-tier provider).
+# Latency here is output-bound, not input-bound, so bounding the outline is what
+# actually shortens a request.  These are also what keeps the map scannable.
+MAX_ROOT_BRANCHES = 8
+MAX_OUTLINE_LINES = 40
+
 # Hard cap on a single generation.  The provider chain can fall through several
 # rate-limited/end-of-life endpoints, and each provider retries with exponential
 # backoff — left unchecked that can hang the request for minutes, which the
@@ -65,6 +73,9 @@ _SYSTEM_PROMPT = (
     "- Line 1 is the single root node: give it a short, concrete title for the "
     "source's overall subject.\n"
     "- Go no deeper than 3 levels (root → branch → leaf).\n"
+    f"- Keep it tight: at most {MAX_ROOT_BRANCHES} top-level branches and about "
+    f"{MAX_OUTLINE_LINES} lines in total. Prefer fewer, broader branches over "
+    "many narrow ones — do not pad the outline to fill space.\n"
     "- Capture the main topics, key points, and notable specifics (names, "
     "numbers, terminology) that are actually in the content. Do not invent "
     "facts.\n"
@@ -237,11 +248,7 @@ class MindMapService:
 
         # A text loader may store the whole body as the title — keep the root
         # node short so the map stays scannable.
-        if len(titles) == 1:
-            title = titles[0]
-        else:
-            title = f"{len(titles)} sources"
-
+        title = titles[0] if len(titles) == 1 else f"{len(titles)} sources"
         title = title.strip()
         if len(title) > 64:
             title = title[:61].rstrip() + "..."
@@ -302,7 +309,7 @@ def _normalize_markdown(markdown: str) -> str:
     Strips a leading code fence and root heading that some models add, leaving
     the nested '-'-prefixed list the mind map parser expects.
     """
-    text = (markdown or "").strip()
+    text = (markdown or '').strip()
 
     # Strip a single triple-backtick fenced block if the model wrapped the list.
     if text.startswith("```"):
@@ -320,8 +327,50 @@ def _normalize_markdown(markdown: str) -> str:
             if started:
                 cleaned.append(stripped)
             continue
-        if stripped.lstrip().startswith("-#"):
-            continue  # skip H1/H2/H3 heading lines
+        text_only = stripped.lstrip()
+        # Skip heading lines in either form a model emits them: a real markdown
+        # heading ("### Topic") or a list item that is really a heading
+        # ("- # Topic").  The renderer expects a plain nested list.
+        if text_only.startswith("#") or text_only.startswith("-#"):
+            continue
         started = True
         cleaned.append(stripped)
-    return "\n".join(cleaned).strip()
+    return _cap_outline("\n".join(cleaned).strip())
+
+
+def _cap_outline(markdown: str) -> str:
+    """Enforce the outline budget the prompt asked for.
+
+    A backstop only: the prompt already caps branches and depth, but a model
+    that ignores it would still make us pay for every extra token.  Trimming
+    after the fact bounds the stored map and keeps the render fast.
+
+    Depth is capped at three levels, and the total line count at
+    ``MAX_OUTLINE_LINES``.  A truncation is only accepted if the cut still
+    yields a well-formed outline (a root plus at least one child), otherwise the
+    original is kept rather than storing a stub.
+    """
+    if not markdown:
+        return markdown
+
+    lines = markdown.splitlines()
+    kept: list[str] = []
+    for line in lines:
+        if not line.strip():
+            if kept:
+                kept.append(line)
+            continue
+        indent = len(line) - len(line.lstrip())
+        # Two spaces per level, so >= 6 spaces of indent is the fourth level.
+        if indent >= 6:
+            continue
+        kept.append(line)
+        if len([ln for ln in kept if ln.strip()]) >= MAX_OUTLINE_LINES:
+            break
+
+    trimmed = "\n".join(kept).strip()
+    non_blank = [ln for ln in trimmed.splitlines() if ln.strip()]
+    if len(non_blank) < 2:
+        # Truncation left nothing useful — prefer the model's full answer.
+        return markdown
+    return trimmed
