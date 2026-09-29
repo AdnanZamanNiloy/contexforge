@@ -139,6 +139,33 @@ class BM25Index:
         await self._ensure_initialized()
         return await asyncio.to_thread(self._count_sync)
 
+    async def list_source_paths(
+        self,
+        *,
+        source_ids: set[str] | None = None,
+        limit: int = 500,
+    ) -> list[str]:
+        """Return the distinct file paths indexed, sorted.
+
+        Retrieval works at chunk granularity, so a question about a project's
+        layout can only be answered from whichever handful of chunks happened
+        to rank. The index already knows every path it holds; this exposes that
+        so a structure question can be answered completely rather than from
+        whatever survived the top-k.
+
+        Args:
+            source_ids: Restrict to these sources. Required for correctness in
+                a multi-source workspace, where an unscoped list would show
+                every repository's files at once.
+            limit:      Cap on returned paths, so a very large repository
+                        cannot flood the prompt.
+
+        Returns:
+            Sorted distinct paths, truncated to *limit*.
+        """
+        await self._ensure_initialized()
+        return await asyncio.to_thread(self._list_source_paths_sync, source_ids, limit)
+
     def close(self) -> None:
         if self._conn is not None:
             self._conn.close()
@@ -234,6 +261,38 @@ class BM25Index:
     def _count_sync(self) -> int:
         cursor = self._conn.execute("SELECT COUNT(*) FROM chunks")
         return cursor.fetchone()[0]
+
+    def _list_source_paths_sync(
+        self,
+        source_ids: set[str] | None,
+        limit: int,
+    ) -> list[str]:
+        """Collect distinct ``metadata.path`` values from the chunk rows.
+
+        Paths live inside a JSON blob rather than a column, so this reads the
+        rows and filters in Python. That is acceptable here because it runs
+        only for structure questions, over one source, and the result is
+        truncated to *limit* regardless.
+        """
+        if source_ids:
+            placeholders = ",".join("?" for _ in source_ids)
+            rows = self._conn.execute(
+                f"SELECT metadata FROM chunks WHERE source_id IN ({placeholders})",
+                tuple(source_ids),
+            ).fetchall()
+        else:
+            rows = self._conn.execute("SELECT metadata FROM chunks").fetchall()
+
+        paths: set[str] = set()
+        for (raw,) in rows:
+            try:
+                meta = json.loads(raw) if raw else {}
+            except (TypeError, ValueError):
+                continue
+            path = meta.get("path") or meta.get("filename")
+            if isinstance(path, str) and path.strip():
+                paths.add(path.strip())
+        return sorted(paths)[:limit]
 
     def _add_sync(self, chunks: list[Chunk]) -> None:
         rows = [

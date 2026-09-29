@@ -173,6 +173,52 @@ def _is_corpus_overview(question: str) -> bool:
     return any(marker in q for marker in _CORPUS_REF_MARKERS)
 
 
+# Questions answered by the set of indexed files rather than by any single
+# passage. Retrieval ranks chunks, so these can only be answered from whichever
+# handful survived the top-k — which is why a structure question needs the
+# manifest instead.
+_STRUCTURE_MARKERS = (
+    "file structure",
+    "folder structure",
+    "directory structure",
+    "directory tree",
+    "file tree",
+    "project structure",
+    "repo structure",
+    "repository structure",
+    "code structure",
+    "list the files",
+    "list all files",
+    "what files",
+    "which files",
+    "all files",
+    "folder layout",
+    "file layout",
+    "what folders",
+    "which folders",
+    "directories",
+    "how is it organised",
+    "how is it organized",
+)
+
+# A structure question is about the corpus as a whole, so it is exempt from the
+# short-question limit that _is_corpus_overview applies.
+_STRUCTURE_MAX_WORDS = 14
+
+
+def _is_structure_question(question: str) -> bool:
+    """Heuristic: does *question* ask for the project's file layout?
+
+    Deliberately narrower than it could be. Attaching a manifest to an ordinary
+    question wastes tokens and invites the model to describe the listing rather
+    than answer, so this matches phrasing that genuinely wants a tree.
+    """
+    q = question.strip().lower()
+    if not q or len(q.split()) > _STRUCTURE_MAX_WORDS:
+        return False
+    return any(marker in q for marker in _STRUCTURE_MARKERS)
+
+
 class Orchestrator:
     def __init__(
         self,
@@ -788,19 +834,46 @@ class Orchestrator:
         )
         return max(adjusted, self._MIN_CONFIDENCE_AFTER_UNGROUNDED)
 
+    async def file_manifest(
+        self,
+        *,
+        source_ids: set[str] | list[str] | None = None,
+        limit: int | None = None,
+    ) -> list[str]:
+        """Return the file paths indexed for the given sources.
+
+        Scoped deliberately: in a workspace holding several repositories an
+        unscoped listing would present every repo's files as one project.
+        """
+        cap = limit if limit is not None else settings.FILE_MANIFEST_MAX_PATHS
+        selected = {s for s in (source_ids or []) if s}
+        if not selected:
+            return []
+        return await self._bm25.list_source_paths(source_ids=selected, limit=cap)
+
     @observe(name="generate_answer")
-    async def generate_answer(self, question: str, chunks: list[Chunk]) -> str:
+    async def generate_answer(
+        self,
+        question: str,
+        chunks: list[Chunk],
+        file_manifest: list[str] | None = None,
+    ) -> str:
         """Generate a complete answer from *chunks* for *question*."""
-        built = self._prompt_builder.build(question, chunks)
+        built = self._prompt_builder.build(question, chunks, file_manifest=file_manifest)
         return await self._llm.generate(
             built.user_prompt,
             system_prompt=built.system_prompt,
         )
 
     @observe(name="stream_answer")
-    async def stream_answer(self, question: str, chunks: list[Chunk]) -> AsyncIterator[str]:
+    async def stream_answer(
+        self,
+        question: str,
+        chunks: list[Chunk],
+        file_manifest: list[str] | None = None,
+    ) -> AsyncIterator[str]:
         """Stream answer tokens for *question* grounded in *chunks*."""
-        built = self._prompt_builder.build(question, chunks)
+        built = self._prompt_builder.build(question, chunks, file_manifest=file_manifest)
         async for token in self._llm.stream(
             built.user_prompt,
             system_prompt=built.system_prompt,
@@ -816,6 +889,7 @@ class Orchestrator:
         use_hyde: bool | None = None,
         source_id: str | None = None,
         source_ids: set[str] | list[str] | None = None,
+        file_manifest: list[str] | None = None,
     ) -> GenerationResult:
         """Full RAG pipeline: retrieve → generate → return with sources and confidence."""
 
@@ -834,6 +908,7 @@ class Orchestrator:
         answer_text = await self.generate_answer(
             question,
             [item.chunk for item in reranked],
+            file_manifest=file_manifest,
         )
         timings["generate_ms"] = (time.perf_counter() - t) * 1000
         timings["total_ms"] = sum(v for v in timings.values() if isinstance(v, (int, float)))

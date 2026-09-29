@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     MAX_GITHUB_FILES: int = Field(default=500)
     CHUNK_SIZE: int = Field(default=512)
     CHUNK_OVERLAP: int = Field(default=50)
+    # Cap on how many indexed file paths are attached to a structure question.
+    # Large repositories can hold tens of thousands of files; the listing is
+    # truncated rather than allowed to dominate the prompt.
+    FILE_MANIFEST_MAX_PATHS: int = Field(default=400)
+
     TOP_K_RETRIEVAL: int = Field(default=20)
     TOP_K_RERANK: int = Field(default=5)
     # Optional HTTP/SOCKS proxy for YouTube transcript ingestion.  YouTube blocks

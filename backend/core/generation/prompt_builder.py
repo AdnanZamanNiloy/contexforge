@@ -44,7 +44,12 @@ class PromptBuilder:
         self._template = template
 
     @observe(name="build_prompt")
-    def build(self, question: str, chunks: list[Chunk]) -> BuiltPrompt:
+    def build(
+        self,
+        question: str,
+        chunks: list[Chunk],
+        file_manifest: list[str] | None = None,
+    ) -> BuiltPrompt:
         self._validate(question, chunks)
 
         effective_chunks = self._deduplicate(chunks)[: self._max_chunks]
@@ -69,6 +74,8 @@ class PromptBuilder:
             )
 
         context = self._format_context(effective_chunks)
+        if file_manifest:
+            context = f"{context}\n\n{PromptBuilder._format_manifest(file_manifest)}"
         user_prompt = self._template.format(context=context, question=question)
 
         logger.debug(
@@ -112,6 +119,25 @@ class PromptBuilder:
                 seen.add(chunk.chunk_id)
                 unique.append(chunk)
         return unique
+
+    @staticmethod
+    def _format_manifest(paths: list[str]) -> str:
+        """Render the indexed file list as a labelled, fenced block.
+
+        Kept visually separate from the numbered passages so the model treats it
+        as an inventory of the index rather than as evidence to reason from, and
+        so it cannot be mistaken for passage text when a claim is checked
+        against the context.
+        """
+        listing = "\n".join(paths)
+        return (
+            "The following is the complete list of file paths held in the "
+            "index for this project. It is a listing only — the passages above "
+            "remain your only source of file contents. Use this list when the "
+            "question asks about the project's layout, and say plainly when a "
+            "file is listed but no passage describes it.\n\n"
+            f"FILE MANIFEST:\n```\n{listing}\n```"
+        )
 
     @staticmethod
     def _source_label(chunk: Chunk) -> str:

@@ -1,5 +1,6 @@
 import pytest
 
+from core.orchestrator import _STRUCTURE_MAX_WORDS, _is_structure_question
 from core.retrieval.reranker import _MAX_CHUNKS_PER_SOURCE, Reranker, _diversify
 from core.types import Chunk, RetrievedChunk
 
@@ -226,3 +227,50 @@ class TestFileLevelCoverage:
         chosen = _diversify(scored, 4)
         scores = [c[1] for c in chosen]
         assert scores == sorted(scores, reverse=True)
+
+
+class TestStructureQuestionDetection:
+    """The manifest is attached only where it helps.
+
+    Attaching a file listing to an ordinary question wastes tokens and invites
+    the model to describe the listing instead of answering, so the detector has
+    to stay narrow.
+    """
+
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "give me repo file structure",
+            "what files are in this repo",
+            "show the folder structure",
+            "list all files",
+            "which files does it have",
+            "project structure please",
+        ],
+    )
+    def test_structure_questions_are_detected(self, question: str) -> None:
+        assert _is_structure_question(question) is True
+
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "what accuracy does the model report",
+            "how do I run the app",
+            "list the dependencies of this project",
+            "explain the structure of the JSON payload the API returns",
+        ],
+    )
+    def test_ordinary_questions_are_not_detected(self, question: str) -> None:
+        assert _is_structure_question(question) is False
+
+    def test_a_long_question_is_not_a_structure_question(self) -> None:
+        # A sprawling question that happens to contain "file structure" is
+        # asking for more than a tree, and handing it a manifest would push the
+        # model toward describing the listing instead of answering.
+        long_q = (
+            "please tell me about the file structure of this repository and "
+            "also explain how the machine learning model works, what the "
+            "accuracy figures are, and where the training happens"
+        )
+        assert len(long_q.split()) > _STRUCTURE_MAX_WORDS
+        assert _is_structure_question(long_q) is False

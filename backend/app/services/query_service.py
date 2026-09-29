@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from app.schemas.query import QueryRequest
-from core.orchestrator import Orchestrator
+from core.orchestrator import Orchestrator, _is_structure_question
 from core.types import GenerationResult, RerankedChunk
 
 __all__ = ["QueryService"]
@@ -35,6 +35,31 @@ class QueryService:
         self._orchestrator = orchestrator
         # Store last reranked chunks so the route can attach sources after streaming.
         self._last_sources: list[RerankedChunk] | None = None
+
+    async def _manifest_for(self, request: QueryRequest) -> list[str] | None:
+        """Indexed file paths, for questions about the project's layout.
+
+        Retrieval ranks chunks, so a structure question can otherwise only be
+        answered from the handful that happened to rank — which produced trees
+        missing directories the repository plainly has. The index already knows
+        every path it holds, so hand that over instead.
+
+        Scoped to the request's selected sources, so a workspace holding several
+        repositories never lists them as one project.
+        """
+        if not _is_structure_question(request.question):
+            return None
+        source_ids = set(request.source_ids or [])
+        if request.source_id:
+            source_ids.add(request.source_id)
+        if not source_ids:
+            return None
+        manifest = await self._orchestrator.file_manifest(source_ids=source_ids)
+        if manifest:
+            logger.info(
+                "structure question: attaching %d indexed file paths", len(manifest)
+            )
+        return manifest or None
 
     async def answer(self, request: QueryRequest) -> GenerationResult:
         """Run the full RAG pipeline and return the complete result.
@@ -63,6 +88,7 @@ class QueryService:
             use_hyde=request.use_hyde,
             source_id=request.source_id,
             source_ids=request.source_ids,
+            file_manifest=await self._manifest_for(request),
         )
         logger.info(
             "answer complete: sources=%d latency=%s confidence=%s",
@@ -105,6 +131,10 @@ class QueryService:
             request.source_ids,
         )
 
+        # Resolved before generation so a structure question is answered from
+        # the whole index rather than from the retrieved chunks alone.
+        manifest = await self._manifest_for(request)
+
         # Sent before any work starts, so the UI can leave its spinner for
         # "searching your sources" immediately rather than sitting on a void.
         yield {"type": "status", "stage": "retrieving"}
@@ -137,6 +167,7 @@ class QueryService:
             async for token in self._orchestrator.stream_answer(
                 request.question,
                 [item.chunk for item in reranked],
+                file_manifest=manifest,
             ):
                 if first_token_ms is None:
                     first_token_ms = (time.perf_counter() - gen_start) * 1000
