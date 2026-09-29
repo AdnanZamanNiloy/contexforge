@@ -86,7 +86,7 @@ beforeEach(() => {
 describe('SecurityReport', () => {
   it('shows the summary, the counts and every finding', async () => {
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue({ ...SCAN })
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/2 high and 1 medium/i)).toBeInTheDocument()
@@ -103,7 +103,7 @@ describe('SecurityReport', () => {
 
   it('shows the file and line a code finding is on', async () => {
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue({ ...SCAN })
-    const { container } = render(<SecurityReport projectId="p1" />)
+    const { container } = render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(screen.getByText('Weak hash algorithm')).toBeInTheDocument())
     // Path and line are joined, so a reader can go straight to the code.
@@ -112,7 +112,7 @@ describe('SecurityReport', () => {
 
   it('links an advisory to its OSV record', async () => {
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue({ ...SCAN })
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(screen.getByText('GHSA-45hq-cxwh-f6vc')).toBeInTheDocument())
     const link = screen.getByRole('link', { name: /GHSA-45hq-cxwh-f6vc/ })
@@ -124,7 +124,7 @@ describe('SecurityReport', () => {
     // The most important assertion in the file: a report that hid its blind
     // spot would be trusted for the cross-file cases it cannot see.
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue({ ...SCAN })
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(screen.getByText(/What this scan did not do/i)).toBeInTheDocument())
     expect(screen.getByText(/not traced/i)).toBeInTheDocument()
@@ -132,7 +132,7 @@ describe('SecurityReport', () => {
 
   it('presents quality gates as observations rather than findings', async () => {
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue({ ...SCAN })
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(screen.getByText('Quality gates')).toBeInTheDocument())
     // The aside states that these are observations, not defects, and it is the
@@ -153,7 +153,7 @@ describe('SecurityReport', () => {
       summary: 'Nothing flagged across 42 scanned files.',
     }
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue(clean)
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(screen.getByText(/Nothing flagged across 42/)).toBeInTheDocument())
     // A clean report and an absent scanner look identical; the wording says which.
@@ -173,7 +173,7 @@ describe('SecurityReport', () => {
       finding_count: 30,
     }
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue(many)
-    const { container } = render(<SecurityReport projectId="p1" />)
+    const { container } = render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(document.querySelector('.gv-section-title').textContent).toBe('Findings'))
     expect(container.querySelectorAll('.sec-finding')).toHaveLength(25)
@@ -188,7 +188,7 @@ describe('SecurityReport', () => {
       worst_severity: 'unknown',
     }
     vi.spyOn(api, 'getSecurityScan').mockResolvedValue(unknown)
-    const { container } = render(<SecurityReport projectId="p1" />)
+    const { container } = render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(document.querySelector('.gv-section-title').textContent).toBe('Findings'))
     expect(container.querySelector('.sec-sev').className).toContain('is-unknown')
@@ -196,7 +196,7 @@ describe('SecurityReport', () => {
 
   it('prompts for a scan when none is stored', async () => {
     vi.spyOn(api, 'getSecurityScan').mockRejectedValue(new Error('404'))
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Rescan/i })).toBeInTheDocument()
@@ -208,7 +208,7 @@ describe('SecurityReport', () => {
   it('surfaces a scan failure', async () => {
     vi.spyOn(api, 'getSecurityScan').mockRejectedValue(new Error('404'))
     vi.spyOn(api, 'scanSecurity').mockRejectedValue(new Error('The security scan timed out.'))
-    render(<SecurityReport projectId="p1" />)
+    render(<SecurityReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => expect(screen.getByRole('button', { name: /Rescan/i })).toBeInTheDocument())
     screen.getByRole('button', { name: /Rescan/i }).click()
@@ -216,7 +216,7 @@ describe('SecurityReport', () => {
   })
 
   it('asks for a GitHub source before scanning', async () => {
-    render(<SecurityReport projectId="p1" hasGithubSource={false} />)
+    render(<SecurityReport projectId="p1" hasGithubSource={false} sourceId="repo:a/x" />)
     expect(screen.getByText(/No GitHub source in this project/i)).toBeInTheDocument()
   })
 

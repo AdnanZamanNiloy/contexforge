@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.architecture.routes import router as architecture_router
+from app.chat.routes import router as chat_router
 from app.config.settings import Settings
 from app.dependencies import close_all
 from app.health.routes import router as health_router
@@ -143,6 +144,7 @@ app.include_router(health_router)
 app.include_router(security_router)
 app.include_router(model_hub_router)
 app.include_router(projects_router)
+app.include_router(chat_router)
 
 
 # ---------------------------------------------------------------------------

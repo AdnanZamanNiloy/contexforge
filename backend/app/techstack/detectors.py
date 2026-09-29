@@ -251,7 +251,6 @@ def match_path(path: str) -> list:
     return list(found.values())
 
 
-
 def detect_technologies(
     manifest_results,
     package_managers: list[str],

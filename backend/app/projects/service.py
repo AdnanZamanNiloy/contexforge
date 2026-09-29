@@ -56,6 +56,10 @@ class ProjectsService:
         project = await self._store.touch_opened(project_id)
         return self._present(project, {}) if project else None
 
+    async def set_tool_source(self, project_id: str, source_id: str) -> dict[str, Any] | None:
+        project = await self._store.set_tool_source(project_id, source_id)
+        return self._present(project, {}) if project else None
+
     async def attach(self, project_id: str, source_id: str) -> bool:
         return await self._store.attach_source(project_id, source_id)
 
@@ -120,6 +124,9 @@ class ProjectsService:
             "category": raw.get("category", ""),
             "cover": raw.get("cover", "aurora"),
             "source_category": raw.get("source_category") or "all",
+            # Studio analysis tools target one source; blank means "not chosen
+            # yet".  Not part of the live inventory, so echoed verbatim.
+            "tool_source_id": raw.get("tool_source_id") or "",
             "source_ids": live_ids if by_id else list(raw.get("source_ids", [])),
             "source_count": len(live_ids) if by_id else raw.get("source_count", 0),
             "source_types": types,

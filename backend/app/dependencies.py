@@ -13,6 +13,8 @@ from functools import lru_cache
 
 from app.architecture.service import ArchitectureService
 from app.architecture.storage import ArchitectureStore
+from app.chat.service import ChatService
+from app.chat.store import ChatStore
 from app.config.settings import Settings
 from app.health.service import HealthService
 from app.health.storage import HealthStore
@@ -410,6 +412,21 @@ def get_projects_service():
 
 
 # ---------------------------------------------------------------------------
+# Chat — persisted sessions + messages, scoped to projects
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_chat_store() -> ChatStore:
+    return ChatStore()
+
+
+@lru_cache(maxsize=1)
+def get_chat_service() -> ChatService:
+    return ChatService(store=get_chat_store(), projects=get_projects_store())
+
+
+# ---------------------------------------------------------------------------
 # Graceful shutdown: close all resources that hold connections
 # Called from the lifespan context manager in main.py
 # ---------------------------------------------------------------------------
@@ -479,3 +496,9 @@ async def close_all() -> None:
         logger.debug("ProjectsStore closed.")
     except Exception as exc:
         logger.warning("Error closing ProjectsStore: %s", exc)
+
+    try:
+        get_chat_store().close()
+        logger.debug("ChatStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing ChatStore: %s", exc)

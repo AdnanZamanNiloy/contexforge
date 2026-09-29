@@ -58,7 +58,7 @@ describe('ArchitectureDiagram', () => {
   it('shows a GitHub-source empty state and calls no backend', () => {
     const get = vi.spyOn(api, 'getArchitecture')
     const stream = vi.spyOn(api, 'streamArchitecture')
-    render(<ArchitectureDiagram projectId="p1" hasGithubSource={false} />)
+    render(<ArchitectureDiagram projectId="p1" hasGithubSource={false} sourceId="repo:a/x" />)
     expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
     expect(get).not.toHaveBeenCalled()
     expect(stream).not.toHaveBeenCalled()
@@ -68,7 +68,7 @@ describe('ArchitectureDiagram', () => {
     vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
     const stream = vi.spyOn(api, 'streamArchitecture').mockResolvedValue(undefined)
 
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('A short summary.')).toBeInTheDocument()
@@ -86,7 +86,7 @@ describe('ArchitectureDiagram', () => {
       return Promise.resolve()
     })
 
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(stream).toHaveBeenCalledTimes(1)
@@ -104,7 +104,7 @@ describe('ArchitectureDiagram', () => {
       return Promise.resolve()
     })
 
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/rate limit/i)
@@ -113,14 +113,16 @@ describe('ArchitectureDiagram', () => {
 
   it('regenerates through the dedicated endpoint', async () => {
     vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
-    const regen = vi.spyOn(api, 'regenerateArchitecture').mockImplementation((_id, handlers) => {
-      handlers.onDiagram({ ...DIAGRAM, cached: false, explanation: 'Fresh summary.' })
-      return Promise.resolve()
-    })
+    const regen = vi
+      .spyOn(api, 'regenerateArchitecture')
+      .mockImplementation((_id, _sourceId, handlers) => {
+        handlers.onDiagram({ ...DIAGRAM, cached: false, explanation: 'Fresh summary.' })
+        return Promise.resolve()
+      })
 
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('A short summary.')).toBeInTheDocument()
@@ -129,7 +131,7 @@ describe('ArchitectureDiagram', () => {
     await actor.click(screen.getByRole('button', { name: /regenerate/i }))
 
     await waitFor(() => {
-      expect(regen).toHaveBeenCalledWith('p1', expect.any(Object))
+      expect(regen).toHaveBeenCalledWith('p1', 'repo:a/x', expect.any(Object))
     })
     await waitFor(() => {
       expect(screen.getByText('Fresh summary.')).toBeInTheDocument()
@@ -143,7 +145,7 @@ describe('ArchitectureDiagram', () => {
     // back through that rather than by replacing navigator here.
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /copy mermaid/i })).toBeInTheDocument()
@@ -165,7 +167,7 @@ describe('ArchitectureDiagram', () => {
       mermaid: 'flowchart TD\n  n_n1["x"]\n  click n_n1 "javascript:alert(1)"',
     })
 
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
 
     // The payload is rejected outright rather than handed to Mermaid.
     await waitFor(() => {
@@ -176,7 +178,7 @@ describe('ArchitectureDiagram', () => {
 
   it('reports when some node paths could not be verified', async () => {
     vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, truncated_paths: 2 })
-    render(<ArchitectureDiagram projectId="p1" />)
+    render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText(/some paths were unverified/i)).toBeInTheDocument()
     })
@@ -188,7 +190,7 @@ describe('ArchitectureDiagram full screen', () => {
     vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    const utils = render(<ArchitectureDiagram projectId="p1" />)
+    const utils = render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText('A short summary.')).toBeInTheDocument()
     })
@@ -196,7 +198,9 @@ describe('ArchitectureDiagram full screen', () => {
   }
 
   it('offers a full-screen control only once a diagram is on screen', async () => {
-    const { rerender } = render(<ArchitectureDiagram projectId="p1" hasGithubSource={false} />)
+    const { rerender } = render(
+      <ArchitectureDiagram projectId="p1" hasGithubSource={false} sourceId="repo:a/x" />,
+    )
     expect(screen.queryByRole('button', { name: /full screen/i })).not.toBeInTheDocument()
 
     await renderDiagram()
@@ -294,7 +298,7 @@ describe('ArchitectureDiagram full screen layout', () => {
     vi.spyOn(api, 'getArchitecture').mockResolvedValue({ ...DIAGRAM, cached: true })
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    const utils = render(<ArchitectureDiagram projectId="p1" />)
+    const utils = render(<ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText('A short summary.')).toBeInTheDocument()
     })
@@ -342,7 +346,7 @@ describe('ArchitectureDiagram full screen shell hiding', () => {
     const actor = userEvent.setup()
     const utils = render(
       <div className="app-layout">
-        <ArchitectureDiagram projectId="p1" />
+        <ArchitectureDiagram projectId="p1" sourceId="repo:a/x" />
       </div>,
     )
     await waitFor(() => {

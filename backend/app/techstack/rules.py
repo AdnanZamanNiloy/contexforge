@@ -286,4 +286,3 @@ def build_index(rules: tuple[TechRule, ...] = RULES) -> RuleIndex:
         files={k: tuple(v) for k, v in files.items()},
         file_prefixes=tuple((k, tuple(v)) for k, v in sorted(prefixes.items())),
     )
-

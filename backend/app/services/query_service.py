@@ -47,7 +47,7 @@ class QueryService:
         Scoped to the request's selected sources, so a workspace holding several
         repositories never lists them as one project.
         """
-        if not _is_structure_question(request.question):
+        if request.no_sources or not _is_structure_question(request.question):
             return None
         source_ids = set(request.source_ids or [])
         if request.source_id:
@@ -89,6 +89,7 @@ class QueryService:
             source_id=request.source_id,
             source_ids=request.source_ids,
             file_manifest=await self._manifest_for(request),
+            use_knowledge_base=not request.no_sources,
         )
         logger.info(
             "answer complete: sources=%d latency=%s confidence=%s",
@@ -147,6 +148,7 @@ class QueryService:
             use_hyde=request.use_hyde,
             source_id=request.source_id,
             source_ids=request.source_ids,
+            use_knowledge_base=not request.no_sources,
         )
 
         # The sources are known now and generation has not started, so this is

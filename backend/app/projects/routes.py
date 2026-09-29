@@ -11,7 +11,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies import get_ingest_service, get_projects_service
+from app.chat.service import ChatService
+from app.dependencies import get_chat_service, get_ingest_service, get_projects_service
 from app.services.ingest_service import IngestService
 
 from .schemas import (
@@ -20,6 +21,7 @@ from .schemas import (
     ProjectListResponse,
     ProjectResponse,
     ProjectUpdate,
+    SetToolSourceRequest,
 )
 from .service import ProjectsService
 
@@ -106,11 +108,38 @@ async def update_project(
 async def delete_project(
     project_id: str,
     service: ProjectsService = Depends(get_projects_service),
+    chat: ChatService = Depends(get_chat_service),
 ) -> None:
+    # Purge the project's chat history first.  Deleting the project is the only
+    # event that removes a session, so sessions must not survive their parent;
+    # doing it before the project row goes means a failure here leaves the
+    # project (and its history) intact rather than orphaning sessions.
+    try:
+        removed = await chat.delete_for_project(project_id)
+        logger.info("delete_project: removed %d chat session(s) for %s", removed, project_id)
+    except Exception as exc:
+        logger.warning("delete_project: chat cleanup failed for %s: %s", project_id, exc)
+
     ok = await service.delete(project_id)
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project '{project_id}' not found.")
     return None
+
+
+@router.put(
+    "/{project_id}/tool-source",
+    response_model=ProjectResponse,
+    summary="Set the source the Studio analysis tools target",
+)
+async def set_tool_source(
+    project_id: str,
+    payload: SetToolSourceRequest,
+    service: ProjectsService = Depends(get_projects_service),
+) -> ProjectResponse:
+    project = await service.set_tool_source(project_id, payload.source_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project '{project_id}' not found.")
+    return ProjectResponse(**project)
 
 
 @router.post("/{project_id}/touch", response_model=ProjectResponse, summary="Mark a project as opened")

@@ -19,7 +19,6 @@ function baseProps(overrides = {}) {
     error: null,
     onRetry: vi.fn(),
     uploadHint: false,
-    onNewChat: vi.fn(),
     ...overrides,
   }
 }
@@ -43,5 +42,26 @@ describe('ChatBox does not duplicate the studio tools', () => {
 
     rerender(<ChatBox {...baseProps()} focusRequest={1} />)
     expect(document.activeElement).toBe(input)
+  })
+
+  it('allows sending with no source selected', () => {
+    const onSend = vi.fn()
+    render(<ChatBox {...baseProps({ input: 'hello', onSend })} />)
+    const input = screen.getByLabelText(/ask a question or create something/i)
+    expect(input).not.toBeDisabled()
+    screen.getByRole('button', { name: /send message/i }).click()
+    expect(onSend).toHaveBeenCalledWith('hello')
+  })
+
+  it('warns that an empty selection answers from general knowledge', () => {
+    render(<ChatBox {...baseProps({ sourceCount: 0 })} />)
+    expect(screen.getByText(/no source selected/i)).toBeInTheDocument()
+    expect(screen.getByText(/general knowledge/i)).toBeInTheDocument()
+  })
+
+  it('shows the normal disclaimer when a source is selected', () => {
+    render(<ChatBox {...baseProps({ sourceCount: 2 })} />)
+    expect(screen.queryByText(/no source selected/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/can make mistakes/i)).toBeInTheDocument()
   })
 })

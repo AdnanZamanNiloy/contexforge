@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import ServiceGraph from './ServiceGraph'
+import ToolSourcePicker from './ToolSourcePicker'
 import { getTechStack, scanTechStack } from '../services/api'
 
 // The Dependency & Tech Stack view.
@@ -165,17 +166,24 @@ function DependencyTable({ bucket }) {
   )
 }
 
-export default function TechStackReport({ projectId, hasGithubSource = true }) {
+export default function TechStackReport({
+  projectId,
+  hasGithubSource = true,
+  sourceId = '',
+  sources = [],
+  onSourceChange,
+}) {
   const [scan, setScan] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
 
   const run = useCallback(
     (refresh) => {
-      if (!projectId) return
+      // A source must be explicitly selected before a tool runs.
+      if (!projectId || !sourceId) return
       setStatus('loading')
       setError('')
-      scanTechStack(projectId, { refresh })
+      scanTechStack(projectId, { sourceId, refresh })
         .then((result) => {
           setScan(result)
           setStatus('ready')
@@ -185,28 +193,35 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
           setStatus('error')
         })
     },
-    [projectId],
+    [projectId, sourceId],
   )
 
+  // Load the selected source's stored scan; regenerate only when it has none.
+  // Nothing happens until the user picks a source.
   useEffect(() => {
     let cancelled = false
-    if (!projectId || !hasGithubSource) return undefined
+    if (!projectId || !hasGithubSource || !sourceId) {
+      setScan(null)
+      setStatus('idle')
+      return undefined
+    }
 
-    getTechStack(projectId)
+    setScan(null)
+    getTechStack(projectId, sourceId)
       .then((stored) => {
         if (cancelled) return
         setScan(stored)
         setStatus('ready')
       })
       .catch(() => {
-        // 404 just means nothing scanned yet.
+        // 404 just means nothing scanned yet for this source.
         if (!cancelled) run(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [projectId, hasGithubSource, run])
+  }, [projectId, hasGithubSource, sourceId, run])
 
   if (!projectId) {
     return (
@@ -247,6 +262,31 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
     )
   }
 
+  // A source must be chosen before the tool can run.
+  if (!sourceId) {
+    return (
+      <div className="rs-view ts-root">
+        <div className="gv-band ts-head">
+          <div className="gv-id">
+            <span className="gv-id-repo">Repository</span>
+          </div>
+          <div className="ts-head-right">
+            <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
+          </div>
+        </div>
+        <div className="ts-stage">
+          <span className="ts-empty-icon" aria-hidden="true">
+            <StackIcon />
+          </span>
+          <p className="ts-stage-title">Select a source to scan</p>
+          <p className="ts-stage-note">
+            Choose one of this project's sources to read its manifests and lockfiles.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const programming = (scan?.languages || []).filter((row) => row.kind === 'programming')
   const support = (scan?.languages || []).filter((row) => row.kind !== 'programming')
 
@@ -265,38 +305,41 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
           <span className="gv-id-repo">{scan?.repository || 'Repository'}</span>
           <span className="gv-id-note">{scan?.cached ? 'cached scan' : 'fresh scan'}</span>
         </div>
-        {scan ? (
-          <div className="ts-head-right">
-            <div className="gv-stats">
-              <div className="gv-stat">
-                <span className="gv-stat-value">{scan.language_count || 0}</span>
-                <span className="gv-stat-label">Languages</span>
+        <div className="ts-head-right">
+          <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
+          {scan ? (
+            <>
+              <div className="gv-stats">
+                <div className="gv-stat">
+                  <span className="gv-stat-value">{scan.language_count || 0}</span>
+                  <span className="gv-stat-label">Languages</span>
+                </div>
+                <div className="gv-stat">
+                  <span className="gv-stat-value">{scan.technologies?.length || 0}</span>
+                  <span className="gv-stat-label">Technologies</span>
+                </div>
+                <div className="gv-stat">
+                  <span className="gv-stat-value">{scan.dependency_count || 0}</span>
+                  <span className="gv-stat-label">Dependencies</span>
+                </div>
+                <div className="gv-stat">
+                  <span className="gv-stat-value">{scan.manifest_count || 0}</span>
+                  <span className="gv-stat-label">Manifests</span>
+                </div>
               </div>
-              <div className="gv-stat">
-                <span className="gv-stat-value">{scan.technologies?.length || 0}</span>
-                <span className="gv-stat-label">Technologies</span>
-              </div>
-              <div className="gv-stat">
-                <span className="gv-stat-value">{scan.dependency_count || 0}</span>
-                <span className="gv-stat-label">Dependencies</span>
-              </div>
-              <div className="gv-stat">
-                <span className="gv-stat-value">{scan.manifest_count || 0}</span>
-                <span className="gv-stat-label">Manifests</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="ad-btn"
-              onClick={() => run(true)}
-              disabled={status === 'loading'}
-              title="Re-scan the manifests from scratch"
-            >
-              <RefreshIcon />
-              <span>Rescan</span>
-            </button>
-          </div>
-        ) : null}
+              <button
+                type="button"
+                className="ad-btn"
+                onClick={() => run(true)}
+                disabled={status === 'loading'}
+                title="Re-scan the manifests from scratch"
+              >
+                <RefreshIcon />
+                <span>Rescan</span>
+              </button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {status === 'loading' && !scan ? (
@@ -365,10 +408,14 @@ export default function TechStackReport({ projectId, hasGithubSource = true }) {
                         <span
                           key={tool.name}
                           className="gv-chip"
-                          title={tool.evidence?.length ? `via ${tool.evidence.join(', ')}` : tool.kind}
+                          title={
+                            tool.evidence?.length ? `via ${tool.evidence.join(', ')}` : tool.kind
+                          }
                         >
                           {tool.name}
-                          {tool.version ? <em className="gv-chip-version">{tool.version}</em> : null}
+                          {tool.version ? (
+                            <em className="gv-chip-version">{tool.version}</em>
+                          ) : null}
                         </span>
                       ))}
                     </div>

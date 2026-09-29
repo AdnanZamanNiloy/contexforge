@@ -113,12 +113,6 @@ export async function updateSourceTitle(sourceId, title) {
   })
 }
 
-export async function clearKnowledgeBase() {
-  return request('/ingest/clear', {
-    method: 'DELETE',
-  })
-}
-
 export async function fetchSources() {
   return request('/ingest/sources', {
     method: 'GET',
@@ -480,6 +474,56 @@ export async function detachSourceFromProject(projectId, sourceId) {
   )
 }
 
+// --- Chat sessions & messages ---------------------------------------------
+//
+// Chat history is persisted server-side and grouped per project.  Each message
+// carries the exact source selection it was created with, so changing the
+// workspace selection never rewrites earlier turns.
+
+export async function listChatSessions(projectId) {
+  return request(`/projects/${encodeURIComponent(projectId)}/sessions`, { method: 'GET' })
+}
+
+export async function createChatSession(projectId, { title = '' } = {}) {
+  return request(`/projects/${encodeURIComponent(projectId)}/sessions`, {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  })
+}
+
+export async function getChatSession(sessionId) {
+  return request(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'GET' })
+}
+
+export async function renameChatSession(sessionId, title) {
+  return request(`/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  })
+}
+
+export async function deleteChatSession(sessionId) {
+  return request(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
+}
+
+export async function listChatMessages(sessionId) {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/messages`, { method: 'GET' })
+}
+
+export async function addChatMessage(sessionId, payload) {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateChatMessage(messageId, payload) {
+  return request(`/messages/${encodeURIComponent(messageId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
 // --- Architecture Diagram ---------------------------------------------------
 
 // The server caps a cold generation at 110s (MAX_GENERATION_SECONDS) and serves a
@@ -606,30 +650,38 @@ export async function streamArchitecture(payload, handlers = {}, path = '/archit
   }
 }
 
-export async function regenerateArchitecture(projectId, handlers = {}) {
+// Each analysis tool targets one source; the selection rides along as a query
+// param on reads and a body field on scans, so switching sources fetches that
+// source's stored output instead of regenerating.
+function withSource(path, sourceId) {
+  if (!sourceId) return path
+  return `${path}?source_id=${encodeURIComponent(sourceId)}`
+}
+
+export async function regenerateArchitecture(projectId, sourceId, handlers = {}) {
   return streamArchitecture(
-    { project_id: projectId, refresh: true },
+    { project_id: projectId, source_id: sourceId || '', refresh: true },
     handlers,
     '/architecture/regenerate',
   )
 }
 
-export async function getArchitecture(projectId) {
-  return request(`/architecture/${encodeURIComponent(projectId)}`)
+export async function getArchitecture(projectId, sourceId = '') {
+  return request(withSource(`/architecture/${encodeURIComponent(projectId)}`, sourceId))
 }
 
 // --- Dependency & Tech Stack ------------------------------------------------
 
 // A scan is local string processing over chunks already in memory, so it lands
 // in milliseconds and needs no streaming or special timeout handling.
-export async function getTechStack(projectId) {
-  return request(`/tech-stack/${encodeURIComponent(projectId)}`)
+export async function getTechStack(projectId, sourceId = '') {
+  return request(withSource(`/tech-stack/${encodeURIComponent(projectId)}`, sourceId))
 }
 
-export async function scanTechStack(projectId, { refresh = false } = {}) {
+export async function scanTechStack(projectId, { sourceId = '', refresh = false } = {}) {
   return request('/tech-stack/scan', {
     method: 'POST',
-    body: JSON.stringify({ project_id: projectId, refresh }),
+    body: JSON.stringify({ project_id: projectId, source_id: sourceId, refresh }),
   })
 }
 
@@ -638,14 +690,14 @@ export async function scanTechStack(projectId, { refresh = false } = {}) {
 // A security scan reads the indexed source and, when a manifest pins a
 // resolvable version, asks OSV.dev about it.  That makes it seconds rather than
 // milliseconds -- still a plain request, so still no streaming.
-export async function getSecurityScan(projectId) {
-  return request(`/security/${encodeURIComponent(projectId)}`)
+export async function getSecurityScan(projectId, sourceId = '') {
+  return request(withSource(`/security/${encodeURIComponent(projectId)}`, sourceId))
 }
 
-export async function scanSecurity(projectId, { refresh = false } = {}) {
+export async function scanSecurity(projectId, { sourceId = '', refresh = false } = {}) {
   return request('/security/scan', {
     method: 'POST',
-    body: JSON.stringify({ project_id: projectId, refresh }),
+    body: JSON.stringify({ project_id: projectId, source_id: sourceId, refresh }),
   })
 }
 
@@ -653,13 +705,24 @@ export async function scanSecurity(projectId, { refresh = false } = {}) {
 
 // A health scan is AST parsing of chunks already in memory, so it lands in
 // milliseconds and needs no streaming or special timeout handling.
-export async function getHealthScan(projectId) {
-  return request(`/health/${encodeURIComponent(projectId)}`)
+export async function getHealthScan(projectId, sourceId = '') {
+  return request(withSource(`/health/${encodeURIComponent(projectId)}`, sourceId))
 }
 
-export async function scanHealth(projectId, { refresh = false } = {}) {
+export async function scanHealth(projectId, { sourceId = '', refresh = false } = {}) {
   return request('/health/scan', {
     method: 'POST',
-    body: JSON.stringify({ project_id: projectId, refresh }),
+    body: JSON.stringify({ project_id: projectId, source_id: sourceId, refresh }),
+  })
+}
+
+// --- Projects: Studio tool source selection ---------------------------------
+
+// Persist which source the analysis tools are scoped to, so reopening a tool
+// restores the user's last choice.
+export async function setProjectToolSource(projectId, sourceId) {
+  return request(`/projects/${encodeURIComponent(projectId)}/tool-source`, {
+    method: 'PUT',
+    body: JSON.stringify({ source_id: sourceId || '' }),
   })
 }

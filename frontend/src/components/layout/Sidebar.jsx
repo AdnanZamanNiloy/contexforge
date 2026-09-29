@@ -360,7 +360,6 @@ export default function Sidebar({
   selectedSourceIds = [],
   onRenameSource,
   onDeleteSource,
-  onClearKB,
   header,
   // Restricts the Knowledge Base rows to a project source family, e.g.
   // ['pdf', 'docx', 'web', 'text'].  Null/undefined keeps every row.
@@ -403,8 +402,6 @@ export default function Sidebar({
     setOpenMenuId((current) => (current === id ? null : id))
   }, [])
 
-  const indexedCount = sources.filter((s) => s.status === 'indexed').length
-  const processingCount = sources.filter((s) => s.status === 'processing').length
   const pdfCount = sources.filter((s) => s.type === 'pdf').length
   const webCount = sources.filter((s) => s.type === 'web').length
   const githubCount = sources.filter((s) => s.type === 'github').length
@@ -598,26 +595,6 @@ export default function Sidebar({
           )}
         </div>
       </section>
-
-      <div className="sidebar-spacer" />
-
-      <div className="status-card">
-        <div className="status-card-body">
-          <div className="status-card-row">
-            <span className="status-dot is-indexed" />
-            <span>{indexedCount} sources indexed</span>
-          </div>
-          <div className="status-card-row">
-            <span
-              className={`status-dot ${processingCount > 0 ? 'is-processing' : 'is-indexed'}`}
-            />
-            <span>{processingCount > 0 ? `${processingCount} processing` : 'All idle'}</span>
-          </div>
-        </div>
-        <button className="clear-kb-btn" onClick={onClearKB}>
-          Clear Knowledge Base
-        </button>
-      </div>
     </aside>
   )
 }

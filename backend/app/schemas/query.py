@@ -78,6 +78,14 @@ class QueryRequest(BaseModel):
         ),
         examples=[["repo:owner/name", "doc:handbook"]],
     )
+    no_sources: bool = Field(
+        default=False,
+        description=(
+            "Answer from general knowledge without retrieving from the knowledge "
+            "base. Set when the user has not selected any source to ground the "
+            "answer in, so an unscoped chat never surfaces an unrelated source."
+        ),
+    )
 
     @field_validator("source_ids")
     @classmethod

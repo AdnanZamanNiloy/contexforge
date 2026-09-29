@@ -11,7 +11,6 @@ export default function ChatBox({
   error,
   onRetry,
   uploadHint,
-  onNewChat,
   sourceCount = null,
   focusRequest = 0,
 }) {
@@ -20,12 +19,6 @@ export default function ChatBox({
   const messagesEndRef = useRef(null)
   const [isOverflowing, setIsOverflowing] = useState(false)
   const hasMessages = messages.length > 0
-
-  const threadTitle = hasMessages
-    ? messages[0].text.length > 60
-      ? messages[0].text.slice(0, 60) + '…'
-      : messages[0].text
-    : ''
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -126,9 +119,16 @@ export default function ChatBox({
           </motion.button>
         </div>
       </form>
-      <p className="text-center text-xs text-[#8b949e] mt-4">
-        ContextForge can make mistakes. Please verify important information.
-      </p>
+      {sourceCount === 0 ? (
+        <p className="text-center text-xs text-[#c9a227] mt-4">
+          No source selected — answers come from general knowledge only. Select a source in the
+          sidebar to ground the answer in it.
+        </p>
+      ) : (
+        <p className="text-center text-xs text-[#8b949e] mt-4">
+          ContextForge can make mistakes. Please verify important information.
+        </p>
+      )}
     </>
   )
 
@@ -177,55 +177,6 @@ export default function ChatBox({
       transition={{ duration: 0.4 }}
       className="flex flex-col flex-1 min-h-0"
     >
-      <div className="flex items-start justify-between gap-4 mb-3 pr-6">
-        <div className="min-w-0">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-[#8b949e] mb-1.5">
-            Active Thread
-          </div>
-          <h2 className="text-xl sm:text-2xl font-semibold text-white leading-tight truncate m-0">
-            {threadTitle}
-          </h2>
-        </div>
-        <button
-          onClick={onNewChat}
-          type="button"
-          title="Start a new chat and clear this thread"
-          aria-label="Start a new chat"
-          disabled={!onNewChat}
-          className="group inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold
-            bg-[#1a1a1a] text-[#f2f2f2]
-            border border-[#3d3a39]
-            cursor-pointer shrink-0
-            hover:bg-[rgba(67,119,253,0.12)] hover:border-[rgba(67,119,253,0.45)]
-            hover:text-[#6b92ff]
-            disabled:opacity-40 disabled:cursor-not-allowed
-            transition-all duration-200"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="transition-transform duration-200 group-hover:-rotate-12"
-            aria-hidden="true"
-          >
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-          </svg>
-          <span>New Chat</span>
-          <kbd
-            className="hidden sm:inline-block font-mono text-[0.62rem] leading-none px-1.5 py-1 rounded-md
-              text-[#8b949e] bg-[#101010] border border-[#3d3a39]"
-          >
-            ⌘K
-          </kbd>
-        </button>
-      </div>
-
       <div className="flex-1 overflow-y-auto space-y-4 mb-5 pr-6 scroll-smooth">
         <AnimatePresence>
           {messages.map((message, index) => (

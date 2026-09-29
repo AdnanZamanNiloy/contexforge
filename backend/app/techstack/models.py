@@ -26,7 +26,6 @@ def normalise_path(path: str) -> str:
     return path
 
 
-
 @dataclass(frozen=True)
 class TechRule:
     """One technology, and the evidence that gives it away.

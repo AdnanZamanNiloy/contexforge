@@ -19,6 +19,7 @@ _ISOLATED_PATHS = {
     "HEALTH_DB_PATH": "health/health.db",
     "MODEL_HUB_DB_PATH": "model_hub/model_hub.db",
     "PROJECTS_DB_PATH": "projects/projects.db",
+    "CHAT_DB_PATH": "chat/chat.db",
 }
 
 

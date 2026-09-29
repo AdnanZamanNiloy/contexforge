@@ -55,10 +55,29 @@ ENGINE_TIMEOUT_SECONDS = 45
 #: Paths whose contents are not the repository's own code.
 _SKIP_DIRS = frozenset(
     {
-        "node_modules", ".git", "dist", "build", "out", "target", "vendor",
-        "__pycache__", ".venv", "venv", "site-packages", "coverage", ".next",
-        ".nuxt", "bower_components", "jspm_packages", ".tox", ".mypy_cache",
-        ".pytest_cache", ".gradle", ".terraform", "third_party", "thirdparty",
+        "node_modules",
+        ".git",
+        "dist",
+        "build",
+        "out",
+        "target",
+        "vendor",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "site-packages",
+        "coverage",
+        ".next",
+        ".nuxt",
+        "bower_components",
+        "jspm_packages",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".gradle",
+        ".terraform",
+        "third_party",
+        "thirdparty",
     }
 )
 
@@ -151,17 +170,13 @@ def _prose_lines(source: str, path: str) -> set[int]:
         if not body:
             continue
         first = body[0]
-        if (
-            isinstance(first, ast.Expr)
-            and isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
-        ):
+        if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
             lines.update(range(first.lineno, (first.end_lineno or first.lineno) + 1))
     try:
         for token in tokenize.generate_tokens(io.StringIO(source).readline):
             if token.type == tokenize.COMMENT:
                 lines.add(token.start[0])
-    except (tokenize.TokenError, IndentationError, SyntaxError):
+    except tokenize.TokenError, IndentationError, SyntaxError:
         pass
     return lines
 
@@ -295,7 +310,6 @@ def _language_files(root: Path, files: dict[str, str]) -> dict[str, list[Path]]:
     return grouped
 
 
-
 async def _run_engine(
     binary: str, root: Path, grouped: dict[str, list[Path]]
 ) -> tuple[list[tuple[object, dict]], list[str]]:
@@ -353,7 +367,6 @@ async def _run_engine(
     return [row for group in results for row in group], failed
 
 
-
 def _parse_stream(output: str) -> list[dict]:
     """Parse ast-grep's ``--json=stream`` output.
 
@@ -400,11 +413,7 @@ async def scan_code(files: dict[str, str]) -> CodeScanResult:
     problem, and they run even when ast-grep is missing: a leaked key should not
     depend on an optional binary being installed.
     """
-    scannable = {
-        path: text[:MAX_FILE_CHARS]
-        for path, text in files.items()
-        if _is_source_path(path) and text.strip()
-    }
+    scannable = {path: text[:MAX_FILE_CHARS] for path, text in files.items() if _is_source_path(path) and text.strip()}
     languages: dict[str, int] = {}
     for path in scannable:
         language = language_of(path)
@@ -434,9 +443,7 @@ async def scan_code(files: dict[str, str]) -> CodeScanResult:
         )
 
     if not scannable:
-        return CodeScanResult(
-            findings=[], files_scanned=0, files_available=0, languages={}, engine=binary
-        )
+        return CodeScanResult(findings=[], files_scanned=0, files_available=0, languages={}, engine=binary)
 
     bounded = dict(list(scannable.items())[:MAX_FILES])
     root = _build_project(bounded)

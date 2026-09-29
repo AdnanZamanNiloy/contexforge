@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { getHealthScan, scanHealth } from '../services/api'
+import ToolSourcePicker from './ToolSourcePicker'
 
 // The Health Score & Hotspots view.
 //
@@ -145,17 +146,24 @@ function HotspotRow({ row, maxLrs }) {
   )
 }
 
-export default function HealthReport({ projectId, hasGithubSource = true }) {
+export default function HealthReport({
+  projectId,
+  hasGithubSource = true,
+  sourceId = '',
+  sources = [],
+  onSourceChange,
+}) {
   const [scan, setScan] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
 
   const run = useCallback(
     (refresh) => {
-      if (!projectId) return
+      // A source must be explicitly selected before a tool runs.
+      if (!projectId || !sourceId) return
       setStatus('loading')
       setError('')
-      scanHealth(projectId, { refresh })
+      scanHealth(projectId, { sourceId, refresh })
         .then((result) => {
           setScan(result)
           setStatus('ready')
@@ -165,14 +173,21 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
           setStatus('error')
         })
     },
-    [projectId],
+    [projectId, sourceId],
   )
 
+  // Load the selected source's stored scan; regenerate only when it has none.
+  // Nothing happens until the user picks a source.
   useEffect(() => {
     let cancelled = false
-    if (!projectId || !hasGithubSource) return undefined
+    if (!projectId || !hasGithubSource || !sourceId) {
+      setScan(null)
+      setStatus('idle')
+      return undefined
+    }
 
-    getHealthScan(projectId)
+    setScan(null)
+    getHealthScan(projectId, sourceId)
       .then((stored) => {
         if (cancelled) return
         setScan(stored)
@@ -185,7 +200,7 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
     return () => {
       cancelled = true
     }
-  }, [projectId, hasGithubSource, run])
+  }, [projectId, hasGithubSource, sourceId, run])
 
   if (!projectId) {
     return (
@@ -227,6 +242,31 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
     )
   }
 
+  // A source must be chosen before the tool can run.
+  if (!sourceId) {
+    return (
+      <div className="rs-view hs-root">
+        <div className="gv-band hs-head">
+          <div className="gv-id">
+            <span className="gv-id-repo">Repository</span>
+          </div>
+          <div className="hs-head-right">
+            <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
+          </div>
+        </div>
+        <div className="hs-stage">
+          <span className="hs-empty-icon" aria-hidden="true">
+            <GaugeIcon />
+          </span>
+          <p className="hs-stage-title">Select a source to analyse</p>
+          <p className="hs-stage-note">
+            Choose one of this project's sources to measure its structural risk.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const bandCounts = scan?.band_counts || {}
   const weights = scan?.weights || {}
   // The hotspot bar is scaled against the worst row on screen, so it shows
@@ -245,6 +285,7 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
             </span>
           </div>
           <div className="hs-head-right">
+            <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
             <div className="gv-stats">
               <div className="gv-stat">
                 <span className="gv-stat-value">{scan.symbol_count ?? 0}</span>
@@ -336,7 +377,11 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
                     // A path and a name are not unique together: one file can
                     // declare several same-named classes (nested `Meta`, `Config`).
                     // The index keeps the key stable and unique for this list.
-                    <HotspotRow key={`${row.path}:${row.name}:${index}`} row={row} maxLrs={maxLrs} />
+                    <HotspotRow
+                      key={`${row.path}:${row.name}:${index}`}
+                      row={row}
+                      maxLrs={maxLrs}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -348,8 +393,8 @@ export default function HealthReport({ projectId, hasGithubSource = true }) {
                 <div className="gv-disclosure-body">
                   <p className="gv-note">
                     LRS = {weights.cc}·log₂(CC+1) + {weights.nd}·ND + {weights.fo}·log₂(FO+1) +{' '}
-                    {weights.ns}·NS, each term capped. Bands: low &lt; 3, moderate &lt; 6, high &lt; 9,
-                    critical above. CC is cyclomatic complexity, ND maximum nesting depth, FO
+                    {weights.ns}·NS, each term capped. Bands: low &lt; 3, moderate &lt; 6, high &lt;
+                    9, critical above. CC is cyclomatic complexity, ND maximum nesting depth, FO
                     fan-out, NS non-structured exits.
                   </p>
                 </div>

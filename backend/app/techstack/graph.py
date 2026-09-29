@@ -314,9 +314,7 @@ def build_graph(
     # rather than creating one, so `infra/main.tf` is evidence about the service
     # that owns `infra` and never becomes a service called "infra" itself.
     service_folders = {
-        tuple(result.path.split("/")[:-1])
-        for result in manifest_results
-        if is_service_manifest(result.path)
+        tuple(result.path.split("/")[:-1]) for result in manifest_results if is_service_manifest(result.path)
     }
 
     if not service_folders:

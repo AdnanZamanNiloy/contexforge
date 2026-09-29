@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { getSecurityScan, scanSecurity } from '../services/api'
+import ToolSourcePicker from './ToolSourcePicker'
 
 // The Security & Quality view.
 //
@@ -119,43 +120,60 @@ function QualityChecklist({ gates }) {
   )
 }
 
-export default function SecurityReport({ projectId, hasGithubSource = true }) {
+export default function SecurityReport({
+  projectId,
+  hasGithubSource = true,
+  sourceId = '',
+  sources = [],
+  onSourceChange,
+}) {
   const [scan, setScan] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
   const [showAll, setShowAll] = useState(false)
 
   const load = useCallback(async () => {
+    // A source must be explicitly selected before a tool runs.
+    if (!projectId || !sourceId) return
     setStatus('loading')
     setError('')
     try {
-      setScan(await getSecurityScan(projectId))
+      setScan(await getSecurityScan(projectId, sourceId))
       setStatus('ready')
     } catch {
-      // A 404 just means this project has not been scanned yet, which is an
-      // ordinary state rather than an error worth shouting about.
+      // A 404 just means this project/source has not been scanned yet, which is
+      // an ordinary state rather than an error worth shouting about.
       setScan(null)
       setStatus('idle')
     }
-  }, [projectId])
+  }, [projectId, sourceId])
 
+  // Switching sources swaps to that source's stored scan (or an empty state);
+  // each source keeps its own result.  Nothing happens until a source is chosen.
   useEffect(() => {
+    setScan(null)
+    if (!sourceId) {
+      setStatus('idle')
+      return
+    }
     if (projectId) load()
-  }, [projectId, load])
+  }, [projectId, sourceId, load])
 
   const run = useCallback(
     async (refresh = false) => {
+      // A source must be explicitly selected before a tool runs.
+      if (!projectId || !sourceId) return
       setStatus('loading')
       setError('')
       try {
-        setScan(await scanSecurity(projectId, { refresh }))
+        setScan(await scanSecurity(projectId, { sourceId, refresh }))
         setStatus('ready')
       } catch (err) {
         setError(err?.message || 'The security scan failed.')
         setStatus('error')
       }
     },
-    [projectId],
+    [projectId, sourceId],
   )
 
   if (!projectId) {
@@ -184,6 +202,29 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
     )
   }
 
+  // A source must be chosen before the tool can run.
+  if (!sourceId) {
+    return (
+      <div className="sec-root">
+        <div className="gv-band sec-head">
+          <div className="gv-id">
+            <span className="gv-id-repo">Repository</span>
+          </div>
+          <div className="sec-head-right">
+            <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
+          </div>
+        </div>
+        <div className="sec-stage">
+          <ShieldIcon />
+          <p className="sec-stage-title">Select a source to scan</p>
+          <p className="sec-stage-note">
+            Choose one of this project's sources to scan its code and manifests.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const findings = scan?.findings || []
   const visible = showAll ? findings : findings.slice(0, MAX_VISIBLE)
   const hidden = findings.length - visible.length
@@ -202,6 +243,7 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
           </span>
         </div>
         <div className="sec-head-right">
+          <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
           {scan ? (
             <div className="gv-stats">
               <div className="gv-stat is-accent">

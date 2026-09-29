@@ -248,9 +248,15 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
         yield f"data: [ERROR] {detail}\n\n"
 
     except Exception as exc:
-        # Mid-stream failure emits a structured error event
-        logger.error("stream_query failed mid-stream: %s", exc)
-        yield "data: [ERROR] Generation failed — please retry.\n\n"
+        # Mid-stream failure emits a structured error event.  The traceback is
+        # logged because the message alone ("list index out of range") says
+        # nothing about where it came from.
+        logger.exception("stream_query failed mid-stream: %s", exc)
+        detail = getattr(exc, "detail", None) or str(exc) or "Generation failed — please retry."
+        # Never leak a raw internal message; keep it actionable but generic.
+        if isinstance(detail, str) and len(detail) > 200:
+            detail = "Generation failed — please retry."
+        yield f"data: [ERROR] {json.dumps({'message': detail})}\n\n"
 
 
 def _chunk_summary(chunk) -> dict:

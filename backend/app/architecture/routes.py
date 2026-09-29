@@ -28,6 +28,7 @@ from app.architecture.schemas import (
 from app.architecture.service import ArchitectureError, ArchitectureService
 from app.dependencies import get_architecture_service, get_ingest_service, get_projects_service
 from app.projects.service import ProjectsService
+from app.projects.source_resolution import SourceResolutionError, resolve_tool_source
 from app.services.ingest_service import IngestService
 
 __all__ = ["router"]
@@ -37,45 +38,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/architecture", tags=["architecture"])
 
 
-async def _github_source_for_project(
+async def _resolve_source(
     project_id: str,
+    explicit_source_id: str | None,
     projects: ProjectsService,
     ingest: IngestService,
-) -> tuple[str, str]:
-    """Resolve the project's GitHub source to its id and ``owner/repo``.
-
-    Returns ``(source_id, repository)``.  Raises ``HTTPException`` when the
-    project is unknown or holds no GitHub source, which the client renders as an
-    empty state rather than an error.
-    """
+) -> str:
+    """Resolve the source to map, honouring an explicit per-request choice."""
     inventory: list[dict] = []
     try:
         inventory = (await ingest._orchestrator._faiss.get_source_info()) or []
     except Exception as exc:  # pragma: no cover - storage trouble
         logger.warning("architecture: source inventory unavailable (%s)", exc)
-
-    project = await projects.get_enriched(project_id, inventory)
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project '{project_id}' not found.")
-
-    by_id = {entry.get("source_id"): entry for entry in inventory if entry.get("source_id")}
-    for source_id in project.get("source_ids") or []:
-        entry = by_id.get(source_id)
-        if not entry:
-            continue
-        meta = dict(entry.get("metadata") or {})
-        source_type = meta.get("source_type") or entry.get("type")
-        if source_type == "github" or str(source_id).startswith("repo:"):
-            repository = str(meta.get("repo") or entry.get("title") or source_id)
-            return str(source_id), repository
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="This project has no GitHub source to map.",
-    )
+    try:
+        resolved = await resolve_tool_source(project_id, explicit_source_id, projects, inventory)
+    except SourceResolutionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return resolved.source_id
 
 
 def _to_payload(record: dict) -> ArchitectureResponse:
     return ArchitectureResponse(
+        source_id=record.get("source_id") or "",
         mermaid=record.get("mermaid") or "",
         explanation=record.get("explanation") or "",
         node_count=int(record.get("node_count") or 0),
@@ -97,12 +81,12 @@ async def generate(
     projects: ProjectsService = Depends(get_projects_service),
     ingest: IngestService = Depends(get_ingest_service),
 ) -> StreamingResponse:
-    """Stream an architecture diagram for the project's GitHub source.
+    """Stream an architecture diagram for the project's selected source.
 
-    Served from cache when the repository's indexed files are unchanged; pass
+    Served from cache when the source's indexed files are unchanged; pass
     ``refresh`` (or use ``/regenerate``) to force a new run.
     """
-    source_id, _ = await _github_source_for_project(request.project_id, projects, ingest)
+    source_id = await _resolve_source(request.project_id, request.source_id, projects, ingest)
 
     async def event_stream():
         yield ": architecture diagram\n\n"
@@ -137,7 +121,11 @@ async def regenerate(
 ) -> StreamingResponse:
     """Regenerate the diagram, ignoring any cached copy."""
     return await generate(
-        ArchitectureGenerateRequest(project_id=request.project_id, refresh=True),
+        ArchitectureGenerateRequest(
+            project_id=request.project_id,
+            source_id=request.source_id,
+            refresh=True,
+        ),
         service,
         projects,
         ingest,
@@ -147,10 +135,11 @@ async def regenerate(
 @router.get("/{project_id}", response_model=ArchitectureResponse, summary="Get a project's stored diagram")
 async def get_diagram(
     project_id: str,
+    source_id: str = "",
     service: ArchitectureService = Depends(get_architecture_service),
 ) -> ArchitectureResponse:
-    """Return the project's stored diagram, or 404 when none has been generated."""
-    record = await service.get(project_id)
+    """Return the stored diagram for the project + source, or 404 when none."""
+    record = await service.get(project_id, source_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -77,8 +77,8 @@ class HealthService:
         self._faiss = faiss
 
     @observe(name="health_get")
-    async def get(self, project_id: str) -> dict[str, Any] | None:
-        return await self._store.latest(project_id)
+    async def get(self, project_id: str, source_id: str = "") -> dict[str, Any] | None:
+        return await self._store.latest(project_id, source_id or "")
 
     @observe(name="health_scan")
     async def scan(self, project_id: str, source_id: str, *, refresh: bool = False) -> dict[str, Any]:
@@ -92,7 +92,7 @@ class HealthService:
 
         fingerprint = hashlib.sha256("\n".join(paths).encode("utf-8")).hexdigest()
         if not refresh:
-            cached = await self._store.get(project_id, fingerprint)
+            cached = await self._store.get(project_id, source_id or "", fingerprint)
             if cached is not None:
                 logger.info("health: project=%s fingerprint=%s served from cache", project_id, fingerprint[:12])
                 return {**cached, "cached": True, "elapsed_ms": 0}
@@ -108,7 +108,8 @@ class HealthService:
             raise HealthError("The health scan timed out. Please try again.") from exc
 
         elapsed = int((time.perf_counter() - started) * 1000)
-        saved = await self._store.upsert(project_id, payload, fingerprint)
+        payload["source_id"] = source_id or ""
+        saved = await self._store.upsert(project_id, source_id or "", payload, fingerprint)
         logger.info(
             "health: project=%s symbols=%d files=%d health=%d elapsed=%dms",
             project_id,

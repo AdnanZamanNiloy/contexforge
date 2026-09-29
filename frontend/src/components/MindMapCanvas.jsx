@@ -13,16 +13,17 @@ import '@xiangfa/mindmap/style.css'
 import { createMindMap, getMindMap } from '../services/api'
 
 // Reusable mind-map canvas.  Owns loading, error, fit-to-screen and fullscreen
-// behaviour for a mind map built from the workspace's current source selection.
+// behaviour for a mind map built from ONE source.
 //
-// `sourceIds` is a list: one entry behaves exactly like the original
-// single-source case, several produce one combined map.  When no mind map exists
-// yet the canvas shows a prompt and reveals the map inline once generated.
+// `sourceId` is a single id: the user must choose a specific source before a map
+// is generated.  With no source chosen the canvas shows a prompt and makes no
+// request.  When no mind map exists yet the canvas shows a prompt and reveals
+// the map inline once generated.
 //
 // The parent drives regeneration through the ref (`regenerate()`), which forces
 // a fresh generation rather than a re-fetch of the cached outline.
 const MindMapCanvas = forwardRef(function MindMapCanvas(
-  { sourceIds = [], isFullscreen = false, onReady, onError },
+  { sourceId = '', isFullscreen = false, onReady, onError },
   ref,
 ) {
   const [map, setMap] = useState(null)
@@ -32,9 +33,8 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
   const viewerRef = useRef(null)
   const shellRef = useRef(null)
 
-  // The scope identity the map on screen belongs to.  `sourceIds` is a fresh
-  // array on every render, so compare a derived, order-independent string.
-  const scopeKey = useMemo(() => joinScope(sourceIds), [sourceIds])
+  // The scope identity the map on screen belongs to: the chosen source id.
+  const scopeKey = useMemo(() => (sourceId || '').trim(), [sourceId])
   // Bumped on every successful load so an in-flight fetch that resolved after the
   // user changed selection is discarded rather than painted.
   const [loadedScope, setLoadedScope] = useState(scopeKey)
@@ -58,7 +58,7 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
     setError('')
     ;(async () => {
       try {
-        const data = await getMindMap(sourceIds)
+        const data = await getMindMap(scopeKey)
         if (cancelled) return
         setMap(data)
         setLoadedScope(scopeKey)
@@ -74,7 +74,6 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey, onReady, onError])
 
   const requestFit = useCallback(() => {
@@ -121,8 +120,8 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
       setCreating(true)
       setError('')
       try {
-        const data = await createMindMap(sourceIds, { refresh: force })
-        const next = data && data.markdown ? data : await getMindMap(sourceIds)
+        const data = await createMindMap(scopeKey, { refresh: force })
+        const next = data && data.markdown ? data : await getMindMap(scopeKey)
         setMap(next)
         setLoadedScope(scopeKey)
         onReady?.(next)
@@ -132,7 +131,7 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
         setCreating(false)
       }
     },
-    [creating, scopeKey, sourceIds, onReady],
+    [creating, scopeKey, onReady],
   )
 
   useImperativeHandle(
@@ -178,29 +177,19 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
             <path d="M8.2 5.8l7.6 1M7 7.1l.8 9.7M17 9.2l-7 8" />
           </svg>
           <p className="mindmap-empty-title">No mind map yet</p>
-          <p className="mindmap-empty-sub">
-            Build a visual summary from the selected source
-            {sourceIds.length > 1 ? 's' : ''}.
-          </p>
+          <p className="mindmap-empty-sub">Build a visual summary from the selected source.</p>
           <button className="primary" onClick={() => create(false)} disabled={creating}>
             {creating ? 'Creating mind map…' : 'Create Mind Map'}
           </button>
         </div>
       ) : (
         <div className="mindmap-empty">
-          <p className="mindmap-empty-title">No sources selected</p>
-          <p className="mindmap-empty-sub">
-            Pick one or more sources in the sidebar to build a mind map from them.
-          </p>
+          <p className="mindmap-empty-title">Select a source</p>
+          <p className="mindmap-empty-sub">Choose one source above to build a mind map from it.</p>
         </div>
       )}
     </div>
   )
 })
-
-// Order-independent identity for a source selection.
-function joinScope(sourceIds) {
-  return [...new Set((sourceIds || []).filter(Boolean))].sort().join('|')
-}
 
 export default MindMapCanvas

@@ -268,3 +268,22 @@ def test_penalty_scales_with_how_much_is_unsupported() -> None:
 
     assert one_bad < 0.95
     assert all_bad < one_bad, "more unsupported claims must cost more confidence"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_context_skips_the_knowledge_base_when_disabled() -> None:
+    """With ``use_knowledge_base=False`` no retrieval happens at all.
+
+    Regression guard for unscoped chat: with no source selected the answer must
+    come from general knowledge, never from chunks the user did not choose.
+    """
+    orch = Orchestrator.__new__(Orchestrator)
+
+    reranked, timings, mean_confidence = await orch.retrieve_context(
+        "tell me about source",
+        use_knowledge_base=False,
+    )
+
+    assert reranked == []
+    assert timings == {}
+    assert mean_confidence == 0.0

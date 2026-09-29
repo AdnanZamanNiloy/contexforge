@@ -72,9 +72,9 @@ class TechStackService:
     # ------------------------------------------------------------------ #
 
     @observe(name="techstack_get")
-    async def get(self, project_id: str) -> dict[str, Any] | None:
-        """Return the stored scan for a project, or ``None``."""
-        return await self._store.latest(project_id)
+    async def get(self, project_id: str, source_id: str = "") -> dict[str, Any] | None:
+        """Return the stored scan for a project + source, or ``None``."""
+        return await self._store.latest(project_id, source_id or "")
 
     @observe(name="techstack_scan")
     async def scan(self, project_id: str, source_id: str, *, refresh: bool = False) -> dict[str, Any]:
@@ -89,7 +89,7 @@ class TechStackService:
 
         fingerprint = hashlib.sha256("\n".join(paths).encode("utf-8")).hexdigest()
         if not refresh:
-            cached = await self._store.get(project_id, fingerprint)
+            cached = await self._store.get(project_id, source_id or "", fingerprint)
             if cached is not None:
                 logger.info("techstack: project=%s fingerprint=%s served from cache", project_id, fingerprint[:12])
                 return {**cached, "cached": True, "elapsed_ms": 0}
@@ -105,7 +105,8 @@ class TechStackService:
             raise TechStackError("The tech stack scan timed out. Please try again.") from exc
 
         elapsed = int((time.perf_counter() - started) * 1000)
-        saved = await self._store.upsert(project_id, payload, fingerprint)
+        payload["source_id"] = source_id or ""
+        saved = await self._store.upsert(project_id, source_id or "", payload, fingerprint)
         logger.info(
             "techstack: project=%s manifests=%d deps=%d langs=%d elapsed=%dms",
             project_id,

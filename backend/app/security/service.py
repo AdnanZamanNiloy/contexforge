@@ -59,18 +59,56 @@ _SKIP_DIR = re.compile(
 #: Extensions worth reading for code patterns.  Deliberately excludes markup,
 #: stylesheets and data, where a "pattern" would be noise.
 _SOURCE_SUFFIXES = (
-    ".py", ".pyi", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs",
-    ".go", ".java", ".rb", ".php", ".rs", ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh",
+    ".py",
+    ".pyi",
+    ".ts",
+    ".tsx",
+    ".mts",
+    ".cts",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".go",
+    ".java",
+    ".rb",
+    ".php",
+    ".rs",
+    ".c",
+    ".h",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".hpp",
+    ".hh",
 )
 
 _CI_PATHS = (
-    ".github/workflows/", ".gitlab-ci.yml", ".circleci/", "Jenkinsfile", "azure-pipelines.yml",
-    ".travis.yml", ".drone.yml", "bitbucket-pipelines.yml", ".woodpecker.yml",
+    ".github/workflows/",
+    ".gitlab-ci.yml",
+    ".circleci/",
+    "Jenkinsfile",
+    "azure-pipelines.yml",
+    ".travis.yml",
+    ".drone.yml",
+    "bitbucket-pipelines.yml",
+    ".woodpecker.yml",
 )
 _LOCKFILES = (
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "bun.lock",
-    "poetry.lock", "Pipfile.lock", "uv.lock", "Cargo.lock", "go.sum", "Gemfile.lock",
-    "composer.lock", "packages.lock.json", "gradle.lockfile",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "bun.lockb",
+    "bun.lock",
+    "poetry.lock",
+    "Pipfile.lock",
+    "uv.lock",
+    "Cargo.lock",
+    "go.sum",
+    "Gemfile.lock",
+    "composer.lock",
+    "packages.lock.json",
+    "gradle.lockfile",
 )
 _LICENCE_NAMES = ("LICENSE", "LICENCE", "LICENSE.md", "LICENCE.md", "COPYING", "LICENSE.txt")
 _TEST_MARKERS = ("test", "tests", "spec", "__tests__", "testing")
@@ -94,8 +132,8 @@ class SecurityService:
         self._advisory_cache: dict[tuple[str, str, str], list[dict]] = {}
 
     @observe(name="security_get")
-    async def get(self, project_id: str) -> dict[str, Any] | None:
-        return await self._store.latest(project_id)
+    async def get(self, project_id: str, source_id: str = "") -> dict[str, Any] | None:
+        return await self._store.latest(project_id, source_id or "")
 
     @observe(name="security_scan")
     async def scan(self, project_id: str, source_id: str, *, refresh: bool = False) -> dict[str, Any]:
@@ -109,7 +147,7 @@ class SecurityService:
 
         fingerprint = hashlib.sha256("\n".join(paths).encode("utf-8")).hexdigest()
         if not refresh:
-            cached = await self._store.get(project_id, fingerprint)
+            cached = await self._store.get(project_id, source_id or "", fingerprint)
             if cached is not None:
                 logger.info("security: project=%s fingerprint=%s served from cache", project_id, fingerprint[:12])
                 return {**cached, "cached": True, "elapsed_ms": 0}
@@ -124,7 +162,8 @@ class SecurityService:
             raise SecurityError("The security scan timed out. Please try again.") from exc
 
         elapsed = int((time.perf_counter() - started) * 1000)
-        saved = await self._store.upsert(project_id, payload, fingerprint)
+        payload["source_id"] = source_id or ""
+        saved = await self._store.upsert(project_id, source_id or "", payload, fingerprint)
         logger.info(
             "security: project=%s findings=%d deps_vuln=%d gates=%d elapsed=%dms",
             project_id,
@@ -189,9 +228,7 @@ class SecurityService:
                 files[path] = text
         return files
 
-    async def _run_scan(
-        self, chunks: list, paths: list[str], repository: str, fingerprint: str
-    ) -> dict[str, Any]:
+    async def _run_scan(self, chunks: list, paths: list[str], repository: str, fingerprint: str) -> dict[str, Any]:
         scannable = [p for p in paths if not _SKIP_DIR.search(p) and p.lower().endswith(_SOURCE_SUFFIXES)]
         truncated = len(scannable) > MAX_FILES
         if truncated:
@@ -244,9 +281,7 @@ class SecurityService:
         rows: list[dict] = []
         for result in results:
             for dep in result.dependencies:
-                rows.append(
-                    {"name": dep.name, "version": dep.version, "manager": result.manager, "scope": dep.scope}
-                )
+                rows.append({"name": dep.name, "version": dep.version, "manager": result.manager, "scope": dep.scope})
         return await check_dependencies(rows, self._advisory_cache)
 
     def _payload(
@@ -299,6 +334,7 @@ class SecurityService:
             "truncated": truncated or code.files_scanned < code.files_available,
             "fingerprint": fingerprint,
         }
+
 
 def _cap(findings: list[Finding]) -> list[Finding]:
     """Worst first, most frequent first within a severity, then capped."""
@@ -400,6 +436,8 @@ def _summary(findings: list[Finding], counts: dict[str, int], advisories, code) 
         noun = "dependency" if advisories.vulnerable == 1 else "dependencies"
         headline += f", including {advisories.vulnerable} {noun} with published advisories"
     return f"{headline} across {code.files_scanned} scanned files."
+
+
 def quality_gates(paths: list[str], scannable: list[str]) -> list[dict]:
     """Repository gates: facts about the project, not defects in the code.
 
@@ -446,4 +484,3 @@ def quality_gates(paths: list[str], scannable: list[str]) -> list[dict]:
         "Test files are present." if has_tests else "No test directory was found among the indexed source.",
     )
     return gates
-

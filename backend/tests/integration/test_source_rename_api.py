@@ -123,11 +123,3 @@ async def test_deleting_a_source_drops_its_rename(client, meta_store):
         assert await meta_store.all_titles() == {}
 
 
-@pytest.mark.asyncio
-async def test_clearing_the_knowledge_base_drops_all_renames(client, meta_store):
-    async with client as c:
-        await c.patch("/ingest/source/repo:owner/name", json={"title": "One"})
-        await c.patch("/ingest/source/doc:handbook", json={"title": "Two"})
-        response = await c.delete("/ingest/clear")
-        assert response.status_code == 200
-        assert await meta_store.all_titles() == {}

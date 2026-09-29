@@ -381,6 +381,11 @@ class Settings(BaseSettings):
     # source_ids so the library survives restarts without changing retrieval.
     PROJECTS_DB_PATH: Path = Field(default=data_path("projects", "projects.db"))
 
+    # Chat — persisted chat sessions and their messages, grouped per project.
+    # Each message records the exact source selection used to produce it, so
+    # history is immutable even as the workspace selection changes.
+    CHAT_DB_PATH: Path = Field(default=data_path("chat", "chat.db"))
+
     # ------------------------------------------------------------------
     # Validation — fail loudly instead of running with missing credentials
     # ------------------------------------------------------------------

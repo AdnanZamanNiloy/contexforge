@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies import get_ingest_service, get_projects_service, get_techstack_service
 from app.projects.service import ProjectsService
+from app.projects.source_resolution import SourceResolutionError, resolve_tool_source
 from app.services.ingest_service import IngestService
 from app.techstack.schemas import TechStackRequest, TechStackResponse
 from app.techstack.service import TechStackError, TechStackService
@@ -31,44 +32,33 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tech-stack", tags=["tech-stack"])
 
 
-async def _github_source_for_project(
+async def _resolve_source(
     project_id: str,
+    explicit_source_id: str | None,
     projects: ProjectsService,
     ingest: IngestService,
 ) -> str:
-    """Resolve the project's GitHub source id, or raise 404."""
+    """Resolve the source to scan, honouring an explicit per-request choice."""
     inventory: list[dict] = []
     try:
         inventory = (await ingest._orchestrator._faiss.get_source_info()) or []
     except Exception as exc:  # pragma: no cover - storage trouble
         logger.warning("techstack: source inventory unavailable (%s)", exc)
-
-    project = await projects.get_enriched(project_id, inventory)
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Project '{project_id}' not found.")
-
-    by_id = {entry.get("source_id"): entry for entry in inventory if entry.get("source_id")}
-    for source_id in project.get("source_ids") or []:
-        entry = by_id.get(source_id)
-        if not entry:
-            continue
-        meta = dict(entry.get("metadata") or {})
-        source_type = meta.get("source_type") or entry.get("type")
-        if source_type == "github" or str(source_id).startswith("repo:"):
-            return str(source_id)
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="This project has no GitHub source to scan.",
-    )
+    try:
+        resolved = await resolve_tool_source(project_id, explicit_source_id, projects, inventory)
+    except SourceResolutionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return resolved.source_id
 
 
 @router.get("/{project_id}", response_model=TechStackResponse, summary="Get a project's stored tech stack scan")
 async def get_scan(
     project_id: str,
+    source_id: str = "",
     service: TechStackService = Depends(get_techstack_service),
 ) -> TechStackResponse:
-    """Return the project's stored scan, or 404 when none has been run."""
-    record = await service.get(project_id)
+    """Return the stored scan for the project + source, or 404 when none."""
+    record = await service.get(project_id, source_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -89,7 +79,7 @@ async def scan(
     Idempotent: an unchanged repository is served from cache.  Pass ``refresh``
     to force a rescan.
     """
-    source_id = await _github_source_for_project(request.project_id, projects, ingest)
+    source_id = await _resolve_source(request.project_id, request.source_id, projects, ingest)
     try:
         record = await service.scan(request.project_id, source_id, refresh=request.refresh)
     except TechStackError as exc:
@@ -106,4 +96,9 @@ async def rescan(
     ingest: IngestService = Depends(get_ingest_service),
 ) -> TechStackResponse:
     """Rescan, ignoring any cached copy."""
-    return await scan(TechStackRequest(project_id=request.project_id, refresh=True), service, projects, ingest)
+    return await scan(
+        TechStackRequest(project_id=request.project_id, source_id=request.source_id, refresh=True),
+        service,
+        projects,
+        ingest,
+    )

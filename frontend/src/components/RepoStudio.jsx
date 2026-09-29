@@ -140,7 +140,6 @@ export default function RepoStudio({ repoName, active, onSelect }) {
   return (
     <div className="repo-studio">
       <div className="rs-head">
-        <span className="ev-eyebrow">Studio</span>
         <h3 className="rs-title" title={repoName}>
           {repoName || 'Repository'}
         </h3>
@@ -186,16 +185,33 @@ export const STUDIO_TOOLS = TOOLS.map(({ id, label, hint, Icon }) => ({
   Icon,
 }))
 
-export function StudioView({ tool, projectId, hasGithubSource }) {
+// Each analysis tool targets a single source; `sourceId`, `sources` and
+// `onSourceChange` are threaded straight through so the tool's header can offer
+// a picker.  Repo Chat is the exception and is not rendered here.
+export function StudioView({
+  tool,
+  projectId,
+  hasGithubSource,
+  sourceId,
+  sources,
+  onSourceChange,
+}) {
+  const shared = {
+    projectId,
+    hasGithubSource,
+    sourceId,
+    sources,
+    onSourceChange,
+  }
   switch (tool) {
     case 'architecture':
-      return <ArchitectureDiagram projectId={projectId} hasGithubSource={hasGithubSource} />
+      return <ArchitectureDiagram {...shared} />
     case 'security':
-      return <SecurityReport projectId={projectId} hasGithubSource={hasGithubSource} />
+      return <SecurityReport {...shared} />
     case 'stack':
-      return <TechStackReport projectId={projectId} hasGithubSource={hasGithubSource} />
+      return <TechStackReport {...shared} />
     case 'health':
-      return <HealthReport projectId={projectId} hasGithubSource={hasGithubSource} />
+      return <HealthReport {...shared} />
     default:
       return null
   }

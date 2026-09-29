@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { queryAnswer, streamQuery } from '../services/api'
-
-const STORAGE_PREFIX = 'contextforge:chat:'
+import {
+  addChatMessage,
+  getChatSession,
+  queryAnswer,
+  streamQuery,
+  updateChatMessage,
+} from '../services/api'
 
 // Progress labels shown in the assistant bubble while the server works. Kept as
 // named values so the label and the "is this a placeholder?" test cannot drift
@@ -20,34 +24,10 @@ function isStatusLabel(text) {
   return Object.values(STATUS_LABELS).includes(text)
 }
 
-// Chat history is kept per scope.  The workspace scopes a query to the sources
-// the user selected in the sidebar, so a thread is only meaningful alongside the
-// selection that produced it — sorting keeps "a + b" and "b + a" on one thread.
-function scopeKeyOf(sourceIds) {
-  const ids = (sourceIds || []).filter(Boolean)
-  if (ids.length === 0) return 'all'
-  return [...new Set(ids)].sort().join('|')
-}
-
-function storageKey(sourceIds) {
-  return `${STORAGE_PREFIX}scope:${scopeKeyOf(sourceIds)}`
-}
-
-function loadState(sourceId) {
-  try {
-    const raw = localStorage.getItem(storageKey(sourceId))
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function saveState(sourceId, state) {
-  try {
-    localStorage.setItem(storageKey(sourceId), JSON.stringify(state))
-  } catch {
-    // ignore storage quota/availability errors
-  }
+// Whether an accumulated buffer still holds only the progress placeholder (or
+// nothing yet), i.e. the next token must replace it rather than be appended.
+function isStatusLabelText(text) {
+  return text === '' || isStatusLabel(text)
 }
 
 const DEFAULT_CONFIDENCE = {
@@ -57,62 +37,110 @@ const DEFAULT_CONFIDENCE = {
   retrieved_chunks: 0,
 }
 
-// `sourceIds` is the workspace's current source selection.  Empty means "every
-// source in the knowledge base", which is also the unscoped default.
-export function useChat({ sourceIds = [] } = {}) {
-  const scopeKey = scopeKeyOf(sourceIds)
-  const [scope, setScope] = useState(scopeKey)
+function normalizeMessage(message) {
+  return {
+    id: message.id,
+    role: message.role,
+    text: message.text || '',
+    status: message.status || 'done',
+    // The source selection recorded when this message was created.  Absent on
+    // legacy messages; the UI treats it as "the workspace selection at send".
+    sourceIds: message.sourceIds || message.source_ids || [],
+    confidence: message.confidence || null,
+  }
+}
+
+// `sourceIds` is the workspace's *current* selection — used for the next query
+// only.  `sessionId` binds this thread to its persisted session; `resolveSessionId`
+// is an async callback that returns the active session, creating one on demand
+// (the first message of a fresh project).  Without either the hook still works
+// locally (no persistence), which keeps it usable standalone and in tests.
+export function useChat({
+  sessionId = null,
+  resolveSessionId = null,
+  onNewSession = null,
+  sourceIds = [],
+} = {}) {
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState(() => loadState(sourceIds)?.messages ?? [])
+  const [messages, setMessages] = useState([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState('')
-  const [sources, setSources] = useState(() => loadState(sourceIds)?.sources ?? [])
+  const [sources, setSources] = useState([])
   const [latency, setLatency] = useState({})
-  // FIX: store server-side confidence metrics
-  const [confidence, setConfidence] = useState(() => loadState(sourceIds)?.confidence ?? null)
+  const [confidence, setConfidence] = useState(null)
   const [showUploadHint, setShowUploadHint] = useState(false)
   const abortRef = useRef(null)
   const lastQuestionRef = useRef('')
+  // The session a message belongs to may be created lazily by the parent after
+  // the first send; refs keep the latest values without re-binding callbacks.
+  // They are synced in an effect (writing refs during render is disallowed).
+  const sessionRef = useRef(sessionId)
+  const resolveSessionRef = useRef(resolveSessionId)
+  const onNewSessionRef = useRef(onNewSession)
+  const sourceIdsRef = useRef(sourceIds)
+  // Sessions whose in-memory thread is already authoritative.  A session we
+  // created ourselves (lazily, mid-send) has its messages in hand before the id
+  // exists, so re-fetching it could race the still-in-flight POST and drop the
+  // just-sent turn from view.
+  const loadedSessionsRef = useRef(new Set())
+  const previousSessionRef = useRef(sessionId)
 
-  // Switching the selection switches to that scope's thread, so answers are
-  // never shown next to a selection that did not produce them.  React's
-  // documented pattern for adjusting state to a changed input is to do it during
-  // render, which avoids painting one frame of the previous scope's thread.
-  if (scope !== scopeKey) {
-    setScope(scopeKey)
-    const stored = loadState(sourceIds)
-    setMessages(stored?.messages ?? [])
-    setSources(stored?.sources ?? [])
-    setConfidence(stored?.confidence ?? null)
-    setLatency({})
-    setError('')
-    setShowUploadHint(false)
-    setInput('')
-    setIsStreaming(false)
-  }
+  useEffect(() => {
+    sessionRef.current = sessionId
+    resolveSessionRef.current = resolveSessionId
+    onNewSessionRef.current = onNewSession
+    sourceIdsRef.current = sourceIds
+  }, [sessionId, resolveSessionId, onNewSession, sourceIds])
+
+  // Load persisted history whenever the bound session changes.  A different
+  // project or session replaces the thread; changing the *selection* does not,
+  // because each message keeps its own recorded selection.
+  useEffect(() => {
+    const changed = previousSessionRef.current !== sessionId
+    previousSessionRef.current = sessionId
+
+    if (!sessionId) {
+      setMessages([])
+      setSources([])
+      setConfidence(null)
+      setLatency({})
+      setError('')
+      setShowUploadHint(false)
+      return undefined
+    }
+
+    // A session created during this turn already owns the on-screen thread;
+    // don't overwrite it.  Freshly opening an existing session still loads.
+    if (changed && loadedSessionsRef.current.has(sessionId)) {
+      return undefined
+    }
+
+    let cancelled = false
+    getChatSession(sessionId)
+      .then((session) => {
+        if (cancelled) return
+        loadedSessionsRef.current.add(sessionId)
+        setMessages((session.messages || []).map(normalizeMessage))
+        setError('')
+      })
+      .catch(() => {
+        if (!cancelled) setMessages([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId])
 
   // Abandoning an in-flight stream is a genuine side effect on an external
-  // system, so it stays in an effect: the response was grounded in the scope
-  // the user just moved away from.
+  // system: the response was grounded in a session the user just left.
   useEffect(() => {
-    if (abortRef.current) {
-      abortRef.current.abort()
-      abortRef.current = null
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort()
+        abortRef.current = null
+      }
     }
-    lastQuestionRef.current = ''
-  }, [scopeKey])
-
-  // Persist chat state so history survives page refresh.  Writing is skipped on
-  // the render that swaps scope — the restore above already loaded that key's
-  // own state, and saving the old thread under the new key would clobber it.
-  const prevScopeRef = useRef(scopeKey)
-  useEffect(() => {
-    if (prevScopeRef.current !== scopeKey) {
-      prevScopeRef.current = scopeKey
-      return
-    }
-    saveState(sourceIds, { messages, sources, confidence })
-  }, [sourceIds, scopeKey, messages, sources, confidence])
+  }, [sessionId])
 
   const appendMessage = useCallback((message) => {
     setMessages((prev) => [...prev, message])
@@ -131,6 +159,32 @@ export function useChat({ sourceIds = [] } = {}) {
     }
   }, [])
 
+  // Persist a message to its session.  Best-effort: a persistence failure must
+  // never break the chat itself, so errors are swallowed (the in-memory thread
+  // still renders).  The session may not exist yet on the first message of a
+  // project, so it is resolved (and created) on demand.
+  const persist = useCallback(async (payload) => {
+    let active = sessionRef.current
+    if (!active && resolveSessionRef.current) {
+      try {
+        active = await resolveSessionRef.current()
+        sessionRef.current = active
+      } catch {
+        return null
+      }
+    }
+    if (!active) return null
+    // This session's thread is now owned by the in-memory state; a later
+    // history fetch for it must not clobber the optimistic messages.
+    loadedSessionsRef.current.add(active)
+    return addChatMessage(active, payload).catch(() => null)
+  }, [])
+
+  const patchPersisted = useCallback((id, patch) => {
+    if (!id) return
+    updateChatMessage(id, patch).catch(() => {})
+  }, [])
+
   const sendMessage = useCallback(
     async (question) => {
       const trimmed = question.trim()
@@ -138,11 +192,16 @@ export function useChat({ sourceIds = [] } = {}) {
         return
       }
 
+      // Snapshot the selection at send time: this is what gets stored with the
+      // message, so later selection changes cannot rewrite this turn.  An empty
+      // selection is allowed — the question is simply answered without a
+      // specific source in scope.
+      const usedSourceIds = [...sourceIdsRef.current]
+
       lastQuestionRef.current = trimmed
       setError('')
       setSources([])
       setLatency({})
-      // FIX: reset confidence on new query
       setConfidence(null)
       setShowUploadHint(false)
       setInput('')
@@ -150,17 +209,43 @@ export function useChat({ sourceIds = [] } = {}) {
       const userId = `user-${Date.now()}`
       const assistantId = `assistant-${Date.now()}`
 
-      appendMessage({
+      const userMessage = {
         id: userId,
         role: 'user',
         text: trimmed,
-      })
+        status: 'done',
+        sourceIds: usedSourceIds,
+      }
+      appendMessage(userMessage)
 
       appendMessage({
         id: assistantId,
         role: 'assistant',
         text: '',
         status: 'streaming',
+        sourceIds: usedSourceIds,
+      })
+
+      // Persist the two rows of the turn in order, and *await the first before
+      // writing the second*.  Firing both concurrently let the assistant
+      // placeholder reach the server before the user message, so a refreshed
+      // thread loaded assistant-before-user.  Serialising the writes preserves
+      // the user → assistant sequence.
+      await persist({
+        role: 'user',
+        text: trimmed,
+        status: 'done',
+        source_ids: usedSourceIds,
+        message_id: userId,
+      })
+      // The assistant placeholder is stored so history (and its source
+      // selection) exists from the moment the turn begins.
+      persist({
+        role: 'assistant',
+        text: '',
+        status: 'streaming',
+        source_ids: usedSourceIds,
+        message_id: assistantId,
       })
 
       setIsStreaming(true)
@@ -170,9 +255,17 @@ export function useChat({ sourceIds = [] } = {}) {
 
       try {
         let hasTokens = false
+        // Accumulated across the stream so the finished answer can be written
+        // back to the database.  Tokens only update React state, so without
+        // this the persisted assistant row stayed empty and the response
+        // vanished on the next load.
+        let assistantText = ''
         const payload = {
           question: trimmed,
-          source_ids: sourceIds.length ? sourceIds : undefined,
+          source_ids: usedSourceIds.length ? usedSourceIds : undefined,
+          // No source selected: answer from general knowledge, never from the
+          // corpus, so the reply cannot cite a source the user did not choose.
+          no_sources: usedSourceIds.length === 0,
         }
         await streamQuery(payload, {
           signal: controller.signal,
@@ -184,14 +277,16 @@ export function useChat({ sourceIds = [] } = {}) {
           onStatus: (stage) => {
             setMessages((prev) =>
               prev.map((message) =>
-                message.id === assistantId
-                  ? { ...message, text: statusLabel(stage) }
-                  : message,
+                message.id === assistantId ? { ...message, text: statusLabel(stage) } : message,
               ),
             )
           },
           onToken: (token) => {
             hasTokens = true
+            // First token replaces the progress label; later ones append.
+            // The accumulator mirrors the same rule so the persisted text
+            // matches exactly what the bubble shows.
+            assistantText = isStatusLabelText(assistantText) ? token : assistantText + token
             setMessages((prev) =>
               prev.map((message) => {
                 if (message.id !== assistantId) return message
@@ -219,12 +314,17 @@ export function useChat({ sourceIds = [] } = {}) {
           onLatency: (timings) => {
             setLatency(timings || {})
           },
-          // FIX: store confidence from the SSE [CONFIDENCE] event
           onConfidence: (data) => {
-            setConfidence(data || DEFAULT_CONFIDENCE)
+            const next = data || DEFAULT_CONFIDENCE
+            setConfidence(next)
+            patchPersisted(assistantId, { confidence: next })
           },
           onDone: () => {
             updateAssistant(assistantId, { status: 'done' })
+            // Persist the finished answer, not just the status: the streamed
+            // tokens only lived in React state, so without this the stored row
+            // stayed empty and the response was lost on the next load.
+            patchPersisted(assistantId, { text: assistantText, status: 'done' })
           },
           onError: (message) => {
             throw new Error(message)
@@ -234,12 +334,20 @@ export function useChat({ sourceIds = [] } = {}) {
         if (!hasTokens) {
           throw new Error('No response received from the server.')
         }
+
+        // Safety net for a stream that delivered tokens but never sent a
+        // [DONE] frame: `onDone` is the normal path, this catches the rest so
+        // the answer still reaches the database.
+        if (assistantText) {
+          patchPersisted(assistantId, { text: assistantText, status: 'done' })
+        }
       } catch {
         stopStream()
         try {
           const fallback = await queryAnswer({
             question: trimmed,
-            source_ids: sourceIds.length ? sourceIds : undefined,
+            source_ids: usedSourceIds.length ? usedSourceIds : undefined,
+            no_sources: usedSourceIds.length === 0,
           })
           updateAssistant(assistantId, {
             text: fallback.answer,
@@ -248,19 +356,30 @@ export function useChat({ sourceIds = [] } = {}) {
           setSources(fallback.sources || [])
           setShowUploadHint((fallback.sources || []).length === 0)
           setLatency(fallback.latency_ms || {})
-          // FIX: parse confidence from fallback response
-          setConfidence(fallback.confidence || DEFAULT_CONFIDENCE)
+          const nextConfidence = fallback.confidence || DEFAULT_CONFIDENCE
+          setConfidence(nextConfidence)
+          patchPersisted(assistantId, {
+            text: fallback.answer,
+            status: 'done',
+            confidence: nextConfidence,
+          })
         } catch (fallbackError) {
-          // Cleared rather than left in place: the progress label is not an
-          // answer, and a failed request should not display one as if it were.
+          // The progress label is not an answer, so it is never left in place.
+          // A readable failure is stored instead of empty text: an empty row
+          // reloaded as a blank gap with no explanation after a refresh.
+          const reason = fallbackError.message || 'Request failed'
           updateAssistant(assistantId, { text: '', status: 'error' })
-          setError(fallbackError.message || 'Request failed')
+          patchPersisted(assistantId, {
+            text: `⚠ Could not generate a response: ${reason}`,
+            status: 'error',
+          })
+          setError(reason)
         }
       } finally {
         setIsStreaming(false)
       }
     },
-    [appendMessage, stopStream, updateAssistant, sourceIds],
+    [appendMessage, stopStream, updateAssistant, persist, patchPersisted],
   )
 
   const retryLast = useCallback(() => {
@@ -269,10 +388,9 @@ export function useChat({ sourceIds = [] } = {}) {
     }
   }, [sendMessage])
 
-  // NOTE: resetChat is declared below; the shortcut effect references it through
-  // a ref so the listener never rebinds while streaming.
-  const resetChatRef = useRef(null)
-
+  // Clears the on-screen thread.  Persisted history is owned by the session;
+  // when bound to a project the parent opens a *new* session so the previous
+  // thread survives (starting a new chat must never delete history).
   const resetChat = useCallback(() => {
     stopStream()
     setMessages([])
@@ -283,20 +401,18 @@ export function useChat({ sourceIds = [] } = {}) {
     setShowUploadHint(false)
     setInput('')
     lastQuestionRef.current = ''
-    try {
-      localStorage.removeItem(storageKey(sourceIds))
-    } catch {
-      // ignore storage errors
-    }
-  }, [sourceIds, stopStream])
+    onNewSessionRef.current?.()
+  }, [stopStream])
 
-  // Keep the shortcut pointing at the latest resetChat implementation.
+  // NOTE: resetChat is referenced through a ref so the listener never rebinds
+  // while streaming.
+  const resetChatRef = useRef(null)
   useEffect(() => {
     resetChatRef.current = resetChat
   }, [resetChat])
 
-  // Cmd/Ctrl+K starts a new chat, matching the sidebar hint.  Ignored while the
-  // user is typing in a field so it never eats a deliberate shortcut elsewhere.
+  // Cmd/Ctrl+K starts a new chat.  Ignored while the user is typing in a field
+  // so it never eats a deliberate shortcut elsewhere.
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key !== 'k' && event.key !== 'K') return

@@ -81,7 +81,7 @@ describe('HealthReport', () => {
   it('shows a GitHub-source empty state and calls no backend', () => {
     const get = vi.spyOn(api, 'getHealthScan')
     const scan = vi.spyOn(api, 'scanHealth')
-    render(<HealthReport projectId="p1" hasGithubSource={false} />)
+    render(<HealthReport projectId="p1" hasGithubSource={false} sourceId="repo:a/x" />)
     expect(screen.getByText(/no github source in this project/i)).toBeInTheDocument()
     expect(get).not.toHaveBeenCalled()
     expect(scan).not.toHaveBeenCalled()
@@ -91,7 +91,7 @@ describe('HealthReport', () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
     const scan = vi.spyOn(api, 'scanHealth').mockResolvedValue(SCAN)
 
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/health 72\/100 across 12 functions/i)).toBeInTheDocument()
@@ -105,10 +105,10 @@ describe('HealthReport', () => {
     vi.spyOn(api, 'getHealthScan').mockRejectedValue(new Error('404'))
     const scan = vi.spyOn(api, 'scanHealth').mockResolvedValue(SCAN)
 
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
-      expect(scan).toHaveBeenCalledWith('p1', { refresh: false })
+      expect(scan).toHaveBeenCalledWith('p1', { sourceId: 'repo:a/x', refresh: false })
     })
   })
 
@@ -118,7 +118,7 @@ describe('HealthReport', () => {
 
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/health 72\/100/i)).toBeInTheDocument()
@@ -126,13 +126,13 @@ describe('HealthReport', () => {
     await actor.click(screen.getByRole('button', { name: /rescan/i }))
 
     await waitFor(() => {
-      expect(scan).toHaveBeenCalledWith('p1', { refresh: true })
+      expect(scan).toHaveBeenCalledWith('p1', { sourceId: 'repo:a/x', refresh: true })
     })
   })
 
   it('shows the score, its band and the band distribution', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('72')).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('HealthReport', () => {
 
   it('lists hotspots with their raw metrics and score', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('Hotspots')).toBeInTheDocument()
@@ -164,13 +164,18 @@ describe('HealthReport', () => {
     // The four raw metrics and the score that came from them, in one grouped
     // cell so the symbol keeps its width.
     const metrics = rows[0].querySelector('.hs-metrics-cell')
-    expect(Array.from(metrics.children).map((cell) => cell.textContent)).toEqual(['14', '4', '6', '3'])
+    expect(Array.from(metrics.children).map((cell) => cell.textContent)).toEqual([
+      '14',
+      '4',
+      '6',
+      '3',
+    ])
     expect(rows[0].querySelector('.hs-lrs-cell').textContent).toContain('8.42')
   })
 
   it('publishes the formula and weights so the score is reproducible', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/LRS =/)).toBeInTheDocument()
@@ -182,7 +187,7 @@ describe('HealthReport', () => {
 
   it('marks unmeasured files as size-only', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('assets/bundle.js')).toBeInTheDocument()
@@ -192,7 +197,7 @@ describe('HealthReport', () => {
 
   it('states its coverage limits rather than implying full coverage', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/change frequency is not available/i)).toBeInTheDocument()
@@ -211,7 +216,7 @@ describe('HealthReport', () => {
       hotspots: [],
       measured_languages: [],
     })
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/no per-function risk could be measured/i)).toBeInTheDocument()
@@ -226,7 +231,7 @@ describe('HealthReport', () => {
     vi.spyOn(api, 'getHealthScan').mockRejectedValue(new Error('404'))
     vi.spyOn(api, 'scanHealth').mockRejectedValue(new Error('This project has no GitHub source.'))
 
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/no github source/i)
@@ -245,7 +250,7 @@ describe('HealthReport unmeasured state', () => {
       band_counts: { low: 0, moderate: 0, high: 0, critical: 0 },
       hotspots: [],
     })
-    render(<HealthReport projectId="p1" />)
+    render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('Not measured')).toBeInTheDocument()
@@ -259,7 +264,7 @@ describe('HealthReport unmeasured state', () => {
 describe('HealthReport presentation', () => {
   it('does not repeat the tool name that the main window already shows', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText(/health 72\/100/i)).toBeInTheDocument()
     })
@@ -270,7 +275,7 @@ describe('HealthReport presentation', () => {
 
   it('shows the file tail, so no path is displayed truncated', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText('Hotspots')).toBeInTheDocument()
     })
@@ -282,7 +287,7 @@ describe('HealthReport presentation', () => {
 
   it('labels whether a row is a function or a class', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText('Hotspots')).toBeInTheDocument()
     })
@@ -296,7 +301,7 @@ describe('HealthReport presentation', () => {
 
   it('collapses the largest-files list by default', async () => {
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText(/largest indexed files/i)).toBeInTheDocument()
     })
@@ -313,7 +318,7 @@ describe('HealthReport presentation', () => {
       band_counts: { low: 0, moderate: 0, high: 0, critical: 0 },
       hotspots: [],
     })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText('Not measured')).toBeInTheDocument()
     })
@@ -332,7 +337,7 @@ describe('HealthReport presentation', () => {
       ],
     }
     vi.spyOn(api, 'getHealthScan').mockResolvedValue({ ...dupes, cached: true })
-    const { container } = render(<HealthReport projectId="p1" />)
+    const { container } = render(<HealthReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(container.querySelectorAll('.hs-table tbody tr')).toHaveLength(2)
     })

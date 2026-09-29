@@ -22,16 +22,11 @@ vi.mock('./MindMapCanvas', () => ({
 }))
 
 function renderPanel(props = {}) {
-  const onSelectionChange = vi.fn()
+  const onSourceChange = vi.fn()
   const utils = render(
-    <MindMapPanel
-      sources={SOURCES}
-      selectedIds={['a']}
-      onSelectionChange={onSelectionChange}
-      {...props}
-    />,
+    <MindMapPanel sources={SOURCES} sourceId="a" onSourceChange={onSourceChange} {...props} />,
   )
-  return { ...utils, onSelectionChange }
+  return { ...utils, onSourceChange }
 }
 
 function enterFullscreen() {
@@ -119,23 +114,26 @@ describe('MindMapPanel full screen', () => {
     act(() => unmount())
     expect(document.body.style.overflow).toBe('auto')
   })
+})
 
-  it('keeps the scope picker usable in full screen', () => {
-    renderPanel()
-    enterFullscreen()
-    fireEvent.click(screen.getByRole('button', { name: /1 source/i }))
-    expect(document.querySelector('.mindmap-scope-menu')).not.toBeNull()
-    fireEvent.click(screen.getByLabelText('Bravo'))
-    expect(screen.getByTestId('canvas')).toBeTruthy()
+describe('MindMapPanel source selection', () => {
+  it('requires a source and starts on the placeholder', () => {
+    renderPanel({ sourceId: '' })
+    const select = screen.getByLabelText(/select the source this mind map is built from/i)
+    expect(select).toHaveValue('')
+    expect(screen.getByRole('option', { name: /select a source/i })).toBeInTheDocument()
   })
 
-  it('closes the scope picker on Escape along with full screen', () => {
-    renderPanel()
-    enterFullscreen()
-    fireEvent.click(screen.getByRole('button', { name: /1 source/i }))
-    expect(document.querySelector('.mindmap-scope-menu')).not.toBeNull()
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(document.querySelector('.mindmap-scope-menu')).toBeNull()
-    expect(document.querySelector('body > .mindmap-fullscreen')).toBeNull()
+  it('disables Regenerate until a source is chosen', () => {
+    renderPanel({ sourceId: '' })
+    expect(screen.getByRole('button', { name: /regenerate/i })).toBeDisabled()
+  })
+
+  it('reports the chosen source and enables Regenerate', () => {
+    const { onSourceChange } = renderPanel()
+    const select = screen.getByLabelText(/select the source this mind map is built from/i)
+    fireEvent.change(select, { target: { value: 'b' } })
+    expect(onSourceChange).toHaveBeenCalledWith('b')
+    expect(screen.getByRole('button', { name: /regenerate/i })).not.toBeDisabled()
   })
 })

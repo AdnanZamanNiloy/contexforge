@@ -131,9 +131,13 @@ class ArchitectureService:
     # ------------------------------------------------------------------ #
 
     @observe(name="architecture_get")
-    async def get(self, project_id: str) -> dict[str, Any] | None:
-        """Return the stored diagram for a project, or ``None``."""
-        return await self._store.latest(project_id)
+    async def get(self, project_id: str, source_id: str = "") -> dict[str, Any] | None:
+        """Return the stored diagram for a project + source, or ``None``.
+
+        Scoped to ``source_id`` so each source shows its own diagram.  A blank
+        source keeps the legacy per-project read working.
+        """
+        return await self._store.latest(project_id, source_id or "")
 
     @observe(name="architecture_generate")
     async def generate(
@@ -152,7 +156,7 @@ class ArchitectureService:
             raise ArchitectureError("This GitHub source has no indexed files. Re-ingest the repository and try again.")
 
         if not refresh:
-            cached = await self._store.get(project_id, context["fingerprint"])
+            cached = await self._store.get(project_id, source_id or "", context["fingerprint"])
             if cached is not None:
                 logger.info(
                     "architecture: project=%s fingerprint=%s served from cache",
@@ -188,6 +192,7 @@ class ArchitectureService:
 
         mermaid = compile_mermaid(graph, owner=context["owner"], repo=context["repo"], branch=context["branch"])
         record = {
+            "source_id": source_id or "",
             "fingerprint": context["fingerprint"],
             "repository": context["repository"],
             "branch": context["branch"],
@@ -198,7 +203,7 @@ class ArchitectureService:
             "group_count": len(graph.groups),
             "truncated_paths": truncated,
         }
-        saved = await self._store.upsert(project_id, record)
+        saved = await self._store.upsert(project_id, source_id or "", record)
         elapsed = int((time.perf_counter() - started) * 1000)
         logger.info(
             "architecture: project=%s nodes=%d edges=%d groups=%d elapsed=%dms",

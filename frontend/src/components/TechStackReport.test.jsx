@@ -71,11 +71,24 @@ describe('TechStackReport', () => {
     expect(scan).not.toHaveBeenCalled()
   })
 
+  it('requires a source selection and calls no backend without one', async () => {
+    const get = vi.spyOn(api, 'getTechStack')
+    const scan = vi.spyOn(api, 'scanTechStack')
+    render(
+      <TechStackReport projectId="p1" sourceId="" sources={[{ id: 'repo:a/x', title: 'a/x' }]} />,
+    )
+    expect(screen.getByText(/select a source to scan/i)).toBeInTheDocument()
+    // Give effects a tick; nothing must fire without a chosen source.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(get).not.toHaveBeenCalled()
+    expect(scan).not.toHaveBeenCalled()
+  })
+
   it('serves a stored scan without rescanning', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
     const scan = vi.spyOn(api, 'scanTechStack').mockResolvedValue(SCAN)
 
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/written primarily in python/i)).toBeInTheDocument()
@@ -89,10 +102,10 @@ describe('TechStackReport', () => {
     vi.spyOn(api, 'getTechStack').mockRejectedValue(new Error('404'))
     const scan = vi.spyOn(api, 'scanTechStack').mockResolvedValue(SCAN)
 
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
-      expect(scan).toHaveBeenCalledWith('p1', { refresh: false })
+      expect(scan).toHaveBeenCalledWith('p1', { sourceId: 'repo:a/x', refresh: false })
     })
     await waitFor(() => {
       expect(screen.getByText(/written primarily in python/i)).toBeInTheDocument()
@@ -105,7 +118,7 @@ describe('TechStackReport', () => {
 
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/written primarily in python/i)).toBeInTheDocument()
@@ -113,18 +126,18 @@ describe('TechStackReport', () => {
     await actor.click(screen.getByRole('button', { name: /rescan/i }))
 
     await waitFor(() => {
-      expect(scan).toHaveBeenCalledWith('p1', { refresh: true })
+      expect(scan).toHaveBeenCalledWith('p1', { sourceId: 'repo:a/x', refresh: true })
     })
   })
 
   it('groups dependencies by package manager and shows versions', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<TechStackReport projectId="p1" />)
+    const { container } = render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(
-      Array.from(document.querySelectorAll('.gv-section-title')).map((el) => el.textContent),
-    ).toContain('Dependencies')
+        Array.from(document.querySelectorAll('.gv-section-title')).map((el) => el.textContent),
+      ).toContain('Dependencies')
     })
     // Scoped to the dependency section: a name and version can legitimately
     // appear in both the framework chips and the dependency list.
@@ -140,7 +153,7 @@ describe('TechStackReport', () => {
 
   it('lists recognised technologies under their category, with versions', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
-    const { container } = render(<TechStackReport projectId="p1" />)
+    const { container } = render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(
@@ -171,7 +184,7 @@ describe('TechStackReport', () => {
         { name: 'Vercel', kind: 'Hosting', version: null, managers: [] },
       ],
     })
-    const { container } = render(<TechStackReport projectId="p1" />)
+    const { container } = render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(container.querySelectorAll('.ts-kind').length).toBeGreaterThan(0)
@@ -185,7 +198,7 @@ describe('TechStackReport', () => {
 
   it('shows languages with a file count', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText('Python')).toBeInTheDocument()
@@ -202,7 +215,7 @@ describe('TechStackReport', () => {
       new Error('This project has no GitHub source to scan.'),
     )
 
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/no github source to scan/i)
@@ -213,7 +226,7 @@ describe('TechStackReport', () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
     const { default: userEvent } = await import('@testing-library/user-event')
     const actor = userEvent.setup()
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(screen.getByText(/manifests read/i)).toBeInTheDocument()
@@ -225,7 +238,7 @@ describe('TechStackReport', () => {
 
   it('notes when the repository was too large for a full view', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true, truncated: true })
-    render(<TechStackReport projectId="p1" />)
+    render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
     await waitFor(() => {
       expect(screen.getByText(/bounded view of its files/i)).toBeInTheDocument()
     })
@@ -235,7 +248,7 @@ describe('TechStackReport', () => {
 describe('TechStackReport counts', () => {
   it('pluralises the header counts', async () => {
     vi.spyOn(api, 'getTechStack').mockResolvedValue({ ...SCAN, cached: true })
-    const { rerender } = render(<TechStackReport projectId="p1" />)
+    const { rerender } = render(<TechStackReport projectId="p1" sourceId="repo:a/x" />)
 
     await waitFor(() => {
       expect(

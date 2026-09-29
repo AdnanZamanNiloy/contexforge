@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { getArchitecture, regenerateArchitecture, streamArchitecture } from '../services/api'
+import ToolSourcePicker from './ToolSourcePicker'
 
 // The Architecture Diagram view.
 //
@@ -206,7 +207,13 @@ function ZoomControls({ zoom, onZoom, onFit }) {
   )
 }
 
-export default function ArchitectureDiagram({ projectId, hasGithubSource = true }) {
+export default function ArchitectureDiagram({
+  projectId,
+  hasGithubSource = true,
+  sourceId = '',
+  sources = [],
+  onSourceChange,
+}) {
   const [diagram, setDiagram] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
@@ -248,7 +255,8 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
 
   const run = useCallback(
     (regenerate) => {
-      if (!projectId) return
+      // A source must be explicitly selected before a tool runs.
+      if (!projectId || !sourceId) return
       setStatus('loading')
       setError('')
 
@@ -265,23 +273,30 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
         onDone: () => setStatus((s) => (s === 'loading' ? 'ready' : s)),
       }
 
-      const payload = { project_id: projectId, refresh: false }
+      const payload = { project_id: projectId, source_id: sourceId, refresh: false }
       if (regenerate) {
-        regenerateArchitecture(projectId, handlers)
+        regenerateArchitecture(projectId, sourceId, handlers)
       } else {
         streamArchitecture(payload, handlers)
       }
     },
-    [projectId],
+    [projectId, sourceId],
   )
 
   // A stored diagram is shown on open; only fall back to a generation when the
-  // project has none yet.  Runs once per project.
+  // selected source has none yet.  Re-runs when the source changes so each
+  // source displays its own stored diagram.  Nothing happens until a source is
+  // chosen.
   useEffect(() => {
     let cancelled = false
-    if (!projectId || !hasGithubSource) return undefined
+    if (!projectId || !hasGithubSource || !sourceId) {
+      setDiagram(null)
+      setStatus('idle')
+      return undefined
+    }
 
-    getArchitecture(projectId)
+    setDiagram(null)
+    getArchitecture(projectId, sourceId)
       .then((stored) => {
         if (cancelled || !stored) {
           run(false)
@@ -292,14 +307,14 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
         setZoom(1)
       })
       .catch(() => {
-        // 404 simply means nothing cached yet.
+        // 404 simply means nothing cached yet for this source.
         if (!cancelled) run(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [projectId, hasGithubSource, run])
+  }, [projectId, hasGithubSource, sourceId, run])
 
   // Compile the Mermaid source whenever it changes.  Mermaid renders into the
   // element it is handed, so the host div is emptied first to avoid stacking
@@ -432,6 +447,25 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
     )
   }
 
+  // A source must be chosen before the tool can run.  The picker stays visible
+  // so the user can make that choice here.
+  if (!sourceId) {
+    return (
+      <div className="rs-view ad-root">
+        <div className="rs-view-head ad-head">
+          <div />
+          <div className="ad-actions">
+            <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
+          </div>
+        </div>
+        <EmptyState
+          title="Select a source to map"
+          body="Choose one of this project's sources to build its architecture diagram."
+        />
+      </div>
+    )
+  }
+
   const view = (
     <div className="rs-view ad-root">
       <div className="rs-view-head ad-head">
@@ -452,6 +486,7 @@ export default function ArchitectureDiagram({ projectId, hasGithubSource = true 
           ) : null}
         </div>
         <div className="ad-actions">
+          <ToolSourcePicker sources={sources} value={sourceId} onChange={onSourceChange} />
           {isFullscreen ? (
             <button
               type="button"

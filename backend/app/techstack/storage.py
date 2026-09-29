@@ -1,10 +1,10 @@
 """SQLite persistence for Dependency & Tech Stack scans.
 
-One row per ``(project_id, fingerprint)``, mirroring
-:mod:`app.architecture.storage`.  The fingerprint is a digest of the
-repository's indexed file set, so it stands in for a commit SHA: re-ingesting an
-unchanged repository reuses the row, and any change to the file set invalidates
-it — with no extra request to read a SHA the loader never recorded.
+One row per ``(project_id, source_id, fingerprint)``, mirroring
+:mod:`app.architecture.storage`.  The fingerprint is a digest of the source's
+indexed file set, so it stands in for a commit SHA: re-ingesting an unchanged
+source reuses the row, and any change to the file set invalidates it.  Keying on
+``source_id`` as well means every source in a project keeps its own scan.
 
 The structured result is stored as JSON so a new field can be added to the
 report without a migration, and the columns that are queried or sorted on
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS tech_stack (
     project_id        TEXT NOT NULL,
+    source_id         TEXT NOT NULL DEFAULT '',
     fingerprint       TEXT NOT NULL,
     repository        TEXT NOT NULL DEFAULT '',
     payload           TEXT NOT NULL,
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS tech_stack (
     dependency_count  INTEGER NOT NULL DEFAULT 0,
     language_count    INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT NOT NULL,
-    PRIMARY KEY (project_id, fingerprint)
+    PRIMARY KEY (project_id, source_id, fingerprint)
 );
 """
 
@@ -50,17 +51,19 @@ class TechStackStore:
         self._db_path = Path(db_path or settings.TECH_STACK_DB_PATH)
 
     @observe(name="techstack_store_get")
-    async def get(self, project_id: str, fingerprint: str) -> dict[str, Any] | None:
-        return await asyncio.to_thread(self._get_sync, project_id, fingerprint)
+    async def get(self, project_id: str, source_id: str, fingerprint: str) -> dict[str, Any] | None:
+        return await asyncio.to_thread(self._get_sync, project_id, source_id, fingerprint)
 
     @observe(name="techstack_store_latest")
-    async def latest(self, project_id: str) -> dict[str, Any] | None:
-        """Most recent scan for a project, whatever its fingerprint."""
-        return await asyncio.to_thread(self._latest_sync, project_id)
+    async def latest(self, project_id: str, source_id: str) -> dict[str, Any] | None:
+        """Most recent scan for a project + source, whatever its fingerprint."""
+        return await asyncio.to_thread(self._latest_sync, project_id, source_id)
 
     @observe(name="techstack_store_upsert")
-    async def upsert(self, project_id: str, payload: dict[str, Any], fingerprint: str) -> dict[str, Any]:
-        return await asyncio.to_thread(self._upsert_sync, project_id, payload, fingerprint)
+    async def upsert(
+        self, project_id: str, source_id: str, payload: dict[str, Any], fingerprint: str
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(self._upsert_sync, project_id, source_id, payload, fingerprint)
 
     def close(self) -> None:
         """No persistent connection to close; retained for the common API."""
@@ -77,7 +80,31 @@ class TechStackStore:
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.executescript(_SCHEMA)
         conn.commit()
+        self._migrate_sync(conn)
         return conn
+
+    @staticmethod
+    def _migrate_sync(conn: sqlite3.Connection) -> None:
+        info = conn.execute("PRAGMA table_info(tech_stack)").fetchall()
+        existing = {row[1] for row in info}
+        if not existing or "source_id" in existing:
+            return
+        # Widening a primary key needs a rebuild; pre-existing rows survive
+        # under a blank source_id.
+        logger.info("techstack: rebuilding table onto per-source key")
+        with conn:
+            conn.execute("ALTER TABLE tech_stack RENAME TO tech_stack_legacy")
+            conn.executescript(_SCHEMA)
+            conn.execute(
+                "INSERT OR IGNORE INTO tech_stack ("
+                " project_id, source_id, fingerprint, repository, payload,"
+                " manifest_count, dependency_count, language_count, created_at"
+                " ) SELECT project_id, '', fingerprint, repository, payload,"
+                " manifest_count, dependency_count, language_count, created_at"
+                " FROM tech_stack_legacy"
+            )
+            conn.execute("DROP TABLE tech_stack_legacy")
+        conn.commit()
 
     def _row_to_record(self, row: sqlite3.Row) -> dict[str, Any]:
         try:
@@ -87,43 +114,47 @@ class TechStackStore:
             payload = {}
         payload.setdefault("repository", row["repository"])
         payload.setdefault("fingerprint", row["fingerprint"])
+        payload["source_id"] = row["source_id"] or ""
         payload.setdefault("created_at", row["created_at"])
         return payload
 
-    def _get_sync(self, project_id: str, fingerprint: str) -> dict[str, Any] | None:
+    def _get_sync(self, project_id: str, source_id: str, fingerprint: str) -> dict[str, Any] | None:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT * FROM tech_stack WHERE project_id = ? AND fingerprint = ?",
-                (project_id, fingerprint),
+                "SELECT * FROM tech_stack WHERE project_id = ? AND source_id = ? AND fingerprint = ?",
+                (project_id, source_id or "", fingerprint),
             ).fetchone()
             return self._row_to_record(row) if row else None
         finally:
             conn.close()
 
-    def _latest_sync(self, project_id: str) -> dict[str, Any] | None:
+    def _latest_sync(self, project_id: str, source_id: str) -> dict[str, Any] | None:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT * FROM tech_stack WHERE project_id = ? ORDER BY created_at DESC LIMIT 1",
-                (project_id,),
+                "SELECT * FROM tech_stack WHERE project_id = ? AND source_id = ? ORDER BY created_at DESC LIMIT 1",
+                (project_id, source_id or ""),
             ).fetchone()
             return self._row_to_record(row) if row else None
         finally:
             conn.close()
 
-    def _upsert_sync(self, project_id: str, payload: dict[str, Any], fingerprint: str) -> dict[str, Any]:
+    def _upsert_sync(
+        self, project_id: str, source_id: str, payload: dict[str, Any], fingerprint: str
+    ) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
+        source_id = source_id or ""
         conn = self._connect()
         try:
             with conn:
                 conn.execute(
                     """
                     INSERT INTO tech_stack (
-                        project_id, fingerprint, repository, payload, manifest_count,
+                        project_id, source_id, fingerprint, repository, payload, manifest_count,
                         dependency_count, language_count, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(project_id, fingerprint) DO UPDATE SET
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(project_id, source_id, fingerprint) DO UPDATE SET
                         repository = excluded.repository,
                         payload = excluded.payload,
                         manifest_count = excluded.manifest_count,
@@ -133,6 +164,7 @@ class TechStackStore:
                     """,
                     (
                         project_id,
+                        source_id,
                         fingerprint,
                         payload.get("repository") or "",
                         json.dumps(payload),
@@ -143,8 +175,8 @@ class TechStackStore:
                     ),
                 )
             row = conn.execute(
-                "SELECT * FROM tech_stack WHERE project_id = ? AND fingerprint = ?",
-                (project_id, fingerprint),
+                "SELECT * FROM tech_stack WHERE project_id = ? AND source_id = ? AND fingerprint = ?",
+                (project_id, source_id, fingerprint),
             ).fetchone()
             return self._row_to_record(row)
         finally:

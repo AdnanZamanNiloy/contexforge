@@ -20,9 +20,15 @@ __all__ = [
 
 
 class ArchitectureGenerateRequest(BaseModel):
-    """Generate a diagram for a project's GitHub source."""
+    """Generate a diagram for one of a project's sources."""
 
-    project_id: str = Field(description="Project whose GitHub source should be mapped.")
+    project_id: str = Field(description="Project whose source should be mapped.")
+    source_id: str = Field(
+        default="",
+        description=(
+            "Source to map.  Blank falls back to the project's remembered selection, then its first GitHub source."
+        ),
+    )
     refresh: bool = Field(
         default=False,
         description="Ignore the cache and regenerate from scratch.",
@@ -32,6 +38,7 @@ class ArchitectureGenerateRequest(BaseModel):
 class ArchitecturePayload(BaseModel):
     """One SSE frame carrying the finished diagram."""
 
+    source_id: str = ""
     mermaid: str
     explanation: str
     node_count: int

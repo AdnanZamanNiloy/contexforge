@@ -58,6 +58,11 @@ _MIGRATIONS = (
     ("cover", "TEXT NOT NULL DEFAULT 'aurora'"),
     # Pre-existing projects predate source scoping: keep every ingest option.
     ("source_category", "TEXT NOT NULL DEFAULT 'all'"),
+    # Which source the Studio analysis tools (Architecture, Security, Tech
+    # Stack, Health) are scoped to.  Blank means "not chosen yet" — the UI then
+    # defaults to the first GitHub source.  Repo Chat ignores this: it always
+    # works across the whole project selection.
+    ("tool_source_id", "TEXT NOT NULL DEFAULT ''"),
 )
 
 
@@ -94,6 +99,10 @@ class ProjectsStore:
 
     async def touch_opened(self, project_id: str) -> dict[str, Any] | None:
         return await asyncio.to_thread(self._touch_sync, project_id)
+
+    async def set_tool_source(self, project_id: str, source_id: str) -> dict[str, Any] | None:
+        """Persist which source the Studio analysis tools are scoped to."""
+        return await asyncio.to_thread(self._set_tool_source_sync, project_id, source_id)
 
     # -- membership ----------------------------------------------------
 
@@ -207,6 +216,7 @@ class ProjectsStore:
                 "category": category or "",
                 "cover": _cover_for(project_id),
                 "source_category": source_category or "documents",
+                "tool_source_id": "",
                 "source_ids": [],
                 "source_count": 0,
                 "created_at": now,
@@ -242,6 +252,20 @@ class ProjectsStore:
                 cur = conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
                 conn.execute("DELETE FROM project_sources WHERE project_id = ?", (project_id,))
                 return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    def _set_tool_source_sync(self, project_id: str, source_id: str) -> dict[str, Any] | None:
+        conn = self._connect()
+        try:
+            with conn:
+                cur = conn.execute(
+                    "UPDATE projects SET tool_source_id = ?, updated_at = ? WHERE id = ?",
+                    (source_id or "", _now(), project_id),
+                )
+                if cur.rowcount == 0:
+                    return None
+            return self._get_sync(project_id)
         finally:
             conn.close()
 

@@ -8,9 +8,15 @@ __all__ = ["HealthRequest", "HealthResponse"]
 
 
 class HealthRequest(BaseModel):
-    """Scan a project's GitHub source for structural risk."""
+    """Scan one of a project's sources for structural risk."""
 
-    project_id: str = Field(description="Project whose GitHub source should be analysed.")
+    project_id: str = Field(description="Project whose source should be analysed.")
+    source_id: str = Field(
+        default="",
+        description=(
+            "Source to analyse.  Blank falls back to the project's remembered selection, then its first GitHub source."
+        ),
+    )
     refresh: bool = Field(default=False, description="Ignore the cache and rescan from scratch.")
 
 
@@ -23,6 +29,7 @@ class HealthResponse(BaseModel):
     a composite of several signals.
     """
 
+    source_id: str = ""
     repository: str = ""
     #: ``None`` when nothing could be measured — a repository that was never
     #: analysed is not a healthy one, and a 100 would read as a clean bill.

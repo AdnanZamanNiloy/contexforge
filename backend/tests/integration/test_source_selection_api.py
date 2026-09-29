@@ -94,6 +94,18 @@ async def test_query_without_source_ids_is_unscoped(client):
 
 
 @pytest.mark.asyncio
+async def test_query_accepts_no_sources_flag(client):
+    async with client as c:
+        response = await c.post(
+            "/query",
+            json={"question": "Tell me about source", "no_sources": True},
+        )
+        assert response.status_code == 200
+        # The flag reaches the service verbatim so it can skip retrieval.
+        assert response.json()["answer"] == "ok"
+
+
+@pytest.mark.asyncio
 async def test_query_stream_accepts_multiple_source_ids(client):
     async with (
         client as c,

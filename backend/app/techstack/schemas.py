@@ -8,9 +8,15 @@ __all__ = ["TechStackRequest", "TechStackResponse"]
 
 
 class TechStackRequest(BaseModel):
-    """Scan a project's GitHub source."""
+    """Scan one of a project's sources."""
 
-    project_id: str = Field(description="Project whose GitHub source should be scanned.")
+    project_id: str = Field(description="Project whose source should be scanned.")
+    source_id: str = Field(
+        default="",
+        description=(
+            "Source to scan.  Blank falls back to the project's remembered selection, then its first GitHub source."
+        ),
+    )
     refresh: bool = Field(
         default=False,
         description="Ignore the cache and rescan from scratch.",
@@ -30,6 +36,7 @@ class TechStackResponse(BaseModel):
     repository is put together, where a flat technology list cannot.
     """
 
+    source_id: str = ""
     repository: str = ""
     summary: str = ""
     languages: list[dict] = Field(default_factory=list)

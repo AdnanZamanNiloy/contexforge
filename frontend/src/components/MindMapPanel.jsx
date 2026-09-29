@@ -2,14 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import MindMapCanvas from './MindMapCanvas'
-import { SourceGlyph, sourceIconClass } from '../lib/sources'
 
 // The workspace's Mind Map.
 //
-// A mind map is built from the sources selected in the sidebar, and the
-// selection is also editable right here so the user can widen or narrow the
-// scope without leaving the workspace.  It covers both modes the project
-// workspace supports: one source for a focused map, several for a combined one.
+// A mind map is built from ONE source chosen right here — the user must pick a
+// specific source before a map is generated, so there is no "all sources"
+// default and no multi-source map.  This selection is independent of the chat
+// sidebar selection.
 //
 // Full screen is a portal to document.body rather than a CSS state on the
 // canvas.  The workspace is a three-column grid (sidebar · main · evidence
@@ -17,22 +16,18 @@ import { SourceGlyph, sourceIconClass } from '../lib/sources'
 // fill that column — portalling is what lets the map take the whole viewport
 // with the sidebar and rail genuinely out of the way.  Exiting simply unmounts
 // the portal, so the normal layout is restored as-is.
-export default function MindMapPanel({ sources = [], selectedIds = [], onSelectionChange }) {
+export default function MindMapPanel({ sources = [], sourceId = '', onSourceChange }) {
   const canvasRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showPicker, setShowPicker] = useState(false)
 
   const exitFullscreen = useCallback(() => setIsFullscreen(false), [])
+  const hasSource = Boolean(sourceId)
 
-  // Escape leaves full screen, and the scope picker closes with it so the menu
-  // isn't left floating over the overlay.
+  // Escape leaves full screen.
   useEffect(() => {
     if (!isFullscreen) return undefined
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setShowPicker(false)
-        setIsFullscreen(false)
-      }
+      if (event.key === 'Escape') setIsFullscreen(false)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
@@ -49,75 +44,28 @@ export default function MindMapPanel({ sources = [], selectedIds = [], onSelecti
     }
   }, [isFullscreen])
 
-  const isSelected = (id) => selectedIds.includes(id)
-
-  const toggle = (id) => {
-    if (isSelected(id)) {
-      onSelectionChange(selectedIds.filter((existing) => existing !== id))
-    } else {
-      onSelectionChange([...selectedIds, id])
-    }
-  }
-
   const content = (
     <>
       <div className="mindmap-panel-bar">
         <div className="mindmap-panel-scope">
-          <button
-            type="button"
-            className="mindmap-scope-toggle"
-            onClick={() => setShowPicker((open) => !open)}
-            aria-expanded={showPicker}
-          >
-            <span className="mindmap-scope-count">
-              {selectedIds.length === 0
-                ? 'All sources'
-                : selectedIds.length === 1
-                  ? '1 source'
-                  : `${selectedIds.length} sources`}
-            </span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={showPicker ? 'is-open' : ''}
+          <label className="mindmap-source-picker">
+            <span className="mindmap-source-label">Source</span>
+            <select
+              className="mindmap-source-select"
+              value={sourceId}
+              onChange={(event) => onSourceChange?.(event.target.value)}
+              aria-label="Select the source this mind map is built from"
             >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-
-          {showPicker ? (
-            <div className="mindmap-scope-menu">
-              <div className="mindmap-scope-menu-head">
-                <span>Sources in this map</span>
-                <button type="button" onClick={() => onSelectionChange([])}>
-                  Use all
-                </button>
-              </div>
-              {sources.length === 0 ? (
-                <p className="mindmap-scope-empty">No sources in this project yet.</p>
-              ) : (
-                sources.map((source) => (
-                  <label key={source.id} className="mindmap-scope-option">
-                    <input
-                      type="checkbox"
-                      checked={isSelected(source.id)}
-                      onChange={() => toggle(source.id)}
-                    />
-                    <span className={sourceIconClass(source.type)}>
-                      <SourceGlyph type={source.type} size={14} />
-                    </span>
-                    <span className="mindmap-scope-option-title">{source.title}</span>
-                  </label>
-                ))
-              )}
-            </div>
-          ) : null}
+              <option value="" disabled>
+                Select a source
+              </option>
+              {sources.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.title}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="mindmap-panel-actions">
@@ -125,8 +73,8 @@ export default function MindMapPanel({ sources = [], selectedIds = [], onSelecti
             type="button"
             className="mindmap-action"
             onClick={() => canvasRef.current?.regenerate?.()}
-            disabled={sources.length === 0}
-            title="Generate a fresh mind map from the current selection"
+            disabled={!hasSource}
+            title="Generate a fresh mind map from the selected source"
           >
             Regenerate
           </button>
@@ -134,6 +82,7 @@ export default function MindMapPanel({ sources = [], selectedIds = [], onSelecti
             type="button"
             className="mindmap-action"
             onClick={() => (isFullscreen ? exitFullscreen() : setIsFullscreen(true))}
+            disabled={!hasSource}
           >
             {isFullscreen ? 'Exit full screen' : 'Full screen'}
           </button>
@@ -141,7 +90,7 @@ export default function MindMapPanel({ sources = [], selectedIds = [], onSelecti
       </div>
 
       <div className="mindmap-panel-canvas">
-        <MindMapCanvas ref={canvasRef} sourceIds={selectedIds} isFullscreen={isFullscreen} />
+        <MindMapCanvas ref={canvasRef} sourceId={sourceId} isFullscreen={isFullscreen} />
       </div>
     </>
   )

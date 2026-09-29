@@ -6,6 +6,7 @@ Endpoints:
     POST /ingest/file             — Upload and ingest a PDF or DOCX file.
     PATCH /ingest/source/{id}     — Rename a source (persist a title override).
     DELETE /ingest/source/{id}    — Delete a previously ingested source.
+    GET /ingest/sources           — List current source/chunk counts.
 """
 
 from __future__ import annotations
@@ -17,7 +18,6 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.dependencies import get_ingest_service, get_source_meta_store
 from app.schemas.ingest import (
-    ClearResponse,
     DeleteResponse,
     IngestRequest,
     IngestResponse,
@@ -224,52 +224,6 @@ async def delete_source(
         chunks_deleted,
     )
     return DeleteResponse(source_id=source_id, chunks_deleted=chunks_deleted)
-
-
-@router.delete(
-    "/clear",
-    response_model=ClearResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Clear the entire knowledge base",
-)
-async def clear_knowledge_base(
-    service: IngestService = Depends(get_ingest_service),
-    meta_store: SourceMetaStore = Depends(get_source_meta_store),
-) -> ClearResponse:
-    """Wipe all FAISS vectors, BM25 entries, and the deduplicator.
-
-    Use with caution — this is irreversible.
-    """
-    logger.info("clear_knowledge_base: wiping all data")
-    try:
-        result = await service.clear_all()
-    except Exception as exc:
-        logger.error("clear_knowledge_base failed: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear knowledge base: {exc}",
-        ) from exc
-
-    try:
-        from app.dependencies import get_projects_store
-
-        await get_projects_store().clear_membership()
-    except Exception as exc:
-        logger.warning("clear_knowledge_base: projects membership clear failed: %s", exc)
-
-    # Every source is gone, so every rename goes with it.
-    try:
-        await meta_store.clear_all()
-    except Exception as exc:
-        logger.warning("clear_knowledge_base: title override clear failed: %s", exc)
-
-    total = result.get("faiss_chunks_removed", 0) + result.get("bm25_chunks_removed", 0)
-    logger.info("clear_knowledge_base complete: removed %d total chunks", total)
-    return ClearResponse(
-        message=f"Knowledge base cleared. Removed {total} chunks.",
-        faiss_chunks_removed=result.get("faiss_chunks_removed", 0),
-        bm25_chunks_removed=result.get("bm25_chunks_removed", 0),
-    )
 
 
 @router.get(

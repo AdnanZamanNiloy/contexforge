@@ -12,21 +12,21 @@ import {
   ingestGithub,
   ingestSource,
   deleteSource,
-  clearKnowledgeBase,
   getProject,
   touchProject,
   attachSourceToProject,
+  setProjectToolSource,
 } from '../services/api'
 import { ingestScopeFor, sidebarTypesFor, sourceCategoryLabel } from '../lib/projects'
 import { useChat } from '../hooks/useChat'
+import { useChatSessions } from '../hooks/useChatSessions'
 import { useSourceSelection } from '../hooks/useSourceSelection'
 import { useSources } from '../hooks/useSources'
 
 export default function Home() {
   const { projectId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { sources, loading, addSource, updateSource, renameSource, removeSource, replaceAll } =
-    useSources()
+  const { sources, loading, addSource, updateSource, renameSource, removeSource } = useSources()
   const [activeProject, setActiveProject] = useState(null)
   const [projectMissing, setProjectMissing] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -102,6 +102,47 @@ export default function Home() {
     return activeProject?.source_category === 'github'
   }, [projectId, repoStudioSource, activeProject])
 
+  // The Studio analysis tools (Architecture, Security, Tech Stack, Health) each
+  // analyse ONE source.  Their picker lists the project's GitHub sources, and
+  // the choice persists on the project so reopening a tool restores it.  Repo
+  // Chat is exempt: it always spans the whole sidebar selection.
+  const toolSources = useMemo(() => {
+    if (!projectId) return []
+    return visibleSources.filter((s) => s.type === 'github')
+  }, [projectId, visibleSources])
+
+  const [toolSourceId, setToolSourceId] = useState('')
+  // The user must explicitly choose the source a tool analyses.  A previously
+  // remembered choice that is still present counts as chosen; otherwise the
+  // selection stays empty and each tool shows a "select a source" prompt
+  // instead of silently picking one.
+  useEffect(() => {
+    if (!projectId) {
+      setToolSourceId('')
+      return
+    }
+    const remembered = activeProject?.tool_source_id || ''
+    if (remembered && toolSources.some((s) => s.id === remembered)) {
+      setToolSourceId(remembered)
+    } else {
+      setToolSourceId('')
+    }
+  }, [projectId, activeProject, toolSources])
+
+  const handleToolSourceChange = useCallback(
+    (nextSourceId) => {
+      setToolSourceId(nextSourceId)
+      if (!projectId || !nextSourceId) return
+      // Persist best-effort; the tool already works with the local value.
+      setProjectToolSource(projectId, nextSourceId)
+        .then((updated) => {
+          if (updated) setActiveProject(updated)
+        })
+        .catch(() => {})
+    },
+    [projectId],
+  )
+
   // Studio tool outputs render in the main window; the rail only holds the
   // five tool buttons.  Cleared when leaving the project or returning to chat.
   // Repo Chat is the main composer itself — not a separate view.
@@ -135,14 +176,6 @@ export default function Home() {
     clear: clearSourceSelection,
   } = selection
 
-  // The Mind Map tab's in-tab picker edits the same selection the sidebar owns.
-  const setSelection = useCallback(
-    (ids) => {
-      selection.replaceAll(ids)
-    },
-    [selection],
-  )
-
   // Chat and Mind Map share the selection, so both stay on the same scope.
   // The Mind Map is reached from a button in the evidence rail, not a tab.
   const [activeView, setActiveView] = useState('chat')
@@ -150,6 +183,17 @@ export default function Home() {
     setStudioView(null)
     setActiveView((view) => (view === 'mindmap' ? 'chat' : 'mindmap'))
   }, [])
+
+  // The Mind Map targets exactly ONE source, chosen in its own panel — separate
+  // from the sidebar selection chat uses, and with no "all sources" default.
+  const [mindMapSourceId, setMindMapSourceId] = useState('')
+  useEffect(() => {
+    // Reset when the project changes, and drop a selection that is no longer a
+    // member of the visible sources.
+    setMindMapSourceId((current) =>
+      current && visibleSources.some((s) => s.id === current) ? current : '',
+    )
+  }, [projectId, visibleSources])
 
   // Allow the shared sidebar's "Add Source" button on any page to open the
   // ingest modal by returning to the workspace with ?add=1.
@@ -159,6 +203,19 @@ export default function Home() {
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, setSearchParams])
+
+  // Persisted chat sessions for this project.  A session is created lazily on
+  // the first message; the thread is bound to it so history survives refresh.
+  const {
+    activeSessionId,
+    ensureSession,
+    createSession,
+    refresh: refreshSessions,
+  } = useChatSessions(projectId)
+
+  const handleNewSession = useCallback(() => {
+    if (projectId) createSession('')
+  }, [projectId, createSession])
 
   const {
     input,
@@ -172,8 +229,12 @@ export default function Home() {
     confidence,
     retryLast,
     showUploadHint,
-    resetChat,
-  } = useChat({ sourceIds: selectedSourceIds })
+  } = useChat({
+    sessionId: activeSessionId,
+    resolveSessionId: ensureSession,
+    onNewSession: handleNewSession,
+    sourceIds: selectedSourceIds,
+  })
 
   const pushNotification = useCallback((type, text) => {
     const id = `${type}-${Date.now()}`
@@ -191,11 +252,14 @@ export default function Home() {
       try {
         const updated = await attachSourceToProject(projectId, sourceId)
         setActiveProject(updated)
+        // The first source to land in a project names its chat thread; refresh
+        // so a newly generated title appears immediately.
+        refreshSessions()
       } catch {
         /* best effort — source is still ingested globally */
       }
     },
-    [projectId],
+    [projectId, refreshSessions],
   )
 
   const showConfirm = useCallback((message) => {
@@ -398,21 +462,6 @@ export default function Home() {
 
   const isProcessing = isUploading || isAddingRepo || isAddingUrl || isAddingText || isAddingYoutube
 
-  const handleClearKB = useCallback(async () => {
-    const confirmed = await showConfirm(
-      'Are you sure you want to clear the entire knowledge base? This cannot be undone.',
-    )
-    if (!confirmed) return
-    try {
-      await clearKnowledgeBase()
-      replaceAll([])
-      resetChat()
-      pushNotification('success', 'Knowledge base cleared successfully.')
-    } catch (err) {
-      pushNotification('error', err.message || 'Failed to clear knowledge base.')
-    }
-  }, [showConfirm, pushNotification, resetChat, replaceAll])
-
   const handleDeleteSource = useCallback(
     async (id) => {
       try {
@@ -469,9 +518,10 @@ export default function Home() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [renameTarget, renameSaving])
 
-  // How many sources chat is currently allowed to draw on, for its counter.
-  const chatScopeCount =
-    selectedSourceIds.length > 0 ? selectedSourceIds.length : visibleSources.length
+  // Chat works with any number of selected sources, including none.  An empty
+  // selection means the question is answered from general knowledge rather than
+  // from a specific source.  (The mind map keeps its own single-source picker.)
+  const chatScopeCount = selectedSourceIds.length
 
   const main = (
     <div className="main-card is-bare">
@@ -489,13 +539,34 @@ export default function Home() {
           {projectMissing ? (
             <span>This project could not be found.</span>
           ) : (
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <strong style={{ color: 'var(--ink-strong)' }}>
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 10,
+                overflow: 'hidden',
+                minWidth: 0,
+              }}
+            >
+              <strong
+                style={{
+                  color: 'var(--ink-strong)',
+                  fontSize: '1.35rem',
+                  fontWeight: 650,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {activeProject?.name || 'Loading project…'}
               </strong>
-              {activeProject
-                ? ` · ${visibleSources.length} of ${sources.length} sources in view`
-                : ''}
+              {activeProject ? (
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  {visibleSources.length} source{visibleSources.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
             </span>
           )}
         </div>
@@ -505,7 +576,6 @@ export default function Home() {
         <div className="rs-main">
           <div className="rs-main-head">
             <div>
-              <span className="ev-eyebrow">Studio</span>
               <h2>{studioLabel}</h2>
             </div>
             <button className="mh-back" onClick={() => setStudioView(null)}>
@@ -530,6 +600,9 @@ export default function Home() {
               tool={effectiveStudio}
               projectId={projectId}
               hasGithubSource={Boolean(repoStudioSource)}
+              sourceId={toolSourceId}
+              sources={toolSources}
+              onSourceChange={handleToolSourceChange}
             />
           </div>
         </div>
@@ -543,15 +616,14 @@ export default function Home() {
           error={error}
           onRetry={retryLast}
           uploadHint={showUploadHint}
-          onNewChat={resetChat}
           sourceCount={chatScopeCount}
           focusRequest={chatFocusRequest}
         />
       ) : (
         <MindMapPanel
           sources={visibleSources}
-          selectedIds={selectedSourceIds}
-          onSelectionChange={setSelection}
+          sourceId={mindMapSourceId}
+          onSourceChange={setMindMapSourceId}
         />
       )}
     </div>
@@ -589,7 +661,6 @@ export default function Home() {
             selectedSourceIds={selectedSourceIds}
             onRenameSource={handleRequestRenameSource}
             onDeleteSource={handleRequestRemoveSource}
-            onClearKB={handleClearKB}
             scopeTypes={sidebarScope}
           />
         }
