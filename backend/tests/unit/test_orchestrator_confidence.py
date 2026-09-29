@@ -37,10 +37,17 @@ def test_is_vague_query(question: str, expected: bool) -> None:
     assert _is_vague_query(question) is expected
 
 
-def _reranked(source_id: str, rank: int) -> RerankedChunk:
+def _reranked(source_id: str, rank: int, *, score: float = 0.5) -> RerankedChunk:
+    """Build one retrieved chunk.
+
+    The default score is 0.5 - a genuine match - because the focus gate reads
+    the top chunk score rather than the reranker's floored display value. A stub
+    claiming ``base=0.20`` while scoring every chunk ``0.1`` would describe a
+    non-match and then ask for a boost.
+    """
     return RerankedChunk(
         chunk=Chunk(chunk_id=f"{source_id}:{rank}", text=f"chunk {source_id}:{rank}", source_id=source_id),
-        score=0.1,
+        score=score,
         rank=rank,
     )
 
@@ -70,7 +77,8 @@ async def test_focus_boost_moderate() -> None:
 async def test_no_boost_when_off_topic() -> None:
     """Low per-chunk relevance (below the gate) means off-topic — no boost."""
     orch = Orchestrator.__new__(Orchestrator)
-    reranked = [_reranked("src", i) for i in range(1, 6)]  # focus = 1.0
+    # Chunks that genuinely did not match, matching the low reported base.
+    reranked = [_reranked("src", i, score=0.05) for i in range(1, 6)]  # focus = 1.0
     confidence = await orch._apply_confidence("meaning of life", reranked, base=0.10)
     assert confidence == 0.10
 
@@ -100,3 +108,71 @@ async def test_no_boost_for_chitchat() -> None:
     reranked = [_reranked("src", 1)]
     confidence = await orch._apply_confidence("hello", reranked, base=0.20)
     assert confidence == 0.20
+
+
+@pytest.mark.asyncio
+async def test_overview_boost_still_requires_some_relevance() -> None:
+    """Source dominance must not manufacture confidence on a non-match.
+
+    "What does this repository do?" is classified as a corpus overview (it is
+    short and contains a corpus-reference marker), and all five retrieved chunks
+    came from one repo, so focus was 1.0. The cross-encoder still scored the
+    best chunk 0.0696 — effectively no match. The overview branch used to
+    bypass the relevance gate entirely, so this reported 0.85 "Excellent" while
+    retrieval had found nothing relevant. Concentration indicates *which*
+    source was read; it is not evidence that the question was answered.
+    """
+    orch = Orchestrator.__new__(Orchestrator)
+    # Real chunks from the reproduced run: the best scored 0.0153, and the
+    # reranker had already lifted its reported confidence to the 0.15 display
+    # floor. That floored value is what made the old gate unreachable, so the
+    # test reproduces it exactly rather than passing a convenient number.
+    reranked = [
+        RerankedChunk(
+            chunk=Chunk(
+                chunk_id=f"repo:diabetescare-ai:{i}",
+                text=f"chunk {i}",
+                source_id="repo:diabetescare-ai",
+            ),
+            score=score,
+            rank=i,
+        )
+        for i, score in enumerate((0.0153, 0.0121, 0.0094, 0.0088, 0.0071), start=1)
+    ]
+
+    confidence = await orch._apply_confidence(
+        "What does this repository do?",
+        reranked,
+        base=0.15,
+    )
+
+    assert confidence == 0.15, (
+        "a 0.0153 top score must not be reported as a boosted high-confidence "
+        "answer just because every chunk came from the same repository"
+    )
+
+
+@pytest.mark.asyncio
+async def test_overview_boost_still_applies_above_the_overview_gate() -> None:
+    """The reduced gate must not disable the boost it exists to permit.
+
+    A genuine "summarize this" over a small, fully-retrieved source scores low
+    on the cross-encoder but really is well grounded. That case must keep its
+    boost, otherwise fixing the defect above would just remove the feature.
+    """
+    orch = Orchestrator.__new__(Orchestrator)
+    reranked = [_reranked("src", i) for i in range(1, 6)]  # focus = 1.0
+
+    confidence = await orch._apply_confidence("summarize this", reranked, base=0.20)
+
+    assert confidence == 0.85, "the corpus-overview boost must still work when relevance is real"
+
+
+@pytest.mark.asyncio
+async def test_overview_gate_sits_below_the_ordinary_gate() -> None:
+    """The overview floor is a relaxation, not a hole.
+
+    If the two gates ever equalise, the distinct constant stops earning its
+    keep and the special case is just dead configuration.
+    """
+    assert Orchestrator._OVERVIEW_RELEVANCE_GATE < Orchestrator._FOCUS_RELEVANCE_GATE

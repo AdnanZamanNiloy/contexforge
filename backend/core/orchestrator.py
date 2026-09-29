@@ -587,6 +587,18 @@ class Orchestrator:
     # Per-chunk relevance (reranker best score) must reach this before a focus
     # boost is applied — below it the query is treated as off-topic/no-match.
     _FOCUS_RELEVANCE_GATE = 0.20
+    # Corpus-overview requests ("summarize this", "tell me about the source")
+    # are scored low by the cross-encoder for a legitimate reason: a generic
+    # request matches no particular passage strongly, even when the answer is
+    # well grounded. They therefore get a lower floor than ordinary questions.
+    #
+    # They used to bypass the gate entirely, which was the actual defect: a
+    # near-total non-match (best chunk 0.07 on a generic "what does this
+    # repository do") was reported as 0.85 "Excellent" purely because
+    # retrieval happened to stay inside one source. Concentration says *which*
+    # source was read; it says nothing about whether the question was answered,
+    # so it must never manufacture confidence on its own.
+    _OVERVIEW_RELEVANCE_GATE = 0.12
 
     def _source_exclude_set(
         self,
@@ -649,11 +661,22 @@ class Orchestrator:
         """
         if not reranked or _is_chitchat(question):
             return base
-        # Overview/summary requests about the corpus are allowed a focus boost
-        # regardless of the per-chunk relevance gate (the cross-encoder scores a
-        # generic "tell me about source" request low against raw article chunks).
-        # Off-topic questions about a named external subject still need relevance.
-        if not _is_corpus_overview(question) and base < self._FOCUS_RELEVANCE_GATE:
+        # Gate on the best *actual* chunk score, not on *base*.
+        #
+        # *base* comes from the reranker already lifted to its display floor, so
+        # it can never fall below 0.15 and a gate set under that value is
+        # unreachable — a genuine non-match would be read as merely "meets the
+        # gate" and then boosted. The top chunk score is the un-floored
+        # relevance signal, and it is what the gate was always meant to express.
+        relevance = max(c.score for c in reranked)
+        # A generic request about the corpus ("summarize this") gets a lower
+        # floor than a specific question, because the cross-encoder scores such
+        # a request low against raw article chunks even when the answer is well
+        # grounded. That is a relaxation, not an exemption: below this, nothing
+        # in the retrieved set addressed the question, and no amount of source
+        # concentration makes the answer well supported.
+        gate = self._OVERVIEW_RELEVANCE_GATE if _is_corpus_overview(question) else self._FOCUS_RELEVANCE_GATE
+        if relevance < gate:
             return base
 
         source_counts: dict[str, int] = {}
@@ -672,12 +695,14 @@ class Orchestrator:
             if focus >= min_focus and tier_confidence > best:
                 best = tier_confidence
         logger.debug(
-            "_apply_confidence: focus=%.3f dominant=%s chunks=%d total=%d base=%.4f → %.4f",
+            "_apply_confidence: focus=%.3f dominant=%s chunks=%d total=%d "
+            "base=%.4f relevance=%.4f → %.4f",
             focus,
             dominant,
             source_counts[dominant],
             len(reranked),
             base,
+            relevance,
             best,
         )
         return best
