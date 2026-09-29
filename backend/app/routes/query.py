@@ -181,16 +181,28 @@ def _provider_error_detail(exc: httpx.HTTPStatusError) -> tuple[int, str]:
 async def _sse_generator(request: QueryRequest, service: QueryService):
     """Async generator that yields SSE-formatted strings.
 
-    FIX #1 — wraps every token in ``data: ...\\n\\n``.
+    FIX #1 — wraps every event in ``data: ...\\n\\n``.
     FIX #2 — catches service errors and emits an SSE error event.
     FIX #7 — always terminates with [DONE] or [ERROR].
+
+    Every event is a single line. Answer text is JSON-encoded in a ``[TOK]``
+    frame so a token containing a newline cannot break the framing — see the
+    note at the token branch below for what that costs if it is skipped.
 
     FIX: emits ``data: [CONFIDENCE] <json>\\n\\n`` before [DONE].
     """
     try:
         async for payload in service.stream_answer(request):
             if payload.get("type") == "token":
-                yield f"data: {payload.get('token', '')}\n\n"
+                # The token is JSON-encoded so it occupies exactly one SSE
+                # line. A raw token containing a newline breaks the framing: a
+                # token of "\n" becomes an empty "data:" line, which the client
+                # drops, and a token like "foo\nbar" loses everything after the
+                # break because the remainder no longer carries the data:
+                # prefix. Every blank line between paragraphs was being lost
+                # this way, which collapsed the answer into one line and left
+                # markdown markers rendering as literal text.
+                yield f"data: [TOK] {json.dumps(payload.get('token', ''))}\n\n"
             elif payload.get("type") == "status":
                 # A progress marker, sent before any token exists. Without it
                 # the stream carries nothing for the whole of retrieval and

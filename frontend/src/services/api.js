@@ -264,6 +264,23 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
           continue
         }
 
+        if (data.startsWith('[TOK]')) {
+          // Answer text arrives JSON-encoded in a single line. Without the
+          // encoding, a token of "\n" became an empty "data:" line and was
+          // dropped here, and "foo\nbar" lost everything after the break — so
+          // every blank line between paragraphs vanished and markdown markers
+          // rendered as literal text.
+          if (handlers.onToken) {
+            const json = data.slice('[TOK]'.length).trim()
+            try {
+              handlers.onToken(JSON.parse(json))
+            } catch {
+              handlers.onToken(json)
+            }
+          }
+          continue
+        }
+
         if (handlers.onToken) {
           handlers.onToken(data)
         }

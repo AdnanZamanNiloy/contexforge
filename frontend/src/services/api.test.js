@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   createMindMap,
+  streamQuery,
   createModel,
   deleteModel,
   fetchSources,
@@ -224,5 +225,97 @@ describe('architecture timeouts', () => {
       readIntIn('../backend/app/architecture/service.py', 'MAX_GENERATION_SECONDS = ') * 1000
 
     expect(clientWindowMs - serverCapMs).toBeGreaterThanOrEqual(30000)
+  })
+})
+
+describe('streamQuery token framing', () => {
+  // Regression: the answer's newlines were being dropped in transit.
+  //
+  // An SSE `data:` field is a single line. Sending a raw token meant a token
+  // of "\n" arrived as an empty data line (skipped by the parser) and
+  // "foo\nbar" lost everything after the break, because the remainder no longer
+  // carried the `data:` prefix. Tokens are now JSON-encoded in a `[TOK]` frame,
+  // which occupies exactly one line whatever the token contains.
+  function streamOf(chunks) {
+    const body = chunks.join('')
+    const bytes = new TextEncoder().encode(body)
+    let consumed = false
+    return {
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (consumed) return { value: undefined, done: true }
+            consumed = true
+            return { value: bytes, done: false }
+          },
+        }),
+      },
+    }
+  }
+
+  it('preserves newlines inside a token', async () => {
+    mockFetch(streamOf(['data: [TOK] "\\n"\n\n', 'data: [TOK] "hello"\n\n', 'data: [DONE]\n\n']))
+    const tokens = []
+    await streamQuery({ question: 'q' }, { onToken: (t) => tokens.push(t) })
+    expect(tokens).toEqual(['\n', 'hello'])
+  })
+
+  it('rebuilds a paragraph break that arrives as its own token', async () => {
+    mockFetch(
+      streamOf([
+        'data: [TOK] "## Backend"\n\n',
+        'data: [TOK] "\\n"\n\n',
+        'data: [TOK] "\\n"\n\n',
+        'data: [TOK] "The core is a FastAPI app."\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    )
+    let text = ''
+    await streamQuery({ question: 'q' }, { onToken: (t) => { text += t } })
+    expect(text).toBe('## Backend\n\nThe core is a FastAPI app.')
+  })
+
+  it('preserves a token containing an embedded newline', async () => {
+    mockFetch(streamOf(['data: [TOK] "foo\\nbar"\n\n', 'data: [DONE]\n\n']))
+    const tokens = []
+    await streamQuery({ question: 'q' }, { onToken: (t) => tokens.push(t) })
+    expect(tokens).toEqual(['foo\nbar'])
+  })
+
+  it('preserves markdown punctuation and quotes', async () => {
+    const tricky = '**bold** `code` — "quoted" [1] ## heading'
+    mockFetch(streamOf([`data: [TOK] ${JSON.stringify(tricky)}\n\n`, 'data: [DONE]\n\n']))
+    const tokens = []
+    await streamQuery({ question: 'q' }, { onToken: (t) => tokens.push(t) })
+    expect(tokens).toEqual([tricky])
+  })
+
+  it('still routes status, latency and done events', async () => {
+    mockFetch(
+      streamOf([
+        'data: [STATUS] retrieving\n\n',
+        'data: [TOK] "ok"\n\n',
+        'data: [LATENCY] {"total_ms": 5}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    )
+    const statuses = []
+    const tokens = []
+    let latency = null
+    let done = false
+    await streamQuery(
+      { question: 'q' },
+      {
+        onStatus: (s) => statuses.push(s),
+        onToken: (t) => tokens.push(t),
+        onLatency: (l) => { latency = l },
+        onDone: () => { done = true },
+      },
+    )
+    expect(statuses).toEqual(['retrieving'])
+    expect(tokens).toEqual(['ok'])
+    expect(latency).toEqual({ total_ms: 5 })
+    expect(done).toBe(true)
   })
 })
