@@ -109,3 +109,42 @@ async def test_reranker_surfaces_second_source(monkeypatch) -> None:
     results, _ = await reranker.rerank("query", candidates, top_k=top_k)
     selected_sources = {r.chunk.source_id for r in results}
     assert "doc-b" in selected_sources
+
+
+def test_rerank_token_budget_is_capped(monkeypatch) -> None:
+    """Reranking runs on every request, so its token budget is a latency tax.
+
+    Scoring 20 full 512-token chunks measured ~2.2s per query, roughly a
+    quarter of the whole request. The cap is what keeps that down, so it is
+    asserted here rather than left to a comment nobody re-reads.
+    """
+    from app.config.settings import settings
+
+    assert settings.RERANK_MAX_LENGTH > 0, "a zero budget would score nothing"
+    assert settings.RERANK_MAX_LENGTH <= 512, (
+        "512 is the tokenizer default and is the slow path this cap exists to avoid; "
+        "if a larger budget is genuinely needed, re-measure first"
+    )
+
+    captured: dict[str, int] = {}
+
+    class FakeCrossEncoder:
+        def __init__(self, model_name, *, max_length):
+            captured["model"] = model_name
+            captured["max_length"] = max_length
+
+    import sys
+    import types
+
+    fake_module = types.ModuleType("sentence_transformers")
+    fake_module.CrossEncoder = FakeCrossEncoder
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake_module)
+
+    reranker = Reranker()
+    reranker._load_model_sync()
+
+    assert captured["model"] == settings.RERANK_MODEL
+    assert captured["max_length"] == settings.RERANK_MAX_LENGTH, (
+        "the configured budget must reach the tokenizer, otherwise the cap is "
+        "declared in settings but never applied and rerank stays slow"
+    )

@@ -154,18 +154,44 @@ export function useChat({ sourceIds = [] } = {}) {
 
       try {
         let hasTokens = false
+        // The progress label currently sitting in the assistant bubble, so the
+        // first real token can replace it rather than being appended to it.
+        let placeholder = ''
         const payload = {
           question: trimmed,
           source_ids: sourceIds.length ? sourceIds : undefined,
         }
         await streamQuery(payload, {
           signal: controller.signal,
+          // Sent by the server as soon as the request is accepted and again
+          // when the sources are known. Retrieval and reranking take
+          // milliseconds while generation takes seconds, so without this the
+          // bubble is empty for the whole of the slow part and the request
+          // reads as hung.
+          onStatus: (stage) => {
+            const label =
+              stage === 'retrieving'
+                ? 'Searching your sources…'
+                : 'Reading them and composing an answer…'
+            placeholder = label
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantId ? { ...message, text: label } : message,
+              ),
+            )
+          },
           onToken: (token) => {
             hasTokens = true
             setMessages((prev) =>
-              prev.map((message) =>
-                message.id === assistantId ? { ...message, text: message.text + token } : message,
-              ),
+              prev.map((message) => {
+                if (message.id !== assistantId) return message
+                // First token: the progress label has done its job.
+                if (placeholder && message.text === placeholder) {
+                  placeholder = ''
+                  return { ...message, text: token }
+                }
+                return { ...message, text: message.text + token }
+              }),
             )
           },
           onSources: (nextSources) => {
@@ -208,7 +234,9 @@ export function useChat({ sourceIds = [] } = {}) {
           // FIX: parse confidence from fallback response
           setConfidence(fallback.confidence || DEFAULT_CONFIDENCE)
         } catch (fallbackError) {
-          updateAssistant(assistantId, { status: 'error' })
+          // Cleared rather than left in place: the progress label is not an
+          // answer, and a failed request should not display one as if it were.
+          updateAssistant(assistantId, { text: '', status: 'error' })
           setError(fallbackError.message || 'Request failed')
         }
       } finally {

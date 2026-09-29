@@ -83,6 +83,14 @@ class QueryService:
         FIX: done event now includes ``confidence`` with server-side metrics.
 
         Yields:
+            ``{"type": "status", "stage": str}`` — emitted as soon as the
+                request is accepted, and again once the sources are known, so a
+                client has something to show before the first token exists.
+                Retrieval and reranking complete in milliseconds; generation is
+                what takes seconds, and without these the stream is silent for
+                the whole of it.
+            ``{"type": "sources", "sources": [...]}`` — emitted once the
+                context is chosen, before generation begins.
             ``{"type": "token", "token": str}`` — one per token.
             ``{"type": "done", "sources": [...], "latency_ms": {...},
                 "confidence": {...}}`` — terminator.
@@ -97,6 +105,10 @@ class QueryService:
             request.source_ids,
         )
 
+        # Sent before any work starts, so the UI can leave its spinner for
+        # "searching your sources" immediately rather than sitting on a void.
+        yield {"type": "status", "stage": "retrieving"}
+
         # Unpack the new 3-tuple from retrieve_context
         reranked, timings, mean_confidence = await self._orchestrator.retrieve_context(
             request.question,
@@ -106,6 +118,16 @@ class QueryService:
             source_id=request.source_id,
             source_ids=request.source_ids,
         )
+
+        # The sources are known now and generation has not started, so this is
+        # the one moment the answer is not yet in the way. Sending them here
+        # lets the client show what is being read while the model is still
+        # thinking, instead of revealing the citations at the very end.
+        yield {
+            "type": "sources",
+            "sources": [_source_payload(chunk) for chunk in reranked],
+        }
+        yield {"type": "status", "stage": "generating"}
 
         # Time the LLM stream so generation latency is visible in the
         # breakdown (time-to-first-token + total generation time).

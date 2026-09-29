@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     NVIDIA_API_KEY: str = Field(default="")
     NVIDIA_MODEL: str = Field(default="meta/llama-3.3-70b-instruct")
     RERANK_MODEL: str = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
+    # Token budget per (query, chunk) pair at rerank time. Reranking is pure CPU
+    # and runs on every request before generation starts, so this is a direct
+    # tax on end-to-end latency. The cross-encoder only needs enough passage to
+    # judge relevance, not the whole 512-token window the chunks were built with.
+    RERANK_MAX_LENGTH: int = Field(default=256)
 
     ALLOWED_ORIGINS: list[str] = Field(default_factory=list)
 

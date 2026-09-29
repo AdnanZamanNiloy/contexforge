@@ -110,11 +110,17 @@ async def stream_query(
     the client knows the stream ended abnormally rather than silently.
 
     Event sequence:
-        data: <token>\\n\\n          (one per token)
-        data: [SOURCES] <json>\\n\\n (source list after last token)
-        data: [LATENCY] <json>\\n\\n (per-stage latency breakdown)
+        data: [STATUS] <stage>\\n\\n     (progress, before any token)
+        data: [SOURCES] <json>\\n\\n   (once the context is chosen, pre-generation)
+        data: <token>\\n\\n            (one per token)
+        data: [SOURCES] <json>\\n\\n   (source list after last token)
+        data: [LATENCY] <json>\\n\\n   (per-stage latency breakdown)
         data: [CONFIDENCE] <json>\\n\\n (server-side confidence metrics)
-        data: [DONE]\\n\\n           (terminator)
+        data: [DONE]\\n\\n             (terminator)
+
+    The first two events are what make streaming worth using: retrieval finishes
+    in milliseconds while generation takes seconds, so a stream that only carries
+    tokens is silent for the whole of the slow part.
     """
     logger.info("stream_query: question=%r", request.question)
     return StreamingResponse(
@@ -185,6 +191,19 @@ async def _sse_generator(request: QueryRequest, service: QueryService):
         async for payload in service.stream_answer(request):
             if payload.get("type") == "token":
                 yield f"data: {payload.get('token', '')}\n\n"
+            elif payload.get("type") == "status":
+                # A progress marker, sent before any token exists. Without it
+                # the stream carries nothing for the whole of retrieval and
+                # generation, which is indistinguishable from a hang.
+                stage = payload.get("stage", "")
+                if stage:
+                    yield f"data: [STATUS] {stage}\n\n"
+            elif payload.get("type") == "sources":
+                # Sent as soon as the context is chosen, so the client can show
+                # the citations while the model is still generating.
+                early = payload.get("sources") or []
+                if early:
+                    yield f"data: [SOURCES] {json.dumps(early)}\n\n"
             elif payload.get("type") == "done":
                 sources = payload.get("sources", [])
                 latency_ms = payload.get("latency_ms", {})

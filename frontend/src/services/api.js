@@ -203,6 +203,16 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
           continue
         }
 
+        if (data.startsWith('[STATUS]')) {
+          // A progress marker sent before any token exists, so the UI can say
+          // what it is doing instead of sitting on an empty bubble. Sent twice
+          // per request: once when retrieval starts, once when generation does.
+          if (handlers.onStatus) {
+            handlers.onStatus(data.replace('[STATUS]', '').trim())
+          }
+          continue
+        }
+
         if (data.startsWith('[SOURCES]')) {
           const json = data.replace('[SOURCES]', '').trim()
           if (handlers.onSources) {
