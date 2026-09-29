@@ -135,7 +135,13 @@ class PromptBuilder:
             "index for this project. It is a listing only — the passages above "
             "remain your only source of file contents. Use this list when the "
             "question asks about the project's layout, and say plainly when a "
-            "file is listed but no passage describes it.\n\n"
+            "file is listed but no passage describes it.\n"
+            "The paths are flat, one per line. When you present a directory "
+            "listing, render it as a tree using box-drawing characters — "
+            "`├──` and `└──` for entries, `│   ` to continue a branch and four "
+            "spaces after a last entry. Do not fall back to a flat list or to "
+            "space-indented paths, which read as an undifferentiated dump "
+            "rather than as a structure.\n"
             f"FILE MANIFEST:\n```\n{listing}\n```"
         )
 
