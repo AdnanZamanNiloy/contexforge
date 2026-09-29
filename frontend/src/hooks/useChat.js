@@ -4,6 +4,22 @@ import { queryAnswer, streamQuery } from '../services/api'
 
 const STORAGE_PREFIX = 'contextforge:chat:'
 
+// Progress labels shown in the assistant bubble while the server works. Kept as
+// named values so the label and the "is this a placeholder?" test cannot drift
+// apart — the test has to recognise exactly the strings that were written.
+const STATUS_LABELS = {
+  retrieving: 'Searching your sources…',
+  generating: 'Reading them and composing an answer…',
+}
+
+function statusLabel(stage) {
+  return STATUS_LABELS[stage] || STATUS_LABELS.generating
+}
+
+function isStatusLabel(text) {
+  return Object.values(STATUS_LABELS).includes(text)
+}
+
 // Chat history is kept per scope.  The workspace scopes a query to the sources
 // the user selected in the sidebar, so a thread is only meaningful alongside the
 // selection that produced it — sorting keeps "a + b" and "b + a" on one thread.
@@ -154,9 +170,6 @@ export function useChat({ sourceIds = [] } = {}) {
 
       try {
         let hasTokens = false
-        // The progress label currently sitting in the assistant bubble, so the
-        // first real token can replace it rather than being appended to it.
-        let placeholder = ''
         const payload = {
           question: trimmed,
           source_ids: sourceIds.length ? sourceIds : undefined,
@@ -169,14 +182,11 @@ export function useChat({ sourceIds = [] } = {}) {
           // bubble is empty for the whole of the slow part and the request
           // reads as hung.
           onStatus: (stage) => {
-            const label =
-              stage === 'retrieving'
-                ? 'Searching your sources…'
-                : 'Reading them and composing an answer…'
-            placeholder = label
             setMessages((prev) =>
               prev.map((message) =>
-                message.id === assistantId ? { ...message, text: label } : message,
+                message.id === assistantId
+                  ? { ...message, text: statusLabel(stage) }
+                  : message,
               ),
             )
           },
@@ -185,9 +195,16 @@ export function useChat({ sourceIds = [] } = {}) {
             setMessages((prev) =>
               prev.map((message) => {
                 if (message.id !== assistantId) return message
-                // First token: the progress label has done its job.
-                if (placeholder && message.text === placeholder) {
-                  placeholder = ''
+                // First token: the progress label has done its job, so replace
+                // it rather than appending the answer to it.
+                //
+                // The bubble's own text decides this, not a variable captured
+                // outside the updater. React invokes a state updater more than
+                // once in development (StrictMode double-invocation), and a
+                // side effect inside one - such as clearing a flag - makes the
+                // second pass see stale state and append the answer to the
+                // label instead of replacing it.
+                if (isStatusLabel(message.text)) {
                   return { ...message, text: token }
                 }
                 return { ...message, text: message.text + token }
