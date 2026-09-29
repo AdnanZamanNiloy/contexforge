@@ -80,8 +80,20 @@ class PromptBuilder:
 
         return BuiltPrompt(
             user_prompt=user_prompt,
-            system_prompt=settings.ANSWER_SYSTEM_PROMPT,
+            system_prompt=self._system_prompt_for_context(),
         )
+
+    @staticmethod
+    def _system_prompt_for_context() -> str:
+        """The analyst prompt, plus citation rules when there is context to cite.
+
+        Appended only when context is present: with no retrieved material there
+        are no passage numbers, so asking for markers would invite the model to
+        invent them.
+        """
+        if not settings.ENABLE_CITATIONS:
+            return settings.ANSWER_SYSTEM_PROMPT
+        return settings.ANSWER_SYSTEM_PROMPT + settings.CITATION_INSTRUCTIONS
 
     @staticmethod
     def _validate(question: str, chunks: list[Chunk] | None) -> None:
@@ -103,7 +115,15 @@ class PromptBuilder:
 
     @staticmethod
     def _format_context(chunks: list[Chunk]) -> str:
+        """Join chunks into a numbered context block.
 
+        The numbers are what citation markers refer to, so they must be
+        positional and stable: position *n* in this list is the *n*-th source in
+        the response payload, which is the same order the reranker ranked them
+        in. Any divergence here would make ``[1]`` point at the wrong source, so
+        the caller must pass chunks in final display order.
+        """
         if not chunks:
             return "(no context available)"
-        return "\n\n---\n\n".join(chunk.text for chunk in chunks)
+        return "\n\n".join(f"[{i}] {chunk.text}" for i, chunk in enumerate(chunks, start=1))
+

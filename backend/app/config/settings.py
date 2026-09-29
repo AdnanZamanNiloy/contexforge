@@ -186,6 +186,35 @@ class Settings(BaseSettings):
         )
     )
 
+    # Appended to ANSWER_SYSTEM_PROMPT when citation markers are enabled.
+    #
+    # Kept separate from the analyst prompt on purpose. That prompt was tuned to
+    # prefer natural attributive phrasing over mechanical citations, and the two
+    # pull against each other. Isolating the citation behaviour here means the
+    # instruction can be tuned, or switched off wholesale, without rewriting
+    # prose guidance that is already working.
+    #
+    # ENABLE_CITATIONS is the single switch. Markers are validated against the
+    # retrieved source count server-side regardless, so disabling this only
+    # stops the model producing them.
+    ENABLE_CITATIONS: bool = Field(default=True)
+
+    CITATION_INSTRUCTIONS: str = Field(
+        default=(
+            "\n\nCITATION MARKERS:\n"
+            "- Each passage above is numbered. After any specific factual claim, "
+            "append the number of the passage it came from in square brackets, "
+            "e.g. [1].\n"
+            "- Cite only numbers that appear above, and cite the closest matching "
+            "passage. Never invent a passage number.\n"
+            "- Markers are for specific claims a reader might want to verify - "
+            "figures, names, endpoints, configuration values. Do not attach one "
+            "to every sentence, and never let markers stand in for clear prose.\n"
+            "- These markers are passage references, not internal identifiers. "
+            "Never write a chunk ID, UUID, or any other system value.\n"
+        )
+    )
+
     GENERAL_SYSTEM_PROMPT: str = Field(
         default=(
             "You are a knowledgeable, helpful assistant. No documents are loaded "

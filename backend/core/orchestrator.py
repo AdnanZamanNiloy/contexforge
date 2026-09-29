@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from app.config.settings import settings
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
+from core.generation.citations import parse_citations
 from core.generation.grounding import check_grounding
 from core.generation.prompt_builder import PromptBuilder
 from core.interfaces.embedder import Embedder
@@ -848,8 +849,23 @@ class Orchestrator:
         # Rebuilt so the coverage label tracks the adjusted number instead of
         # continuing to say "Excellent" over a penalised confidence.
         confidence = self._build_confidence(reranked, adjusted)
+
+        # Validate citation markers against the sources actually retrieved, and
+        # return the rewritten answer. A model asked to cite can cite a passage
+        # that was never supplied; a dead reference that looks authoritative is
+        # worse than no citation, so out-of-range markers are stripped here
+        # rather than shipped.
+        citations = parse_citations(answer_text, len(reranked))
+        if citations.discarded:
+            logger.warning(
+                "citations: dropped %d out-of-range marker(s) %s — the model cited "
+                "a passage that was not retrieved",
+                len(citations.discarded),
+                list(citations.discarded),
+            )
+
         return GenerationResult(
-            answer=answer_text,
+            answer=citations.text,
             sources=reranked,
             latency_ms=timings,
             confidence=confidence,
