@@ -246,9 +246,45 @@
 }
 
 .pg-cover {
+  /* The element is a <span> inside a <button>.  Without an explicit block
+     display it stays inline, and an inline box ignores `height` — so the cover
+     grew to the full height of its image.  The abstract SVG hid this because it
+     filled whatever box it was given; a photograph sized to its own ratio. */
+  display: block;
   position: relative;
   height: 148px;
   overflow: hidden;
+}
+
+/* Real photograph on a featured template.
+   Fills the frame and crops to the cover aspect, and a scrim keeps the
+   "Curated collection" badge legible over any image. */
+.pg-cover-photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 42%;
+  transform: scale(1);
+  transition: transform 0.35s ease;
+}
+
+.pg-cover.has-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(6, 7, 10, 0.5) 0%, rgba(6, 7, 10, 0) 38%),
+    linear-gradient(0deg, rgba(6, 7, 10, 0.42) 0%, rgba(6, 7, 10, 0) 46%);
+}
+
+.pg-cover.has-photo .pg-provider-badge {
+  z-index: 1;
+}
+
+.pg-featured-card:hover .pg-cover-photo {
+  transform: scale(1.04);
 }
 
 .pg-cover svg {
@@ -1128,7 +1164,8 @@
   .pg-featured-card,
   .pg-card,
   .pg-new-btn,
-  .pg-cover svg {
+  .pg-cover svg,
+  .pg-cover-photo {
     transition: none;
   }
   .pg-modal,

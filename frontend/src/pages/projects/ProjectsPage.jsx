@@ -314,8 +314,24 @@ export default function ProjectsPage() {
                 disabled={templateBusy !== null}
                 aria-label={`Use template ${f.title}`}
               >
-                <span className={`pg-cover is-${f.cover}`}>
-                  <CoverArt cover={f.cover} seed={f.id} />
+                <span className={`pg-cover is-${f.cover} has-photo`}>
+                  {/*
+                    A real photograph of the notebook's subject.  The abstract
+                    artwork is kept behind it (as the gradient fallback) so a
+                    missing or failed image still renders a deliberate cover
+                    rather than an empty frame.
+                  */}
+                  {f.coverImage ? (
+                    <img
+                      className="pg-cover-photo"
+                      src={f.coverImage}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <CoverArt cover={f.cover} seed={f.id} />
+                  )}
                   <span className="pg-provider-badge">{f.provider}</span>
                 </span>
                 <span className="pg-featured-body" style={{ display: 'block' }}>

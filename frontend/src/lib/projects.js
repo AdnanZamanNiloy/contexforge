@@ -1,9 +1,17 @@
 // Shared helpers + curated demo content for the Projects library.
 //
-// The visual language is original ContextForge: muted editorial covers keyed
-// by a small `cover` token (aurora / ember / tide / moss / violet / slate).
+// Featured templates pair a real photograph with the notebook's subject; the
+// `cover` token (aurora / ember / tide / moss / violet / slate) is the gradient
+// fallback and drives the abstract artwork behind a user's own projects, which
+// have no photograph.
 // Featured + Discover entries are static, clearly-labelled example projects —
 // they never imply a private user project is publicly visible.
+
+import aiAgentsImage from '../assets/featured/ai-agents.jpg'
+import historyOfComputingImage from '../assets/featured/history-of-computing.jpg'
+import largeLanguageModelsImage from '../assets/featured/large-language-models.jpg'
+import openSourceIntelligenceImage from '../assets/featured/open-source-intelligence.jpg'
+import softwareArchitectureImage from '../assets/featured/software-architecture.jpg'
 
 export const COVERS = ['aurora', 'ember', 'tide', 'moss', 'violet', 'slate']
 
@@ -105,6 +113,11 @@ export function lastOpenedLabel(iso) {
   return label.replace(/^Updated/, 'Opened')
 }
 
+// Featured templates ship a real photograph per notebook so the cover reads as
+// the subject it describes.  `coverImage` is bundled locally (see
+// `src/assets/featured/CREDITS.md` for attribution); `cover` remains as the
+// gradient fallback and still drives the abstract artwork used for a user's own
+// projects, which have no photograph.
 export const FEATURED_PROJECTS = [
   {
     id: 'featured-ai-agents',
@@ -115,6 +128,7 @@ export const FEATURED_PROJECTS = [
     updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
     cover: 'aurora',
+    coverImage: aiAgentsImage,
     tags: ['AI', 'Agents'],
     featured: true,
   },
@@ -127,6 +141,7 @@ export const FEATURED_PROJECTS = [
     updatedAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
     cover: 'tide',
+    coverImage: softwareArchitectureImage,
     tags: ['Architecture'],
     featured: true,
   },
@@ -139,6 +154,7 @@ export const FEATURED_PROJECTS = [
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
     cover: 'violet',
+    coverImage: largeLanguageModelsImage,
     tags: ['LLMs', 'Research'],
     featured: true,
   },
@@ -151,6 +167,7 @@ export const FEATURED_PROJECTS = [
     updatedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
     cover: 'ember',
+    coverImage: historyOfComputingImage,
     tags: ['History'],
     featured: true,
   },
@@ -163,6 +180,7 @@ export const FEATURED_PROJECTS = [
     updatedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
     cover: 'moss',
+    coverImage: openSourceIntelligenceImage,
     tags: ['OSINT'],
     featured: true,
   },
