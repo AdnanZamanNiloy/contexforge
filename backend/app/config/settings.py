@@ -207,7 +207,36 @@ class Settings(BaseSettings):
             "when the value is discernible; if a link is genuinely unrecoverable "
             "from the context, say 'on GitHub' or 'on LinkedIn' instead.\n\n"
             "Never open by referencing 'the context' or 'the documents,' and "
-            "never close with a generic summary that just restates the answer."
+            "never close with a generic summary that just restates the answer.\n"
+            "\n"
+            "ANSWER THE QUESTION, NOT THE RETRIEVAL:\n"
+            "- The reader cannot see the passages, so they do not need to be told "
+            "what the passages contain. Never narrate the retrieval process, and "
+            "never frame the answer as a report on what was or was not found.\n"
+            "- Do not open with a preamble about the material. These are all "
+            "forbidden: 'Based on the retrieved files...', 'Here is the "
+            "structure that can be confirmed', 'The material shows...', 'From "
+            "the passages provided...'. Open with the substance — the tree, the "
+            "answer, the finding — on the first line.\n"
+            "- Do not hedge the answer with retrieval vocabulary. Avoid "
+            "'evidenced in the material', 'confirmed by the passages', 'appears "
+            "in the context', 'this is only a partial view', 'not available "
+            "here'. State what is true plainly.\n"
+            "- If the material genuinely cannot answer part of the question, say "
+            "so once, briefly, at the end — a single sentence. Do not lead with "
+            "the limitation, and do not spend the answer on it. A complete answer "
+            "to what IS supported is more useful than a careful account of what "
+            "is missing.\n"
+            "- Do not pad with meta-qualifiers. 'appears to', 'seems to', "
+            "'suggests the material implies' — state the fact, or state that it "
+            "is not in the material. Nothing in between.\n"
+            "\n"
+            "REGISTER:\n"
+            "- Write as a reference document a smart colleague would skim: a "
+            "direct opening line, tight sections, no throat-clearing, no hedging "
+            "filler, no restating the question back.\n"
+            "- Prefer short declarative sentences. Cut any clause that only "
+            "announces what the next sentence is about to say.\n"
         )
     )
 
@@ -219,10 +248,17 @@ class Settings(BaseSettings):
     # instruction can be tuned, or switched off wholesale, without rewriting
     # prose guidance that is already working.
     #
-    # ENABLE_CITATIONS is the single switch. Markers are validated against the
-    # retrieved source count server-side regardless, so disabling this only
-    # stops the model producing them.
-    ENABLE_CITATIONS: bool = Field(default=True)
+    # Off by default. Markers were tried and the reader's verdict was that they
+    # add noise: the Sources panel already carries the full evidence list, and a
+    # superscript number on every claim interrupts prose that otherwise reads
+    # cleanly. The supporting machinery is deliberately kept in place - the
+    # numbered context, the server-side validation that strips markers pointing
+    # at sources that do not exist, and the frontend chips - so this is a
+    # one-value change rather than a rework.
+    #
+    # Validation runs server-side regardless of this flag, so enabling it later
+    # can never ship an unvalidated marker.
+    ENABLE_CITATIONS: bool = Field(default=False)
 
     CITATION_INSTRUCTIONS: str = Field(
         default=(

@@ -54,6 +54,28 @@ def _calibrate(raw_logit: float) -> float:
     return _sigmoid(calibrated)
 
 
+def _coverage_group(item: tuple[RetrievedChunk, float]) -> str:
+    """The unit that should not be allowed to crowd out the others.
+
+    A repository is indexed as a single ``source_id``, so grouping on that alone
+    makes diversification a no-op for the common case: every chunk looks like
+    "the same source" and the selection falls through to plain relevance order.
+    One large file then fills the whole top-k with near-identical fragments
+    while every other file is absent — measured on a 25-chunk repo, where four
+    copies of the same SVG took four of five slots and the model was left
+    describing only a license and an icon.
+
+    The file is the finer and more useful unit, so prefer ``path`` when the
+    chunk has one and fall back to the source id otherwise. Multi-source
+    workloads already have distinct source ids and are unaffected.
+    """
+    chunk = item[0].chunk
+    path = (chunk.metadata or {}).get("path") or (chunk.metadata or {}).get("filename")
+    if isinstance(path, str) and path.strip():
+        return f"file::{path.strip()}"
+    return chunk.source_id or "__anonymous__"
+
+
 def _diversify(
     scored: list[tuple[RetrievedChunk, float]],
     top_k: int,
@@ -70,8 +92,11 @@ def _diversify(
        greedily: at each step we take the highest-scoring *available* chunk of
        whichever source currently offers the strongest next candidate.
 
+    Grouping is by file where a path is known — see :func:`_coverage_group` for
+    why that matters for a single-repository corpus.
+
     Chunks with no ``source_id`` are grouped as one anonymous source so they
-    still get a fair share.  If there is only a single source, the relevance
+    still get a fair share.  If there is only a single group, the relevance
     order is preserved unchanged.
 
     Args:
@@ -84,16 +109,15 @@ def _diversify(
     if not scored or top_k <= 0:
         return scored[:top_k]
 
-    # Only one source (or everything fits): relevance order is the answer.
-    distinct_sources = {item[0].chunk.source_id or "__anonymous__" for item in scored}
+    # One group (or everything fits): relevance order is the answer.
+    distinct_sources = {_coverage_group(item) for item in scored}
     if len(distinct_sources) <= 1 or len(scored) <= top_k:
         return scored[:top_k]
 
     # Group each source's candidates, best-first within each group.
     by_source: dict[str, list[tuple[RetrievedChunk, float]]] = {}
     for item in scored:
-        sid = item[0].chunk.source_id or "__anonymous__"
-        by_source.setdefault(sid, []).append(item)
+        by_source.setdefault(_coverage_group(item), []).append(item)
 
     # Order sources by their strongest candidate so seeding respects relevance.
     source_order = sorted(

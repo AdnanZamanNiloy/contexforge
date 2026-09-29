@@ -148,3 +148,81 @@ def test_rerank_token_budget_is_capped(monkeypatch) -> None:
         "the configured budget must reach the tokenizer, otherwise the cap is "
         "declared in settings but never applied and rerank stays slow"
     )
+
+
+class TestFileLevelCoverage:
+    """A single repository is one source_id, so source-level diversification
+    silently does nothing for the most common case.
+
+    Measured before the fix: on a 25-chunk repo, four of five top-k slots went
+    to copies of the same SVG and the model was left able to describe only a
+    license and an icon. The file is the unit that should not be crowded out.
+    """
+
+    def _scored(self, paths):
+        return [
+            (
+                RetrievedChunk(
+                    chunk=Chunk(
+                        chunk_id=f"c{i}",
+                        text=f"body {i}",
+                        metadata={"path": p},
+                        source_id="repo:acme/thing",
+                    ),
+                    score=1.0,
+                ),
+                1.0 - i * 0.01,
+            )
+            for i, p in enumerate(paths)
+        ]
+
+    def test_repeated_files_cannot_fill_every_slot(self) -> None:
+        scored = self._scored(
+            [
+                "LICENSE",
+                "frontend/src/logo.svg",
+                "frontend/src/logo.svg",
+                "frontend/src/logo.svg",
+                "frontend/src/logo.svg",
+                "backend/app.py",
+                "README.md",
+            ]
+        )
+        chosen = _diversify(scored, 5)
+        paths = [c[0].chunk.metadata["path"] for c in chosen]
+
+        # Every distinct file in the candidate set is represented. The one
+        # surplus slot goes to a second chunk of a file already within
+        # _MAX_CHUNKS_PER_SOURCE, which is intended.
+        assert set(paths) == {"LICENSE", "frontend/src/logo.svg", "backend/app.py", "README.md"}
+        assert paths.count("frontend/src/logo.svg") < 4, (
+            "one file should no longer take four of five slots"
+        )
+
+    def test_a_single_repeated_file_still_yields_its_best_chunks(self) -> None:
+        # With nothing else to show, coverage must not starve a legitimate
+        # multi-chunk answer from the one relevant file.
+        scored = self._scored(["a.py", "a.py", "a.py"])
+        chosen = _diversify(scored, 2)
+        assert len(chosen) == 2
+        assert all(c[0].chunk.metadata["path"] == "a.py" for c in chosen)
+
+    def test_chunks_without_a_path_still_group_by_source(self) -> None:
+        scored = [
+            (
+                RetrievedChunk(
+                    chunk=Chunk(chunk_id=f"c{i}", text="x", source_id="src-a" if i < 3 else "src-b"),
+                    score=1.0 - i * 0.01,
+                ),
+                1.0 - i * 0.01,
+            )
+            for i in range(5)
+        ]
+        chosen = _diversify(scored, 2)
+        assert {c[0].chunk.source_id for c in chosen} == {"src-a", "src-b"}
+
+    def test_result_is_still_ranked_best_first(self) -> None:
+        scored = self._scored(["a.py", "b.py", "c.py", "d.py", "e.py", "f.py"])
+        chosen = _diversify(scored, 4)
+        scores = [c[1] for c in chosen]
+        assert scores == sorted(scores, reverse=True)
