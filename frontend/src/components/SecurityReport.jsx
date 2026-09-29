@@ -91,7 +91,9 @@ function SeveritySummary({ counts, worstSeverity }) {
           <strong>{counts[severity]}</strong> {severity}
         </span>
       ))}
-      <span className="sec-count-note">worst: {worstSeverity}</span>
+      <span className={`sec-count ${severityTone(worstSeverity)}`}>
+        <strong>Worst</strong> {worstSeverity}
+      </span>
     </div>
   )
 }
@@ -174,8 +176,8 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
           <ShieldIcon />
           <p className="sec-stage-title">No GitHub source in this project</p>
           <p className="sec-stage-note">
-            Attach a GitHub repository to the project and it will be indexed. The scan then reads its
-            source and its manifests.
+            Attach a GitHub repository to the project and it will be indexed. The scan then reads
+            its source and its manifests.
           </p>
         </div>
       </div>
@@ -194,7 +196,9 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
           <span className="gv-id-note">
             {scan?.cached ? 'cached scan' : 'fresh scan'}
             {scan?.code?.files_scanned ? ` · ${scan.code.files_scanned} files scanned` : ''}
-            {scan?.dependencies?.checked ? ` · ${scan.dependencies.checked} dependencies checked` : ''}
+            {scan?.dependencies?.checked
+              ? ` · ${scan.dependencies.checked} dependencies checked`
+              : ''}
           </span>
         </div>
         <div className="sec-head-right">
@@ -204,7 +208,7 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
                 <span className="gv-stat-value">{scan.finding_count || 0}</span>
                 <span className="gv-stat-label">Findings</span>
               </div>
-              <div className="gv-stat">
+              <div className={`gv-stat${scan.dependencies?.vulnerable ? ' is-danger' : ''}`}>
                 <span className="gv-stat-value">{scan.dependencies?.vulnerable || 0}</span>
                 <span className="gv-stat-label">Vulnerable deps</span>
               </div>
@@ -248,7 +252,10 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
               </div>
               <ul className="sec-findings">
                 {visible.map((finding) => (
-                  <FindingRow key={`${finding.id}-${finding.location}-${finding.line ?? ''}`} finding={finding} />
+                  <FindingRow
+                    key={`${finding.id}-${finding.location}-${finding.line ?? ''}`}
+                    finding={finding}
+                  />
                 ))}
               </ul>
               {hidden > 0 ? (
@@ -272,7 +279,10 @@ export default function SecurityReport({ projectId, hasGithubSource = true }) {
               </div>
               <div className="gv-chips">
                 {scan.by_category.map((row) => (
-                  <span key={row.category} className={`sec-chip ${severityTone(row.worst_severity)}`}>
+                  <span
+                    key={row.category}
+                    className={`sec-chip ${severityTone(row.worst_severity)}`}
+                  >
                     {row.category}
                     <span className="gv-badge-count">{row.count}</span>
                   </span>
