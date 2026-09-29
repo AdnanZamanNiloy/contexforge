@@ -114,16 +114,51 @@ class PromptBuilder:
         return unique
 
     @staticmethod
+    def _source_label(chunk: Chunk) -> str:
+        """Best available human name for the file a chunk came from.
+
+        Ordered the same way the Sources panel resolves a title, so the label
+        the model reasons about and the one the reader sees agree.
+
+        Returns an empty string when nothing identifies the source, in which
+        case the passage is rendered without a label rather than with a
+        placeholder the model might quote back.
+        """
+        meta = chunk.metadata or {}
+        for key in ("path", "filename", "title"):
+            value = meta.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        if chunk.source_id:
+            return chunk.source_id
+        return ""
+
+    @staticmethod
     def _format_context(chunks: list[Chunk]) -> str:
-        """Join chunks into a numbered context block.
+        """Join chunks into a numbered, source-labelled context block.
 
         The numbers are what citation markers refer to, so they must be
         positional and stable: position *n* in this list is the *n*-th source in
         the response payload, which is the same order the reranker ranked them
         in. Any divergence here would make ``[1]`` point at the wrong source, so
         the caller must pass chunks in final display order.
+
+        Each passage is labelled with the file it came from. Without that label
+        the model is blind to the repository's shape: a question like "give me
+        the file structure" cannot be answered from unlabelled prose, because
+        the paths are not in the text. The label is what makes structure, layout
+        and ownership questions answerable at all, and it is what lets the
+        answer attribute a claim to a specific file rather than to "the
+        documents".
         """
         if not chunks:
             return "(no context available)"
-        return "\n\n".join(f"[{i}] {chunk.text}" for i, chunk in enumerate(chunks, start=1))
+        blocks: list[str] = []
+        for i, chunk in enumerate(chunks, start=1):
+            label = PromptBuilder._source_label(chunk)
+            if label:
+                blocks.append(f"[{i}] file: {label}\n{chunk.text}")
+            else:
+                blocks.append(f"[{i}] {chunk.text}")
+        return "\n\n".join(blocks)
 
