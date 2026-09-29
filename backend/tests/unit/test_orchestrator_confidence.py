@@ -176,3 +176,95 @@ async def test_overview_gate_sits_below_the_ordinary_gate() -> None:
     keep and the special case is just dead configuration.
     """
     assert Orchestrator._OVERVIEW_RELEVANCE_GATE < Orchestrator._FOCUS_RELEVANCE_GATE
+
+
+def test_unsupported_claims_reduce_confidence() -> None:
+    """A high retrieval score must not certify an answer that invents figures.
+
+    Retrieval confidence answers "how well did the chunks match the question".
+    It cannot answer "is the answer supported by them", so an answer asserting
+    numbers found nowhere in the corpus has to be penalised here. Without this,
+    a fluent answer full of invented specifics reports exactly as confidently as
+    a faithful one.
+    """
+    orch = Orchestrator.__new__(Orchestrator)
+    # High retrieval confidence, but the retrieved text supports nothing the
+    # invented answer claims.
+    reranked = [
+        RerankedChunk(
+            chunk=Chunk(
+                chunk_id=f"c{i}",
+                text="The backend exposes a single prediction endpoint.",
+                source_id="src",
+            ),
+            score=0.95,
+            rank=i,
+        )
+        for i in range(1, 6)
+    ]
+
+    honest = orch._grounded_confidence(
+        0.95,
+        "The backend exposes a single prediction endpoint.",
+        reranked,
+    )
+    invented = orch._grounded_confidence(
+        0.95,
+        "Accuracy reached 97.06% on 2024-03-15 after tuning.",
+        reranked,
+    )
+
+    assert honest == 0.95, "a faithful answer must keep its confidence"
+    assert invented < 0.95, "invented specifics must reduce confidence"
+    assert invented >= orch._MIN_CONFIDENCE_AFTER_UNGROUNDED
+
+
+def test_grounding_penalty_reads_full_chunk_text() -> None:
+    """A figure past the 200-char preview must still be found.
+
+    The source payload only carries ``text_preview``; checking that instead of
+    the full chunk would mark a correctly-sourced number as invented purely
+    because of where it landed in the text.
+    """
+    from core.types import Chunk, RerankedChunk
+
+    orch = Orchestrator.__new__(Orchestrator)
+    padding = "Lorem ipsum dolor sit amet. " * 20
+    text = f"{padding}The model reports 97.06% accuracy."
+    assert text[:200].find("97.06") == -1, "fixture must place the figure past the preview"
+
+    reranked = [
+        RerankedChunk(
+            chunk=Chunk(chunk_id=f"c{i}", text=text, source_id="src"),
+            score=0.95,
+            rank=i,
+        )
+        for i in range(1, 4)
+    ]
+
+    assert orch._grounded_confidence(0.95, "It reports 97.06% accuracy.", reranked) == 0.95
+
+
+def test_penalty_scales_with_how_much_is_unsupported() -> None:
+    """One stray number should not erase an otherwise well-grounded answer."""
+    orch = Orchestrator.__new__(Orchestrator)
+    # Chunk is a frozen dataclass, so the fixture is built with the text it
+    # needs rather than mutated after construction.
+    reranked = [
+        RerankedChunk(
+            chunk=Chunk(
+                chunk_id=f"c{i}",
+                text="Accuracy was 97.06% overall.",
+                source_id="src",
+            ),
+            score=0.95,
+            rank=i,
+        )
+        for i in range(1, 4)
+    ]
+
+    one_bad = orch._grounded_confidence(0.95, "It is 97.06% accurate, released 2024-03-15.", reranked)
+    all_bad = orch._grounded_confidence(0.95, "It is 12.5% accurate, released 2024-03-15.", reranked)
+
+    assert one_bad < 0.95
+    assert all_bad < one_bad, "more unsupported claims must cost more confidence"

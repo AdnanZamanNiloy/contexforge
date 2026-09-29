@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from app.config.settings import settings
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
+from core.generation.grounding import check_grounding
 from core.generation.prompt_builder import PromptBuilder
 from core.interfaces.embedder import Embedder
 from core.interfaces.llm import LLM
@@ -599,6 +600,15 @@ class Orchestrator:
     # source was read; it says nothing about whether the question was answered,
     # so it must never manufacture confidence on its own.
     _OVERVIEW_RELEVANCE_GATE = 0.12
+    # Confidence is multiplied down by up to this fraction when the answer
+    # asserts figures that appear nowhere in the retrieved text, scaled by the
+    # share of unsupported claims. An answer whose every checkable claim is
+    # invented should not read as moderately supported.
+    _UNGROUNDED_PENALTY = 0.75
+    # Floor after an ungrounded penalty. Kept equal to the reranker's display
+    # floor so an ungrounded answer reads as "Weak" rather than as near-zero,
+    # which the UI would render as a bug.
+    _MIN_CONFIDENCE_AFTER_UNGROUNDED = 0.15
 
     def _source_exclude_set(
         self,
@@ -736,6 +746,47 @@ class Orchestrator:
             retrieved_chunks=retrieved_chunks,
         )
 
+    def _grounded_confidence(
+        self,
+        confidence: float,
+        answer: str,
+        reranked: list[RerankedChunk],
+    ) -> float:
+        """Reduce confidence when the answer asserts unsupported figures.
+
+        Retrieval confidence describes how well the chunks matched the
+        *question*; it says nothing about whether the *answer* is supported by
+        them. This closes that gap: a figure, percentage, version or date in the
+        answer that appears nowhere in the retrieved text is an invented
+        specific, and no amount of good retrieval makes it trustworthy.
+
+        The penalty scales with the share of unsupported claims rather than
+        being all-or-nothing, so a single stray number does not erase an
+        otherwise well-grounded answer. Answers with nothing checkable (a
+        refusal, or a purely qualitative answer) are left alone.
+        """
+        if not reranked:
+            return confidence
+        # Full chunk text, never text_preview: a figure commonly sits past the
+        # first 200 characters of its chunk, and checking the preview would
+        # flag a correctly-sourced number as invented.
+        report = check_grounding(answer, [c.chunk.text for c in reranked])
+        if report.is_grounded:
+            return confidence
+
+        penalty = 1.0 - report.support_ratio
+        adjusted = confidence * (1.0 - self._UNGROUNDED_PENALTY * penalty)
+        logger.warning(
+            "grounding: %d of %d checkable claims unsupported %s — "
+            "confidence %.4f -> %.4f",
+            len(report.unsupported),
+            report.checked,
+            list(report.unsupported),
+            confidence,
+            adjusted,
+        )
+        return max(adjusted, self._MIN_CONFIDENCE_AFTER_UNGROUNDED)
+
     @observe(name="generate_answer")
     async def generate_answer(self, question: str, chunks: list[Chunk]) -> str:
         """Generate a complete answer from *chunks* for *question*."""
@@ -786,7 +837,17 @@ class Orchestrator:
         timings["generate_ms"] = (time.perf_counter() - t) * 1000
         timings["total_ms"] = sum(v for v in timings.values() if isinstance(v, (int, float)))
         # Build ConfidenceMetrics and attach to GenerationResult
-        confidence = self._build_confidence(reranked, mean_confidence)
+        reported = self._build_confidence(reranked, mean_confidence)
+        # Retrieval confidence is about the question, not the answer. Verify the
+        # answer's own checkable claims before reporting it as trustworthy.
+        adjusted = self._grounded_confidence(
+            reported.answer_confidence,
+            answer_text,
+            reranked,
+        )
+        # Rebuilt so the coverage label tracks the adjusted number instead of
+        # continuing to say "Excellent" over a penalised confidence.
+        confidence = self._build_confidence(reranked, adjusted)
         return GenerationResult(
             answer=answer_text,
             sources=reranked,
