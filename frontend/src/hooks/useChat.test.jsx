@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, act } from '@testing-library/react'
 
 // The streaming client is mocked so the token sequence is deterministic and the

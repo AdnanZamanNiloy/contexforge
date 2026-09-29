@@ -7,6 +7,30 @@ import { normalizeSource } from '../lib/sources'
 // workspace, chat and the mind map — consumes the same source list so
 // navigation and source representation are identical no matter which
 // capability is in focus.
+// Every row carries `id={source.id}` as its React key, and selection is keyed
+// on that id. A list holding the same id twice therefore renders two rows that
+// are one row as far as selection is concerned: both light up together and
+// clicking either toggles both, which reads as "select and deselect do the
+// same thing".
+//
+// Duplicates arise naturally. Ingest inserts an optimistic row under a
+// temporary id and then rewrites that id to the server's real one; if a
+// refresh lands in between, the real source is already in the list and the
+// rewrite makes the optimistic row collide with it.
+//
+// Enforced on every write rather than at the call sites, so the invariant
+// holds no matter which path mutated the list.
+function dedupeById(list) {
+  const seen = new Set()
+  const out = []
+  for (const source of list) {
+    if (!source || seen.has(source.id)) continue
+    seen.add(source.id)
+    out.push(source)
+  }
+  return out
+}
+
 export function useSources() {
   const [sources, setSources] = useState([])
   const [loading, setLoading] = useState(true)
@@ -24,7 +48,7 @@ export function useSources() {
     try {
       const data = await fetchSources()
       if (!mountedRef.current) return
-      setSources(data?.sources?.length ? data.sources.map(normalizeSource) : [])
+      setSources(data?.sources?.length ? dedupeById(data.sources.map(normalizeSource)) : [])
     } catch {
       if (mountedRef.current) setSources([])
     } finally {
@@ -37,11 +61,15 @@ export function useSources() {
   }, [refresh])
 
   const addSource = useCallback((payload) => {
-    setSources((prev) => [payload, ...prev])
+    // Prepending can collide with a row already in the list when a refresh
+    // raced the optimistic insert.
+    setSources((prev) => dedupeById([payload, ...prev]))
   }, [])
 
   const updateSource = useCallback((id, patch) => {
-    setSources((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+    setSources((prev) =>
+      dedupeById(prev.map((item) => (item.id === id ? { ...item, ...patch } : item))),
+    )
   }, [])
 
   // Persist a new display title, then reflect it locally.  A failed rename
@@ -60,7 +88,7 @@ export function useSources() {
   }, [])
 
   const replaceAll = useCallback((next) => {
-    setSources(next)
+    setSources(dedupeById(next))
   }, [])
 
   return {

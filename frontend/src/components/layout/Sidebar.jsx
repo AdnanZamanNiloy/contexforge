@@ -387,7 +387,14 @@ export default function Sidebar({
 
   // "Select all" is checked only when every source is in the selection, so the
   // header checkbox doubles as the clear-all affordance.
-  const allSelected = sources.length > 0 && selectedSourceIds.length === sources.length
+  //
+  // Membership, not a count comparison. `selectedIds.length === sources.length`
+  // is true for any two same-sized lists, so a selection holding an id that is
+  // no longer displayed would light the header while leaving a visible row
+  // unselected — and clicking it would then clear the scope instead of
+  // selecting the missing row.
+  const allSelected =
+    sources.length > 0 && sources.every((source) => selectedSourceIds.includes(source.id))
 
   // Which source's ⋮ menu is open, if any.  Null when all are closed.
   const [openMenuId, setOpenMenuId] = useState(null)
