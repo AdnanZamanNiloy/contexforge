@@ -488,6 +488,7 @@ class Orchestrator:
         use_hyde: bool | None = None,
         source_id: str | None = None,
         source_ids: set[str] | list[str] | None = None,
+        use_knowledge_base: bool = True,
         # Return type now includes mean_confidence from the reranker
     ) -> tuple[list[RerankedChunk], dict[str, float], float]:
         """Expand query, embed, retrieve, and rerank.
@@ -499,6 +500,16 @@ class Orchestrator:
             back to 0.35 so the frontend never shows zero.
         """
         timings: dict[str, float] = {}
+
+        # No source selected: answer from general knowledge rather than the
+        # corpus, so an unscoped chat never surfaces a source the user did not
+        # choose.
+        if not use_knowledge_base:
+            logger.debug(
+                "retrieve_context: knowledge base disabled — skipping retrieval for question=%r",
+                question,
+            )
+            return [], {}, 0.0
 
         # Chitchat / greeting: no information demand on the KB, so bypass the
         # whole retrieval pipeline.  The answer is produced from general
@@ -543,7 +554,7 @@ class Orchestrator:
         # workspace picks one or many), exclude every other source's chunks so
         # the answer is grounded only in the selected sources.  The exclusion
         # set is the store's full source list minus the selection.
-        exclude_source_ids = self._source_exclude_set(source_id, source_ids)
+        exclude_source_ids = await self._source_exclude_set(source_id, source_ids)
         # Use the (possibly HyDE-expanded) query text for the BM25 + dense
         # legs too, so expansion is consistent across the whole pipeline.
         retrieved = await self._hybrid.retrieve(
@@ -657,7 +668,7 @@ class Orchestrator:
     # which the UI would render as a bug.
     _MIN_CONFIDENCE_AFTER_UNGROUNDED = 0.15
 
-    def _source_exclude_set(
+    async def _source_exclude_set(
         self,
         source_id: str | None,
         source_ids: set[str] | list[str] | None = None,
@@ -669,6 +680,11 @@ class Orchestrator:
         workspace selects one or many).  In both cases every currently-indexed
         source *outside* the selection is excluded, so the hybrid retrieval only
         ever returns chunks belonging to the selected sources.
+
+        The known-source list is loaded from disk first.  Reading it in-memory
+        without loading would return an empty set at the start of a process,
+        which reads as "no sources to exclude" and silently drops the scope —
+        the exact cause of a selected source being ignored on the first query.
         """
         if source_ids:
             selected = {sid.strip() for sid in source_ids if sid and sid.strip()}
@@ -679,7 +695,7 @@ class Orchestrator:
         if not selected:
             return None
         try:
-            known = self._faiss.get_source_ids()
+            known = await self._faiss.get_source_ids_async()
         except Exception:  # pragma: no cover - defensive
             return None
         return {sid for sid in known if sid and sid not in selected}
@@ -890,18 +906,27 @@ class Orchestrator:
         source_id: str | None = None,
         source_ids: set[str] | list[str] | None = None,
         file_manifest: list[str] | None = None,
+        use_knowledge_base: bool = True,
     ) -> GenerationResult:
-        """Full RAG pipeline: retrieve → generate → return with sources and confidence."""
+        """Full RAG pipeline: retrieve → generate → return with sources and confidence.
 
-        # Unpack the new 3-tuple from retrieve_context
-        reranked, timings, mean_confidence = await self.retrieve_context(
-            question,
-            top_k_retrieval=top_k_retrieval,
-            top_k_rerank=top_k_rerank,
-            use_hyde=use_hyde,
-            source_id=source_id,
-            source_ids=source_ids,
-        )
+        ``use_knowledge_base=False`` skips retrieval entirely and answers from
+        the model's general knowledge, returning no sources.  Used when the user
+        has not selected any source to ground the answer in.
+        """
+
+        if use_knowledge_base:
+            # Unpack the new 3-tuple from retrieve_context
+            reranked, timings, mean_confidence = await self.retrieve_context(
+                question,
+                top_k_retrieval=top_k_retrieval,
+                top_k_rerank=top_k_rerank,
+                use_hyde=use_hyde,
+                source_id=source_id,
+                source_ids=source_ids,
+            )
+        else:
+            reranked, timings, mean_confidence = [], {}, 0.0
         # Time the LLM generation so it shows up in the latency breakdown
         # (previously the biggest cost was invisible to the client).
         t = time.perf_counter()

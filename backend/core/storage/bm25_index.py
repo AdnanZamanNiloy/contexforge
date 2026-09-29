@@ -333,20 +333,31 @@ class BM25Index:
             logger.warning("BM25 query '%s' reduced to empty string after sanitisation — returning no results.", query)
             return []
 
-        cursor = self._conn.execute(
-            """
+        # The exclusion must happen *before* LIMIT, not after.  Filtering the
+        # already-limited top_k drops the selected source's chunks entirely
+        # whenever other sources happen to fill the global top_k — a scoped
+        # query then returns nothing (or far less than asked for) even though
+        # the selected source has matches.  Pushing the exclusion into SQL makes
+        # the database rank and limit over the selected sources only.
+        sql = """
             SELECT chunk_id, text, metadata, source_id, bm25(chunks) AS score
             FROM chunks
             WHERE chunks MATCH ?
-            ORDER BY score
-            LIMIT ?
-            """,
-            (safe_query, top_k),
-        )
+        """
+        params: list[object] = [safe_query]
+        if exclude_source_ids:
+            placeholders = ",".join("?" for _ in exclude_source_ids)
+            sql += f" AND (source_id IS NULL OR source_id NOT IN ({placeholders}))"
+            params.extend(exclude_source_ids)
+        sql += " ORDER BY score LIMIT ?"
+        params.append(top_k)
+
+        cursor = self._conn.execute(sql, params)
 
         results: list[RetrievedChunk] = []
         for chunk_id, text, metadata_raw, source_id, score in cursor.fetchall():
-            # Scoped retrieval: drop chunks from sources we are told to exclude.
+            # Belt-and-braces: the SQL above already excludes these, but a
+            # legacy row with a blank source_id must still be honoured.
             if exclude_source_ids and source_id and source_id in exclude_source_ids:
                 continue
             try:

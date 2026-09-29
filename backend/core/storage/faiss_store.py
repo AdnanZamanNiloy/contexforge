@@ -154,8 +154,19 @@ class FaissStore:
         return count
 
     def get_source_ids(self) -> set[str]:
-        """Return the set of unique source_ids currently in the store."""
+        """Return the set of unique source_ids currently *in memory*.
+
+        Synchronous and load-free, so it only reflects chunks already loaded.
+        Do not use it to decide scoping before a query: an empty in-memory set
+        would read as "no sources", silently disabling the filter.  Callers that
+        need an authoritative list should await :meth:`get_source_ids_async`.
+        """
         return {c.source_id for c in self._chunks if c.source_id}
+
+    async def get_source_ids_async(self) -> set[str]:
+        """Authoritative source ids, loading the store from disk if needed."""
+        await self._ensure_loaded(None)
+        return self.get_source_ids()
 
     async def get_chunks_by_source_id(self, source_id: str | None) -> list[Chunk]:
         """Return all chunks belonging to *source_id* in storage order.
@@ -289,8 +300,17 @@ class FaissStore:
         query = np.array([query_vector], dtype=np.float32)
         query = _normalize(query)
 
-        # Over-fetch to account for defensive filtering
-        fetch_k = top_k * 3 if exclude_source_ids else top_k
+        # When a scope is active, chunks from excluded sources have to be
+        # filtered out *after* the ANN search (FAISS cannot filter server-side).
+        # A small over-fetch (top_k * 3) is not enough when the excluded sources
+        # dominate the global ranking: the selected source's chunks may sit
+        # entirely outside that window, so the leg returns nothing for a query
+        # the selected source can actually answer.  Widen the candidate pool so
+        # the selection is covered even in a large multi-source index.
+        if exclude_source_ids:
+            fetch_k = max(top_k * 3, min(self._index.ntotal, top_k * 20))
+        else:
+            fetch_k = top_k
         fetch_k = min(fetch_k, self._index.ntotal)
         scores, indices = self._index.search(query, fetch_k)
 
