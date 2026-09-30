@@ -8,6 +8,13 @@ shared across threads.
 API keys are written to the ``api_key`` column but are stripped by the service
 layer before any object leaves the backend — the store itself is the only place
 a key is ever read.
+
+That makes this the one table holding live credentials at rest, since keys are
+typed into the UI rather than supplied through the environment.  When
+``CREDENTIAL_ENCRYPTION_KEY`` is configured, values are Fernet-encrypted on the
+way in and decrypted on the way out; the column therefore holds a ciphertext for
+new rows and plaintext for rows written before the key was configured.  See
+``app/model_hub/credentials.py`` for how the two are told apart.
 """
 
 from __future__ import annotations
@@ -22,6 +29,11 @@ from pathlib import Path
 from typing import Any
 
 from app.config.settings import settings
+from app.model_hub.credentials import (
+    decrypt_secret,
+    encrypt_secret,
+    warn_once_if_unencrypted,
+)
 from observability.tracer import observe
 
 __all__ = ["ModelHubStore"]
@@ -74,6 +86,10 @@ class ModelHubStore:
 
     def __init__(self, db_path: Path | None = None) -> None:
         self._db_path = Path(db_path or settings.MODEL_HUB_DB_PATH)
+        # Said once at startup rather than on every write: the condition is a
+        # deployment gap, not a per-request error, and it should be visible in
+        # the logs before anyone adds a model.
+        warn_once_if_unencrypted()
 
     # ------------------------------------------------------------------ #
     # Models
@@ -172,7 +188,11 @@ class ModelHubStore:
 
     @staticmethod
     def _model_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
-        return dict(row)
+        data = dict(row)
+        # Decrypt here, at the single choke point every read passes through, so
+        # no caller can accidentally hand a ciphertext to a provider.
+        data["api_key"] = decrypt_secret(data.get("api_key"))
+        return data
 
     def _list_models_sync(self) -> list[dict[str, Any]]:
         conn = self._connect()
@@ -212,7 +232,7 @@ class ModelHubStore:
                         fields.get("provider_label"),
                         fields["model_id"],
                         fields.get("base_url"),
-                        fields.get("api_key"),
+                        encrypt_secret(fields.get("api_key")),
                         fields.get("dimension"),
                         fields.get("local_backend"),
                         fields.get("device"),
@@ -230,6 +250,11 @@ class ModelHubStore:
         if not fields:
             return self._get_model_sync(model_id)
         fields = {**fields, "updated_at": _now()}
+        # Encrypt on write only.  An absent api_key means "leave it alone" (see
+        # ModelUpdate), so encrypting here must not introduce a key that was
+        # never supplied.
+        if "api_key" in fields:
+            fields["api_key"] = encrypt_secret(fields["api_key"])
         columns = ", ".join(f"{key} = ?" for key in fields)
         values = [*fields.values(), model_id]
         conn = self._connect()

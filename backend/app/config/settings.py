@@ -36,6 +36,18 @@ class Settings(BaseSettings):
     CACHE_PATH: Path = Field(default=data_path("cache", "embeddings.json"))
     UPLOAD_DIR: Path = Field(default=data_path("uploads"))
 
+    # Key protecting API keys stored in the Model Hub.  The hub is otherwise a
+    # UI-configured store of live provider credentials, so it is the one place
+    # the app holds secrets the user typed rather than supplied via the
+    # environment.  Set this to a Fernet key to encrypt those at rest; when it
+    # is absent the store keeps working in plaintext and says so once at
+    # startup, because refusing to start would lock a user out of a working
+    # install over a hardening detail.
+    #
+    # Generate with:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    CREDENTIAL_ENCRYPTION_KEY: str = Field(default="")
+
     MAX_GITHUB_FILES: int = Field(default=500)
     CHUNK_SIZE: int = Field(default=512)
     CHUNK_OVERLAP: int = Field(default=50)

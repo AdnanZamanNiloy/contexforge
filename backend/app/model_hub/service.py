@@ -17,6 +17,7 @@ import time
 from typing import Any
 
 from app.model_hub import factory
+from app.model_hub.credentials import CREDENTIAL_UNREADABLE
 from app.model_hub.schemas import (
     ChainCreate,
     ChainUpdate,
@@ -350,7 +351,15 @@ class ModelHubService:
 
     @staticmethod
     def _public_model(row: dict[str, Any]) -> dict[str, Any]:
-        """Strip the API key and expose only a ``has_api_key`` flag."""
+        """Strip the API key and expose only a ``has_api_key`` flag.
+
+        A key that could not be decrypted reports ``has_api_key: false`` rather
+        than true: the sentinel string is truthy, but a model the store cannot
+        read a credential for is not usable, and the UI needs to prompt for the
+        key again instead of letting it fail at request time.
+        """
+        stored_key = row.get("api_key")
+        readable = bool(stored_key) and stored_key != CREDENTIAL_UNREADABLE
         return {
             "id": row["id"],
             "name": row["name"],
@@ -363,7 +372,7 @@ class ModelHubService:
             "dimension": row.get("dimension"),
             "local_backend": row.get("local_backend"),
             "device": row.get("device"),
-            "has_api_key": bool(row.get("api_key")),
+            "has_api_key": readable,
             "status": row.get("status") or "untested",
             "status_detail": row.get("status_detail"),
             "created_at": row["created_at"],

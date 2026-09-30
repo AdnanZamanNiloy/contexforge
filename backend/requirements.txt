@@ -64,3 +64,11 @@ youtube-transcript-api>=1.2.4,<2.0
 # Optional at runtime: the scan reports that patterns were not checked if the
 # binary is absent, rather than reporting nothing found.
 ast-grep-cli>=0.38,<1.0
+
+# ── Credential storage ───────────────────────────────────────
+# Encrypts provider API keys typed into the Model Hub before they are written to
+# SQLite, so a copy of backend/data/ is not a set of working credentials.  Opt-in
+# via CREDENTIAL_ENCRYPTION_KEY: without that setting the store behaves exactly as
+# before and logs a warning, so upgrading never locks anyone out of a working
+# install.
+cryptography>=42,<47

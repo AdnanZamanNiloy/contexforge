@@ -71,6 +71,33 @@ async def test_api_key_is_never_returned(service):
 
 
 @pytest.mark.asyncio
+async def test_an_unreadable_key_reports_as_absent(service, monkeypatch):
+    # A key that cannot be decrypted is a truthy sentinel string, so the naive
+    # bool() check would report has_api_key=True for a model the app cannot
+    # actually call.  The UI must be told to re-enter it instead.
+    from cryptography.fernet import Fernet
+
+    from app.config import settings as settings_module
+
+    monkeypatch.setattr(
+        settings_module.settings,
+        "CREDENTIAL_ENCRYPTION_KEY",
+        Fernet.generate_key().decode(),
+    )
+    created = await service.create_model(_api_model())
+
+    monkeypatch.setattr(
+        settings_module.settings,
+        "CREDENTIAL_ENCRYPTION_KEY",
+        Fernet.generate_key().decode(),
+    )
+
+    fetched = await service.get_model(created["id"])
+    assert fetched["has_api_key"] is False
+    assert "sk-secret-value" not in str(fetched)
+
+
+@pytest.mark.asyncio
 async def test_provider_label_round_trips_and_clears(service):
     created = await service.create_model(_api_model(provider="custom", provider_label="My vLLM server"))
     assert created["provider"] == "custom"

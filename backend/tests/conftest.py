@@ -39,6 +39,13 @@ def isolate_storage(tmp_path, monkeypatch):
         target.parent.mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(settings, attr, target)
 
+    # Never inherit a live encryption key into a test.  A test that encrypts with
+    # the developer's real key would make its fixture data unrecoverable if that
+    # key were ever rotated, and a test that reads live ciphertext would produce
+    # results that depend on production state.  Each test that needs a key
+    # generates its own throwaway via the ``key`` fixture.
+    monkeypatch.setattr(settings, "CREDENTIAL_ENCRYPTION_KEY", "")
+
     # The dependency factories are lru_cached singletons, so any store already
     # built (or cached by an earlier test) still points at the real path.
     import app.dependencies as deps
