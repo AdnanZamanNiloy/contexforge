@@ -13,6 +13,13 @@ const DEFAULT_TIMEOUT_MS = 120000
 // an opaque network error instead of the server's clear timeout message.
 const MIND_MAP_TIMEOUT_MS = 165000
 
+// Note generation takes the same shape of request as a mind map — a selection of
+// sources into one LLM call — but writes longer prose, and the server caps it at
+// 150s (MAX_GENERATION_SECONDS).  As above, the client window has to sit above
+// the server cap so a slow provider surfaces the server's clear message rather
+// than a bare network error.
+const NOTE_TIMEOUT_MS = 180000
+
 function buildUrl(path) {
   if (!path.startsWith('/')) {
     return `${API_BASE}/${path}`
@@ -358,6 +365,49 @@ export async function getMindMap(sourceIds) {
   }
   if (!response.ok) {
     let detail = 'Failed to load mind map'
+    try {
+      const data = await response.json()
+      detail = data.detail || data.message || detail
+    } catch {
+      detail = await response.text()
+    }
+    throw new Error(detail)
+  }
+  return response.json()
+}
+
+// --- Note --------------------------------------------------------------------
+//
+// The same contract as the mind map: one source posts `source_id` so the backend
+// keeps using the pre-existing cache entry for it, and several post `source_ids`
+// to be keyed by a sorted composite key.  The two features deliberately share
+// one notion of a selection, so the key derivation below is the mind map's.
+
+export async function createNote(sourceIds, options = {}) {
+  const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
+  const body = ids.length === 1 ? { source_id: ids[0] } : { source_ids: ids }
+  if (options.refresh) body.refresh = true
+  return request('/note/generate', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    timeoutMs: NOTE_TIMEOUT_MS,
+  })
+}
+
+export async function getNote(sourceIds) {
+  const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
+  if (ids.length === 0) return null
+  // Mirror the server's key derivation so a GET addresses the same entry the
+  // POST created (single source = its own id, several = sorted composite).
+  const key = ids.length === 1 ? ids[0] : `multi:${[...new Set(ids)].sort().join(',')}`
+  const response = await fetch(buildUrl(`/note/${encodeURIComponent(key)}`), {
+    method: 'GET',
+  })
+  if (response.status === 404) {
+    return null
+  }
+  if (!response.ok) {
+    let detail = 'Failed to load note'
     try {
       const data = await response.json()
       detail = data.detail || data.message || detail

@@ -23,6 +23,7 @@ from app.dependencies import close_all
 from app.health.routes import router as health_router
 from app.mindmap.routes import router as mindmap_router
 from app.model_hub.routes import router as model_hub_router
+from app.notes.routes import router as note_router
 from app.projects.routes import router as projects_router
 from app.routes.github import router as github_router
 from app.routes.ingest import router as ingest_router
@@ -140,6 +141,7 @@ app.include_router(github_router)
 app.include_router(query_router)
 app.include_router(context_router)
 app.include_router(mindmap_router)
+app.include_router(note_router)
 app.include_router(architecture_router)
 app.include_router(techstack_router)
 app.include_router(health_router)

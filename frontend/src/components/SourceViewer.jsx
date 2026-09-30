@@ -158,6 +158,8 @@ export default function SourceViewer({
   confidence = null,
   onOpenMindMap,
   mindMapActive = false,
+  onOpenNote,
+  noteActive = false,
 }) {
   const DEFAULT_VISIBLE_CHUNKS = 3
   const hasSources = sources.length > 0
@@ -211,11 +213,33 @@ export default function SourceViewer({
             </svg>
             <span className="mindmap-cta-text">
               <span>{mindMapActive ? 'Back to Chat' : 'Mind Map'}</span>
-              <small>
-                {mindMapActive ? 'Return to the conversation' : 'Map the key ideas visually'}
-              </small>
+              <small>{mindMapActive ? 'Return to the conversation' : 'Map the ideas'}</small>
             </span>
           </button>
+          {/* The Note shares this rail and the main window with the Mind Map, so
+              both CTAs sit together and each is the way out of the other. */}
+          {onOpenNote ? (
+            <button className="mindmap-cta" onClick={onOpenNote} aria-pressed={noteActive}>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 3.5h9.5L19 8v12.5H5z" />
+                <path d="M14 3.5V8h5" />
+                <path d="M8 12.5h8M8 16h5" />
+              </svg>
+              <span className="mindmap-cta-text">
+                <span>{noteActive ? 'Back to Chat' : 'Note'}</span>
+                <small>{noteActive ? 'Return to the conversation' : 'Write it up'}</small>
+              </span>
+            </button>
+          ) : null}
         </div>
       ) : null}
       <section className="panel panel-scroll panel-chunks">

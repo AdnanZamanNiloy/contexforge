@@ -366,6 +366,9 @@ class Settings(BaseSettings):
     # Persisted generated mind maps (keyed by source_id).
     MINDMAP_DIR: Path = Field(default=data_path("mindmaps"))
 
+    # Persisted generated notes (keyed by the same selection key as mind maps).
+    NOTES_DIR: Path = Field(default=data_path("notes"))
+
     # Architecture Diagram — generated Mermaid maps, cached per project +
     # content fingerprint so an unchanged repository is only ever analysed once.
     ARCHITECTURE_DB_PATH: Path = Field(default=data_path("architecture", "architecture.db"))

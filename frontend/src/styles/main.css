@@ -5378,13 +5378,275 @@ select.mh-input {
   }
 }
 
-/* ---------- Mind Map entry point (evidence rail) ---------- */
+/* ---------- Note panel: multi-source picker + the written note ---------- */
 
+.note-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.note-panel-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 24px 12px 0;
+  flex-wrap: wrap;
+}
+
+.note-scope {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.note-scope-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--body-color);
+  white-space: nowrap;
+}
+
+.note-scope-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--hairline);
+  background-color: var(--canvas-soft);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.note-scope-toggle:hover:not(:disabled) {
+  border-color: var(--hairline-soft);
+}
+
+.note-scope-toggle:focus-visible {
+  outline: none;
+  border-color: var(--primary-soft);
+}
+
+/* The picker drops below the toggle rather than replacing it, so the note stays
+   visible while sources are toggled. */
+.note-scope-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  width: max(260px, 100%);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: var(--canvas);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.28);
+}
+
+.note-scope-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.note-scope-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+.note-scope-option:hover {
+  background: rgb(255 255 255 / 0.05);
+}
+
+.note-scope-option input {
+  accent-color: var(--primary-soft);
+  cursor: pointer;
+}
+
+.note-scope-option-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-scope-empty {
+  margin: 0;
+  padding: 10px;
+  font-size: 0.8rem;
+  color: var(--body-color);
+}
+
+.note-panel-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.note-action {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.note-action:hover:not(:disabled) {
+  border-color: var(--hairline-soft);
+  background: rgb(255 255 255 / 0.05);
+}
+
+.note-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.note-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  margin: 0 24px 24px 0;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--canvas-soft);
+}
+
+.note-panel-body > .note-doc {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The note reads as a document, not a dashboard: a measure cap stops a wide
+   window stretching lines past the point where they are comfortable to scan. */
+.note-doc {
+  overflow-y: auto;
+  padding: 32px 36px 48px;
+  font-size: 0.94rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.note-doc.is-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.note-markdown {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+
+.note-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 220px;
+  color: var(--body-color);
+  text-align: center;
+}
+
+.note-state.is-error p {
+  color: var(--danger, #f85149);
+}
+
+.note-state.is-empty {
+  color: var(--body-color);
+}
+
+.note-state svg {
+  opacity: 0.55;
+}
+
+.note-empty-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.note-empty-sub {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: var(--body-color);
+}
+
+/* ---------- Mind Map / Note entry points (evidence rail) ---------- */
+
+/* Mind Map and Note share this row.  `nowrap` is deliberate: the rail is a fixed
+   380px, and letting these wrap turned the pair into a two-high stack that read
+   as one button plus an afterthought.  The buttons share the row instead
+   (flex: 1 1 0 below) and their subtitles truncate, so one row stays legible
+   where a wrapped stack did not. */
 .evidence .mindmap-cta-row {
   margin-bottom: 12px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
+}
+
+/* Two-up, so each tile gets roughly half the rail.  At ~161px every pixel goes
+   to the label: the trailing arrow and a full-size icon both cost more text
+   width than a 13-character subtitle can spare, and a clipped subtitle reads as
+   a rendering fault rather than a deliberate truncation. */
+.evidence .mindmap-cta-row .mindmap-cta {
+  gap: 9px;
+  padding: 10px 11px;
+}
+
+.evidence .mindmap-cta-row .mindmap-cta > svg {
+  width: 26px;
+  height: 26px;
+  padding: 6px;
+  border-radius: 9px;
+}
+
+/* The arrow is an affordance worth having on one button and not worth two. */
+.evidence .mindmap-cta-row .mindmap-cta::after {
+  display: none;
+}
+
+.evidence .mindmap-cta-row .mindmap-cta-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The label wraps before the subtitle would, and a two-line label made the two
+   tiles different heights.  One line each, ellipsis as the last resort. */
+.evidence .mindmap-cta-row .mindmap-cta-text > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .evidence .mindmap-cta-row.is-pinned {
@@ -8734,6 +8996,45 @@ body.ad-fullscreen-active .app-layout {
   margin-inline: auto;
   font-size: 0.76rem;
   color: var(--mute);
+}
+
+/* Pinned strip below the sidebar's scrolling source list.  It is the last child
+   of a flex column, so it stays put while the list above scrolls; `flex: none`
+   stops it being squeezed when the source list is long. */
+.sidebar-footer {
+  flex: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* The meter was sized for a composer spanning the whole main column.  In the
+   sidebar it fills the column instead, and the numbers stop competing with the
+   label for a 360px-wide row. */
+.sidebar-footer .context-meter {
+  width: 100%;
+  margin-inline: 0;
+  font-size: 0.74rem;
+}
+
+.sidebar-footer .context-meter-summary {
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.sidebar-footer .context-meter-of {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The detail panel is in normal flow, so expanding it would push the source
+   list — the thing it is describing — out of the sidebar entirely.  Cap it and
+   let it scroll instead, so both the depth control and a usable slice of the
+   list stay on screen at once. */
+.sidebar-footer .context-meter-detail {
+  max-height: 32vh;
+  overflow-y: auto;
 }
 
 /* Reserved while the estimate loads so the composer does not jump. */

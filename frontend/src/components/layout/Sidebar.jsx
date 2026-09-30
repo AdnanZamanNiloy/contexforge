@@ -388,6 +388,7 @@ export default function Sidebar({
   onRenameSource,
   onDeleteSource,
   header,
+  footer,
   // Restricts the Knowledge Base rows to a project source family, e.g.
   // ['pdf', 'docx', 'web', 'text'].  Null/undefined keeps every row.
   scopeTypes = null,
@@ -623,6 +624,11 @@ export default function Sidebar({
           )}
         </div>
       </section>
+
+      {/* Pinned below the scrolling source list, alongside the controls that
+          decide what the selection costs.  Rendered last so it stays put while
+          the list above it scrolls. */}
+      {footer ? <div className="sidebar-footer">{footer}</div> : null}
     </aside>
   )
 }

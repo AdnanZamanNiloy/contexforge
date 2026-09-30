@@ -14,6 +14,7 @@ _ISOLATED_PATHS = {
     "CACHE_PATH": "cache/embeddings.json",
     "UPLOAD_DIR": "uploads",
     "MINDMAP_DIR": "mindmaps",
+    "NOTES_DIR": "notes",
     "ARCHITECTURE_DB_PATH": "architecture/architecture.db",
     "TECH_STACK_DB_PATH": "tech_stack/tech_stack.db",
     "HEALTH_DB_PATH": "health/health.db",

@@ -23,6 +23,8 @@ from app.mindmap.storage import MindMapStore
 from app.model_hub import factory as model_hub_factory
 from app.model_hub.service import ModelHubService
 from app.model_hub.storage import ModelHubStore
+from app.notes.service import NoteService
+from app.notes.storage import NoteStore
 from app.security.service import SecurityService
 from app.security.storage import SecurityStore
 from app.services.ingest_service import IngestService
@@ -254,6 +256,25 @@ def get_mindmap_service() -> MindMapService:
 
 
 # ---------------------------------------------------------------------------
+# Note — a written note built from a selection of sources
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def get_note_store() -> NoteStore:
+    return NoteStore()
+
+
+@lru_cache(maxsize=1)
+def get_note_service() -> NoteService:
+    return NoteService(
+        store=get_note_store(),
+        faiss=get_faiss_store(),
+        llm=get_llm(),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Architecture Diagram — a bounded Mermaid map built from a GitHub source
 # ---------------------------------------------------------------------------
 
@@ -373,10 +394,10 @@ async def apply_serving_configuration() -> None:
 
 
 def _rewire_llm_consumers(llm) -> None:
-    """Point HyDE and Mind Map at the newly active LLM.
+    """Point HyDE, Mind Map and Note at the newly active LLM.
 
-    Both hold a reference to the LLM taken at construction time; without this
-    they would keep using the previous model after a serving switch.
+    All three hold a reference to the LLM taken at construction time; without
+    this they would keep using the previous model after a serving switch.
     """
     try:
         get_hyde().swap_llm(llm)
@@ -386,6 +407,10 @@ def _rewire_llm_consumers(llm) -> None:
         get_mindmap_service().swap_llm(llm)
     except Exception as exc:
         logger.warning("Model Hub: could not rewire Mind Map LLM (%s).", exc)
+    try:
+        get_note_service().swap_llm(llm)
+    except Exception as exc:
+        logger.warning("Model Hub: could not rewire Note LLM (%s).", exc)
     try:
         get_architecture_service().swap_llm(llm)
     except Exception as exc:
@@ -466,6 +491,12 @@ async def close_all() -> None:
         logger.debug("MindMapStore closed.")
     except Exception as exc:
         logger.warning("Error closing MindMapStore: %s", exc)
+
+    try:
+        get_note_store().close()
+        logger.debug("NoteStore closed.")
+    except Exception as exc:
+        logger.warning("Error closing NoteStore: %s", exc)
 
     try:
         get_architecture_store().close()

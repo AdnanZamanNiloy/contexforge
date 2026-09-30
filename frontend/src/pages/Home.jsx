@@ -4,9 +4,11 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import AppShell from '../components/layout/AppShell'
 import Sidebar from '../components/layout/Sidebar'
 import ChatBox from '../components/ChatBox'
+import ContextMeter from '../components/ContextMeter'
 import SourceViewer from '../components/SourceViewer'
 import SourceDetailPanel from '../components/SourceDetailPanel'
 import MindMapPanel from '../components/MindMapPanel'
+import NotePanel from '../components/NotePanel'
 import RepoStudio, { STUDIO_TOOLS, StudioView } from '../components/RepoStudio'
 import {
   ingestFile,
@@ -190,6 +192,14 @@ export default function Home() {
     setActiveView((view) => (view === 'mindmap' ? 'chat' : 'mindmap'))
   }, [])
 
+  // The Note shares the evidence rail with the Mind Map, so the two are mutually
+  // exclusive: they occupy the same main window, and the rail shows whichever
+  // one is not currently open as a way back in.
+  const handleOpenNote = useCallback(() => {
+    setStudioView(null)
+    setActiveView((view) => (view === 'note' ? 'chat' : 'note'))
+  }, [])
+
   // The Mind Map targets exactly ONE source, chosen in its own panel — separate
   // from the sidebar selection chat uses, and with no "all sources" default.
   const [mindMapSourceId, setMindMapSourceId] = useState('')
@@ -199,6 +209,14 @@ export default function Home() {
     setMindMapSourceId((current) =>
       current && visibleSources.some((s) => s.id === current) ? current : '',
     )
+  }, [projectId, visibleSources])
+
+  // The Note is written from ONE OR MORE sources chosen in its own panel.  Like
+  // the Mind Map it starts empty on purpose: a note written from an implicit
+  // "everything" would silently pick a scope the user never chose.
+  const [noteSourceIds, setNoteSourceIds] = useState([])
+  useEffect(() => {
+    setNoteSourceIds((current) => current.filter((id) => visibleSources.some((s) => s.id === id)))
   }, [projectId, visibleSources])
 
   // Allow the shared sidebar's "Add Source" button on any page to open the
@@ -633,16 +651,19 @@ export default function Home() {
           onRetry={retryLast}
           uploadHint={showUploadHint}
           sourceCount={chatScopeCount}
-          sourceIds={selectedSourceIds}
-          contextDepth={contextDepth}
-          onContextDepthChange={setContextDepth}
           focusRequest={chatFocusRequest}
         />
-      ) : (
+      ) : activeView === 'mindmap' ? (
         <MindMapPanel
           sources={visibleSources}
           sourceId={mindMapSourceId}
           onSourceChange={setMindMapSourceId}
+        />
+      ) : (
+        <NotePanel
+          sources={visibleSources}
+          selectedSourceIds={noteSourceIds}
+          onSelectionChange={setNoteSourceIds}
         />
       )}
     </div>
@@ -662,6 +683,8 @@ export default function Home() {
       confidence={confidence}
       onOpenMindMap={handleOpenMindMap}
       mindMapActive={activeView === 'mindmap'}
+      onOpenNote={handleOpenNote}
+      noteActive={activeView === 'note'}
     />
   )
 
@@ -682,6 +705,17 @@ export default function Home() {
             onRenameSource={handleRequestRenameSource}
             onDeleteSource={handleRequestRemoveSource}
             scopeTypes={sidebarScope}
+            footer={
+              // The meter reads the sidebar selection, so it belongs at the foot
+              // of the sidebar next to the checkboxes that change it — not under
+              // the composer, which is a different column and a different task.
+              <ContextMeter
+                sourceIds={selectedSourceIds}
+                depth={contextDepth}
+                onDepthChange={setContextDepth}
+                disabled={isStreaming}
+              />
+            }
           />
         }
         main={main}
