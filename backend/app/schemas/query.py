@@ -114,6 +114,18 @@ class QueryRequest(BaseModel):
         default=None,
         description="Override server-side HyDE flag for this request.",
     )
+    context_depth: Literal["focused", "balanced", "broad"] | None = Field(
+        default=None,
+        description=(
+            "How much context to retrieve. 'focused' (the default) keeps a few "
+            "chunks from a couple of sources; 'balanced' spans more sources and "
+            "more chunks each; 'broad' reaches for as much of the selection as "
+            "the prompt will hold. Each maps to concrete retrieval limits — see "
+            "``app.context.CONTEXT_DEPTHS``. Selections that cannot justify the "
+            "requested depth are automatically reduced, so a request cannot widen "
+            "the context window by naming a depth its sources do not support."
+        ),
+    )
 
     # Reject whitespace-only questions that pass min_length=1
     @field_validator("question")

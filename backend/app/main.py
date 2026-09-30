@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from app.architecture.routes import router as architecture_router
 from app.chat.routes import router as chat_router
 from app.config.settings import Settings
+from app.context.routes import router as context_router
 from app.dependencies import close_all
 from app.health.routes import router as health_router
 from app.mindmap.routes import router as mindmap_router
@@ -137,6 +138,7 @@ app.add_middleware(
 app.include_router(ingest_router)
 app.include_router(github_router)
 app.include_router(query_router)
+app.include_router(context_router)
 app.include_router(mindmap_router)
 app.include_router(architecture_router)
 app.include_router(techstack_router)

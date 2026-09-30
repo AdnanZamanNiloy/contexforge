@@ -55,11 +55,15 @@ function normalizeMessage(message) {
 // is an async callback that returns the active session, creating one on demand
 // (the first message of a fresh project).  Without either the hook still works
 // locally (no persistence), which keeps it usable standalone and in tests.
+// `contextDepth` is how much the next question may retrieve; the server maps it
+// to real retrieval limits and reduces it when the selection is too small to
+// justify the wider setting.
 export function useChat({
   sessionId = null,
   resolveSessionId = null,
   onNewSession = null,
   sourceIds = [],
+  contextDepth = 'focused',
 } = {}) {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
@@ -78,6 +82,7 @@ export function useChat({
   const resolveSessionRef = useRef(resolveSessionId)
   const onNewSessionRef = useRef(onNewSession)
   const sourceIdsRef = useRef(sourceIds)
+  const contextDepthRef = useRef(contextDepth)
   // Sessions whose in-memory thread is already authoritative.  A session we
   // created ourselves (lazily, mid-send) has its messages in hand before the id
   // exists, so re-fetching it could race the still-in-flight POST and drop the
@@ -90,7 +95,8 @@ export function useChat({
     resolveSessionRef.current = resolveSessionId
     onNewSessionRef.current = onNewSession
     sourceIdsRef.current = sourceIds
-  }, [sessionId, resolveSessionId, onNewSession, sourceIds])
+    contextDepthRef.current = contextDepth
+  }, [sessionId, resolveSessionId, onNewSession, sourceIds, contextDepth])
 
   // Load persisted history whenever the bound session changes.  A different
   // project or session replaces the thread; changing the *selection* does not,
@@ -266,6 +272,10 @@ export function useChat({
           // No source selected: answer from general knowledge, never from the
           // corpus, so the reply cannot cite a source the user did not choose.
           no_sources: usedSourceIds.length === 0,
+          // How much of the selection this question may retrieve. Sent with the
+          // selection rather than baked into the session, so it always matches
+          // the depth the composer reported when the question was asked.
+          context_depth: contextDepthRef.current,
         }
         await streamQuery(payload, {
           signal: controller.signal,
@@ -348,6 +358,7 @@ export function useChat({
             question: trimmed,
             source_ids: usedSourceIds.length ? usedSourceIds : undefined,
             no_sources: usedSourceIds.length === 0,
+            context_depth: contextDepthRef.current,
           })
           updateAssistant(assistantId, {
             text: fallback.answer,

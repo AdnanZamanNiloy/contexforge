@@ -144,6 +144,20 @@ export async function queryAnswer(payload) {
   })
 }
 
+// Price a source selection without retrieving anything.  Returns both the size of
+// the material available and how much of it would reach the model, which is the
+// gap that makes the workspace's source selection meaningful.  Cheap enough to
+// call on every selection change: no embedding, retrieval, rerank or generation.
+export async function estimateContext(sourceIds, depth) {
+  return request('/context/estimate', {
+    method: 'POST',
+    body: JSON.stringify({
+      source_ids: sourceIds && sourceIds.length ? sourceIds : undefined,
+      depth: depth || undefined,
+    }),
+  })
+}
+
 const STREAM_IDLE_TIMEOUT_MS = 120000
 
 export async function streamQuery(payload, handlers = {}, path = '/query/stream') {

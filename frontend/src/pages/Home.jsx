@@ -177,6 +177,11 @@ export default function Home() {
     clear: clearSourceSelection,
   } = selection
 
+  // How much context a question may retrieve.  A real pipeline control — each
+  // depth maps to concrete retrieval limits — so it is per workspace rather than
+  // per question, and the composer reports what it will actually reach.
+  const [contextDepth, setContextDepth] = useState('focused')
+
   // Chat and Mind Map share the selection, so both stay on the same scope.
   // The Mind Map is reached from a button in the evidence rail, not a tab.
   const [activeView, setActiveView] = useState('chat')
@@ -235,6 +240,7 @@ export default function Home() {
     resolveSessionId: ensureSession,
     onNewSession: handleNewSession,
     sourceIds: selectedSourceIds,
+    contextDepth,
   })
 
   const pushNotification = useCallback((type, text) => {
@@ -627,6 +633,9 @@ export default function Home() {
           onRetry={retryLast}
           uploadHint={showUploadHint}
           sourceCount={chatScopeCount}
+          sourceIds={selectedSourceIds}
+          contextDepth={contextDepth}
+          onContextDepthChange={setContextDepth}
           focusRequest={chatFocusRequest}
         />
       ) : (

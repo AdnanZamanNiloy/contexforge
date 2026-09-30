@@ -8719,3 +8719,191 @@ body.ad-fullscreen-active .app-layout {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* --------------------------------------------------------------------------
+   Context meter
+   --------------------------------------------------------------------------
+   What the current source selection costs, and how much of it reaches the model.
+   Retrieval keeps a fixed handful of chunks, so a large selection is sampled
+   rather than read whole — previously invisible. The gauge is the ratio; the
+   readout names both sides of it, because the ratio alone does not say which
+   number is the one being spent.
+   -------------------------------------------------------------------------- */
+.context-meter {
+  width: min(720px, 100%);
+  margin-inline: auto;
+  font-size: 0.76rem;
+  color: var(--mute);
+}
+
+/* Reserved while the estimate loads so the composer does not jump. */
+.context-meter.is-loading {
+  height: 30px;
+}
+
+.context-meter-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.context-meter-summary:hover {
+  background: var(--canvas-soft);
+  border-color: var(--hairline-soft);
+}
+
+.context-meter-gauge {
+  flex-shrink: 0;
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.context-meter-gauge-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.25s ease;
+}
+
+.context-meter-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+
+.context-meter-numbers strong {
+  font-weight: 600;
+  color: var(--body-color);
+}
+
+.context-meter-of {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-meter-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--mute);
+}
+
+.context-meter-detail {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--canvas-soft);
+}
+
+.context-meter-explainer {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--body-color);
+}
+
+.context-meter-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.context-meter-source {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.75rem;
+}
+
+.context-meter-source-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--body-color);
+}
+
+.context-meter-source-meta {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--mute);
+}
+
+/* A source the current depth would not read.  Named rather than hidden, so the
+   selection count and the answer's sources can be reconciled. */
+.context-meter-source.is-dropped .context-meter-source-title {
+  color: var(--mute);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+}
+
+.context-meter-warning {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.07);
+  font-size: 0.73rem;
+  line-height: 1.5;
+  color: var(--body-color);
+}
+
+.context-meter-depths {
+  display: flex;
+  gap: 6px;
+}
+
+.context-meter-depth {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.74rem;
+  color: var(--body-color);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.context-meter-depth:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--hairline-soft);
+}
+
+.context-meter-depth.is-active {
+  background: rgba(67, 119, 253, 0.14);
+  border-color: var(--primary);
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
+.context-meter-depth:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}

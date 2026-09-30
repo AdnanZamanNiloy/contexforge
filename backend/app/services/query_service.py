@@ -15,6 +15,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+from app.context.estimator import clamp_depth_for_selection, resolve_context_depth
 from app.schemas.query import QueryRequest
 from core.orchestrator import Orchestrator, _is_structure_question
 from core.types import GenerationResult, RerankedChunk
@@ -22,6 +23,28 @@ from core.types import GenerationResult, RerankedChunk
 __all__ = ["QueryService"]
 
 logger = logging.getLogger(__name__)
+
+
+def _limits_for(request: QueryRequest) -> dict[str, int]:
+    """Resolve the retrieval limits for a request.
+
+    An explicit ``top_k_retrieval`` / ``top_k_rerank`` still wins: those are the
+    precise knobs, and a client that sets them knows what it wants.  ``context_depth``
+    is the coarse control for clients that do not, and it is clamped to the
+    selection so "broad" over two sources reports as the narrower depth that
+    will actually run rather than claiming a breadth it cannot deliver.
+    """
+    if request.top_k_retrieval is not None or request.top_k_rerank is not None:
+        return {}
+    depth = resolve_context_depth(request.context_depth)
+    if request.context_depth:
+        depth = resolve_context_depth(
+            clamp_depth_for_selection(
+                request.context_depth,
+                selected_count=len(request.source_ids or []),
+            )
+        )
+    return depth
 
 
 class QueryService:
@@ -56,9 +79,7 @@ class QueryService:
             return None
         manifest = await self._orchestrator.file_manifest(source_ids=source_ids)
         if manifest:
-            logger.info(
-                "structure question: attaching %d indexed file paths", len(manifest)
-            )
+            logger.info("structure question: attaching %d indexed file paths", len(manifest))
         return manifest or None
 
     async def answer(self, request: QueryRequest) -> GenerationResult:
@@ -81,10 +102,14 @@ class QueryService:
             request.source_id,
             request.source_ids,
         )
+        limits = _limits_for(request)
+        if request.context_depth and not limits:
+            logger.info("answer: explicit top_k overrides context_depth=%s", request.context_depth)
+
         result = await self._orchestrator.answer(
             request.question,
-            top_k_retrieval=request.top_k_retrieval,
-            top_k_rerank=request.top_k_rerank,
+            top_k_retrieval=request.top_k_retrieval or limits.get("top_k_retrieval"),
+            top_k_rerank=request.top_k_rerank or limits.get("top_k_rerank"),
             use_hyde=request.use_hyde,
             source_id=request.source_id,
             source_ids=request.source_ids,
@@ -141,10 +166,11 @@ class QueryService:
         yield {"type": "status", "stage": "retrieving"}
 
         # Unpack the new 3-tuple from retrieve_context
+        limits = _limits_for(request)
         reranked, timings, mean_confidence = await self._orchestrator.retrieve_context(
             request.question,
-            top_k_retrieval=request.top_k_retrieval,
-            top_k_rerank=request.top_k_rerank,
+            top_k_retrieval=request.top_k_retrieval or limits.get("top_k_retrieval"),
+            top_k_rerank=request.top_k_rerank or limits.get("top_k_rerank"),
             use_hyde=request.use_hyde,
             source_id=request.source_id,
             source_ids=request.source_ids,

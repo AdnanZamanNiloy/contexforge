@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MessageBubble from './MessageBubble'
+import ContextMeter from './ContextMeter'
 
 export default function ChatBox({
   messages,
@@ -12,6 +13,9 @@ export default function ChatBox({
   onRetry,
   uploadHint,
   sourceCount = null,
+  sourceIds = [],
+  contextDepth = 'focused',
+  onContextDepthChange,
   focusRequest = 0,
 }) {
   const MAX_TEXTAREA_HEIGHT = 200
@@ -119,6 +123,13 @@ export default function ChatBox({
           </motion.button>
         </div>
       </form>
+      <ContextMeter
+        sourceIds={sourceIds}
+        depth={contextDepth}
+        onDepthChange={onContextDepthChange}
+        disabled={isStreaming}
+        className="mt-3"
+      />
       {sourceCount === 0 ? (
         <p className="text-center text-xs text-[#c9a227] mt-4">
           No source selected — answers come from general knowledge only. Select a source in the
