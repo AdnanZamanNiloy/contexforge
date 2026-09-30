@@ -2,8 +2,9 @@
 
 ContextForge already depends on ``sentence-transformers`` for the reranker
 (``cross-encoder/ms-marco-MiniLM-L-6-v2``), so local embeddings introduce **no
-new ML framework**.  This class is the generic, configurable counterpart to
-``BGEEmbedder``: it accepts any sentence-transformers model id and a device.
+new ML framework**.  This is the only local embedder: it accepts any
+sentence-transformers model id and a device, which covers BGE models and
+anything else on HuggingFace.
 
 The model is loaded lazily on first use (and cached by the caller via the
 Model Hub factory) so startup stays fast and selecting a model in the UI is the
