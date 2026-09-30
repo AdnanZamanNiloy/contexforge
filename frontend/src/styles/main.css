@@ -5040,27 +5040,20 @@ select.mh-input {
 .option-icon {
   border-radius: 14px;
 }
-/* Family-tinted icon tiles (win over the grayscale modal override below by
-   source order — this block is last in the file). */
-.modal-card .option-icon.is-files {
-  background: linear-gradient(135deg, #5a2626, #221010);
-  color: #fff;
-}
-.modal-card .option-icon.is-web {
-  background: linear-gradient(135deg, #1f4a52, #0f2226);
-  color: rgba(255, 255, 255, 0.9);
-}
-.modal-card .option-icon.is-youtube {
-  background: linear-gradient(135deg, #6b1f1f, #230f0f);
-  color: #fff;
-}
-.modal-card .option-icon.is-github {
-  background: linear-gradient(135deg, #2a2f3a, #14161b);
-  color: rgba(255, 255, 255, 0.9);
-}
+/* Ingest-option icon tiles.
+   These were tinted per family (a maroon gradient under YouTube, teal under
+   web, slate under GitHub).  A tint behind a brand mark does not sit behind it,
+   it competes with it: the YouTube glyph is drawn in its own red, so a maroon
+   tile on top of that reads as muddy brown rather than YouTube.  Every tile is
+   now the same flat modal surface, so a logo is the only colour in its frame.
+   Size, radius and position are unchanged. */
+.modal-card .option-icon.is-files,
+.modal-card .option-icon.is-web,
+.modal-card .option-icon.is-youtube,
+.modal-card .option-icon.is-github,
 .modal-card .option-icon.is-text {
-  background: linear-gradient(135deg, #3a3f47, #17181c);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--modal-surface-3);
+  color: var(--modal-ink);
 }
 .drop-zone {
   border-radius: 16px;
