@@ -16,13 +16,18 @@ import ContextForgeMark from '../components/ContextForgeMark'
 // interval clock so the page stays cheap and respects reduced-motion.
 // ---------------------------------------------------------------------------
 
+// The five stages the backend actually reports timings for.  The rail used to
+// show six (HyDE, Hybrid, RRF, Rerank, Prompt, LLM) and the caption claimed it
+// was "the same six stages the backend runs".  It was not: hybrid search and RRF
+// fusion are a single `retrieve_ms` bucket, prompt assembly has no timing key at
+// all, and query embedding (`embed_ms`) was missing from the rail entirely.
+// These five match the keys returned in `latency_ms`.
 const PIPELINE = [
   { key: 'hyde', label: 'HyDE', detail: 'hypothetical passage', ms: 420 },
-  { key: 'hybrid', label: 'Hybrid', detail: 'BM25 ⊕ dense', ms: 380 },
-  { key: 'rrf', label: 'RRF', detail: 'rank fusion', ms: 320 },
+  { key: 'embed', label: 'Embed', detail: 'query vector', ms: 240 },
+  { key: 'retrieve', label: 'Hybrid', detail: 'BM25 ⊕ dense, RRF fused', ms: 380 },
   { key: 'rerank', label: 'Rerank', detail: 'cross-encoder', ms: 460 },
-  { key: 'prompt', label: 'Prompt', detail: 'top-k assembly', ms: 300 },
-  { key: 'llm', label: 'LLM', detail: 'grounded generation', ms: 520 },
+  { key: 'generate', label: 'Generate', detail: 'grounded answer', ms: 520 },
 ]
 
 const ANSWER_TOKENS = [
@@ -49,7 +54,9 @@ const ANSWER_TOKENS = [
 ]
 
 // Kept short: the shared `core/retrieval/` prefix is stated once in the label so
-// the three chips sit on a single row inside the compact hero window.
+// the three chips sit on a single row inside the compact hero window.  These are
+// the retrieved passages with their scores — the evidence rail the client
+// actually renders — not inline `[n]` markers, which ship disabled.
 const CITATIONS = [
   { n: 1, label: 'retrieval/hybrid.py', score: '0.87' },
   { n: 2, label: 'retrieval/rrf.py', score: '0.81' },
@@ -78,23 +85,60 @@ const CAPABILITIES = [
   },
   {
     tag: 'Answer delivery',
-    title: 'Grounded, cited, streamed',
-    body: 'Tokens stream over Server-Sent Events. Every answer ships inline citations, per-stage latency, and server-side confidence for source coverage.',
+    title: 'Grounded, streamed, inspectable',
+    body: 'Tokens stream over Server-Sent Events, and every response carries the retrieved passages with their scores, per-stage latency, and server-side confidence for source coverage.',
     facts: [
       ['Transport', 'SSE token streaming'],
-      ['Evidence', 'chunk citations + scores'],
+      ['Evidence', 'passages + relevance scores'],
       ['Metrics', 'confidence · latency'],
     ],
   },
   {
-    tag: 'Resilience',
-    title: 'Provider-agnostic by contract',
-    body: 'Embedders, LLMs and retrievers sit behind interfaces. Gemini leads, with automatic failover to Groq, OpenRouter, Cerebras or NVIDIA NIM if a provider drops.',
+    tag: 'Serving',
+    title: 'You choose what runs',
+    body: 'There is no built-in provider order. You register models in the Model Hub, then serve a single one or an ordered fallback chain. A provider returning 429 is put in cooldown and the next one answers.',
     facts: [
-      ['Primary', 'Google Gemini'],
-      ['Failover', 'Groq · OpenRouter · NIM'],
-      ['Swap cost', 'one interface change'],
+      ['Targets', '9 hosted + any local server'],
+      ['Selection', 'single model or chain'],
+      ['Keys at rest', 'Fernet-encrypted'],
     ],
+  },
+]
+
+// The workspace is what the product became after the retrieval pipeline was
+// finished.  Everything here is a shipped feature with a route behind it; the
+// landing page used to describe a RAG pipeline and said nothing about the
+// application built on top of it.
+const WORKSPACE = [
+  {
+    tag: 'Projects',
+    title: 'Separate spaces, not one pile',
+    body: 'Every project keeps its own sources, its own chat history and its own analysis target. Membership is reconciled against the live index, so a deleted source cannot linger in a project.',
+  },
+  {
+    tag: 'Notes',
+    title: 'Turn a selection into a note',
+    body: 'Pick one source or several and the system writes a structured Markdown note from their indexed content — cached per selection, regenerable on demand, downloadable as a file.',
+  },
+  {
+    tag: 'Mind maps',
+    title: 'The same selection, drawn',
+    body: 'A selection also renders as a bounded mind map: a nested outline the canvas draws directly, generated once and reused until the selection changes.',
+  },
+  {
+    tag: 'Studio',
+    title: 'Four repository analyzers',
+    body: 'Architecture diagram, security and quality scan, dependency and tech stack, and health score. Each targets one repository and caches against its content fingerprint.',
+  },
+  {
+    tag: 'Context control',
+    title: 'See what a selection costs',
+    body: 'The sidebar prices the current selection against the prompt budget in real time. Focused, Balanced and Broad each map to concrete retrieval limits, so widening the depth does something measurable.',
+  },
+  {
+    tag: 'Inspection',
+    title: 'Confirm what was actually read',
+    body: 'Every source reports an extraction verdict — a scanned PDF and a healthy one are not the same — alongside page counts, language, file listing and the indexed chunk text itself.',
   },
 ]
 
@@ -103,14 +147,14 @@ const RETRIEVAL_STEPS = [
   ['02', 'Hybrid search', 'Keyword and dense retrievers run in parallel over the same corpus.'],
   ['03', 'Rank fusion', 'RRF merges both ranked lists into one ordering without score scaling.'],
   ['04', 'Cross-encoder', 'Top candidates are rescored pairwise for true relevance.'],
-  ['05', 'Grounded answer', 'Reranked chunks become a cited, confidence-annotated response.'],
+  ['05', 'Grounded answer', 'Reranked chunks become a streamed answer with its evidence attached.'],
 ]
 
 const STATS = [
-  { value: '6', label: 'source formats', sub: 'PDF · DOCX · Web · YT · GitHub · Text' },
+  { value: '6', label: 'source formats', sub: 'PDF · DOCX · Web · YouTube · GitHub · Text' },
   { value: '2', label: 'retrievers fused', sub: 'BM25 ⊕ dense vectors' },
-  { value: '5', label: 'LLM providers', sub: 'Gemini + 4 failover' },
-  { value: '100%', label: 'local storage', sub: 'FAISS + SQLite on your disk' },
+  { value: '10', label: 'LLM targets', sub: '9 hosted providers + local' },
+  { value: '59', label: 'API endpoints', sub: 'one self-hosted backend' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -247,6 +291,7 @@ function Nav() {
         </Link>
         <nav className="lp-nav-links" aria-label="Sections">
           <a href="#pipeline">Pipeline</a>
+          <a href="#workspace">Workspace</a>
           <a href="#capabilities">Capabilities</a>
           <a href="#stack">Stack</a>
         </nav>
@@ -295,7 +340,7 @@ function RetrievalTrace() {
   const question = 'How does ContextForge rank retrieved chunks?'
 
   return (
-    <HudFrame rail="Live trace — the same six stages the backend runs on every query.">
+    <HudFrame rail="Live trace — the same five stages, and the same timing keys, the backend reports per query.">
       <div className="lp-trace">
         <div className="lp-trace-q">
           <span className="lp-trace-role">you</span>
@@ -361,8 +406,8 @@ function Hero() {
           </h1>
           <p className="lp-hero-lede">
             ContextForge turns your PDFs, docs, web pages, YouTube videos and GitHub repositories
-            into a queryable, cited knowledge base. Hybrid retrieval, rank fusion and reranking —
-            running on your own hardware.
+            into a workspace you can ask, read and analyse — hybrid retrieval, rank fusion and
+            reranking underneath, projects, notes and mind maps on top.
           </p>
           <div className="lp-hero-cta">
             <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/projects">
@@ -373,8 +418,8 @@ function Hero() {
             </a>
           </div>
           <ul className="lp-hero-facts">
-            <li>No data leaves your machine</li>
-            <li>Survives restarts</li>
+            <li>Your documents stay on your disk</li>
+            <li>You choose the model that answers</li>
             <li>MIT licensed</li>
           </ul>
         </div>
@@ -416,8 +461,8 @@ function PipelineSection() {
     <section id="pipeline" className="lp-section" aria-labelledby="lp-pipeline-title">
       <SectionHeading
         eyebrow="Retrieval pipeline"
-        title="Five stages between a question and a cited answer"
-        lede="Every query walks the same path. Each stage is inspectable, timed, and reported back to the client."
+        title="Five stages between a question and a grounded answer"
+        lede="Every query walks the same path. Each stage is timed, and the timings come back with the answer."
       />
       <ol ref={ref} className="lp-steps" data-reveal="out">
         {RETRIEVAL_STEPS.map(([num, title, body]) => (
@@ -462,6 +507,28 @@ function CapabilitiesSection() {
   )
 }
 
+function WorkspaceSection() {
+  const ref = useReveal()
+  return (
+    <section id="workspace" className="lp-section" aria-labelledby="lp-workspace-title">
+      <SectionHeading
+        eyebrow="The workspace"
+        title="The part you actually use every day"
+        lede="The retrieval pipeline is the foundation. These are the tools built on top of it — each one a shipped feature with an endpoint behind it."
+      />
+      <div ref={ref} className="lp-workspace" data-reveal="out">
+        {WORKSPACE.map((item) => (
+          <article key={item.tag} className="lp-ws">
+            <span className="lp-ws-tag">{item.tag}</span>
+            <h3 className="lp-ws-title">{item.title}</h3>
+            <p className="lp-ws-body">{item.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function StackSection() {
   const ref = useReveal()
   const backend = [
@@ -470,7 +537,7 @@ function StackSection() {
     ['Dense index', 'FAISS IndexFlatIP'],
     ['Sparse index', 'SQLite FTS5'],
     ['Embeddings', 'Voyage voyage-3-lite'],
-    ['Primary LLM', 'Google Gemini'],
+    ['Diagram', 'Mermaid · mindmap'],
   ]
   const frontend = [
     ['Framework', 'React 19'],
@@ -485,7 +552,7 @@ function StackSection() {
       <SectionHeading
         eyebrow="Technology"
         title="A stack you can audit and self-host"
-        lede="No proprietary runtime, no hosted vector database. Clone it, set two API keys, and it runs."
+        lede="No proprietary runtime, no hosted vector database. Clone it, add one embedding key, and pick the model that answers."
       />
       <div ref={ref} className="lp-stack" data-reveal="out">
         <div className="lp-stack-col">
@@ -524,7 +591,7 @@ function StackSection() {
           <pre className="lp-code">
             <code>
               {
-                'python -m venv .venv\nsource .venv/bin/activate\npip install -r backend/requirements.txt\nuvicorn backend.app.main:app --port 8000\n\ncd frontend && npm install && npm run dev'
+                'make install\ncp backend/.env.example backend/.env\n\n# one key is required: VOYAGE_API_KEY\n# then pick a model in the Model Hub\n\nmake dev-backend     # API on :8000\nmake dev-frontend    # UI on :5173'
               }
             </code>
           </pre>
@@ -579,8 +646,9 @@ function Footer() {
             <span className="lp-footer-head">Product</span>
             <Link to="/projects">Projects</Link>
             <Link to="/workspace">Workspace</Link>
+            <Link to="/models">Model Hub</Link>
             <a href="#pipeline">Pipeline</a>
-            <a href="#capabilities">Capabilities</a>
+            <a href="#workspace">Workspace tour</a>
           </div>
           <div className="lp-footer-col">
             <span className="lp-footer-head">Resources</span>
@@ -629,6 +697,7 @@ export default function LandingPage() {
         <Hero />
         <StatsStrip />
         <PipelineSection />
+        <WorkspaceSection />
         <CapabilitiesSection />
         <StackSection />
         <CtaBand />

@@ -2264,12 +2264,19 @@ h3 {
 }
 .lp-h1 {
   margin: 14px 0 18px;
-  font-size: clamp(2.1rem, 5.2vw, 3.75rem);
+  /* The ceiling is set by the hero copy column, not by taste.  At the previous
+     3.75rem (60px) the intended first line "Answers grounded in" needed 592px in
+     a 564px column and broke into "Answers" / "grounded in" / "sources" / "you
+     control." — a single word alone on the first line of the page's largest
+     type.  3.3rem needs 521px, leaving real headroom instead of an 11px
+     knife-edge that any font-fallback difference would break. */
+  font-size: clamp(2.1rem, 5.2vw, 3.3rem);
   line-height: 1.05;
   letter-spacing: -0.65px;
   font-weight: 400;
   color: var(--ink-strong);
-  max-width: 15ch;
+  max-width: 22ch;
+  text-wrap: balance;
 }
 .lp-h1-accent {
   display: block;
@@ -2406,6 +2413,18 @@ h3 {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* The nav pair sat at the full `.lp-btn` size (44px tall, 20px of side padding,
+   0.95rem) — the same size as the hero and CTA buttons.  A solid blue pill at
+   hero weight in a 60px-tall bar outweighs the ghost beside it and pulls the
+   eye to the top of the page before the headline.  Stepping the nav pair down
+   keeps it comfortably above the WCAG 2.2 24px target floor while letting the
+   hero actions be the page's largest, as they are meant to be. */
+.lp-nav-actions .lp-btn {
+  height: 38px;
+  padding: 0 17px;
+  font-size: 0.88rem;
 }
 
 /* --- hero ------------------------------------------------------------------ */
@@ -2912,7 +2931,10 @@ h3 {
 /* --- capabilities ---------------------------------------------------------- */
 .lp-caps {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Three capabilities, so three equal columns. At two the third card sat alone
+     in the right cell and the row below it read as a layout bug rather than a
+     deliberate choice. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 .lp-cap {
@@ -2930,6 +2952,50 @@ h3 {
 .lp-cap:hover {
   border-color: rgba(67, 119, 253, 0.34);
   transform: translateY(-2px);
+}
+
+/* ---------- workspace tour ---------- */
+
+.lp-workspace {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.lp-ws {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px 24px 22px;
+  border: 1px solid var(--lp-line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.005));
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s var(--ease);
+}
+.lp-ws:hover {
+  border-color: rgba(67, 119, 253, 0.34);
+  transform: translateY(-2px);
+}
+.lp-ws-tag {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-amber);
+}
+.lp-ws-title {
+  margin: 10px 0 10px;
+  font-size: 1.14rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.28;
+}
+.lp-ws-body {
+  margin: 0;
+  font-size: 0.87rem;
+  line-height: 1.65;
+  color: var(--muted);
 }
 .lp-cap-tag {
   font-family: var(--font-mono);
@@ -3053,14 +3119,21 @@ h3 {
   border-radius: 14px;
   background: rgba(15, 18, 22, 0.75);
   border: 1px solid var(--lp-line-soft);
-  overflow-x: auto;
+  /* Wrap rather than scroll.  A horizontal scrollbar in a card on a marketing
+     page hides the one thing the block exists to show, and the longest line —
+     a clone URL — was simply clipped at the card edge. `anywhere` rather than
+     `break-word` because a shell command with no spaces still has to be able
+     to wrap; the card is a third of the section wide. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .lp-code code {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   line-height: 1.75;
   color: var(--lp-teal);
-  white-space: pre;
+  /* Inherits `pre-wrap` from .lp-code. This rule used to force `pre`, which
+     overrode the wrapping above and clipped the longest line at the card edge. */
 }
 
 /* --- CTA band -------------------------------------------------------------- */
@@ -3157,6 +3230,12 @@ h3 {
   text-decoration: none;
   font-size: 0.82rem;
   opacity: 0.85;
+  /* WCAG 2.2 target size (minimum) is 24x24 CSS px. These measured 20px tall,
+     so every footer link was under the floor on a touch device. Padding rather
+     than font-size, so the type rhythm is unchanged. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   transition:
     color 0.15s ease,
     opacity 0.15s ease;
@@ -3261,6 +3340,9 @@ body:has(.mh-standalone) #root {
   .lp-caps {
     grid-template-columns: 1fr;
   }
+  .lp-workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .lp-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3304,7 +3386,8 @@ body:has(.mh-standalone) #root {
     padding-bottom: 52px;
   }
   .lp-steps,
-  .lp-stack {
+  .lp-stack,
+  .lp-workspace {
     grid-template-columns: 1fr;
   }
   .lp-trace-q,
