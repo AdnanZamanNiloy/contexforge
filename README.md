@@ -28,7 +28,13 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
   - [Source Ingestion](#source-ingestion)
   - [Retrieval Pipeline](#retrieval-pipeline)
   - [Answer Delivery](#answer-delivery)
+  - [Context Control](#context-control)
+  - [Source Inspection](#source-inspection)
+  - [Projects](#projects)
+  - [Notes](#notes)
   - [Mind Map](#mind-map)
+  - [Studio](#studio)
+  - [Model Hub](#model-hub)
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
 - [Quick Start](#quick-start)
@@ -85,9 +91,122 @@ Most LLM chat tools are disconnected from your actual data. ContextForge is buil
 - **Confidence metrics** — server-side `answer_confidence`, `source_coverage`, `sources_used`, `retrieved_chunks`
 - **Latency breakdown** — per-stage timing across retrieval, rerank, and generation
 
+### Context Control
+
+Selecting sources is the workspace's primary control, and it reports what it costs
+instead of being a silent one. The sidebar prices the current selection against
+the prompt budget on every change — and the estimator makes **no** embedding,
+retrieval, rerank or generation call, so it is free to re-run.
+
+Three depths map to concrete retrieval limits, so widening the depth does
+something measurable:
+
+| Depth | Max sources | Retrieved | Reranked to | Per-source cap |
+|---|---|---|---|---|
+| `focused` | 2 | 20 | 5 | 4 |
+| `balanced` | 6 | 40 | 12 | 6 |
+| `broad` | 25 | 80 | 25 | 10 |
+
+The reported numbers are deliberately not smoothed over: a depth the selection
+cannot justify is **reduced and the response says so**, sources the depth will not
+read are **named and struck through**, and selected ids missing from the index are
+**reported separately** from sources found — "I selected it" and "it is
+contributing" are different facts.
+
+`POST /context/estimate` · `GET /query` accepts `context_depth`
+
+### Source Inspection
+
+A source that extracted badly is indistinguishable from a healthy one until you
+look: it appears, gets cited, and answers questions as though it had been read. A
+scanned PDF and a healthy one look the same in the sidebar.
+
+- `GET /ingest/source/{id}` — an **extraction verdict** (no text at all, some pages
+  with no text layer, suspiciously little text), plus page counts, detected
+  language, and the indexed file list for a repository.
+- `GET /ingest/source/{id}/content` — the indexed chunk text retrieval would quote.
+
+There is deliberately no original-file download. `UPLOAD_DIR` is configured but
+unused: ContextForge indexes uploads without retaining the bytes, so the panel
+says so rather than offering a control that cannot work.
+
+`PATCH /ingest/source/{id}` renames a source; `DELETE` removes it.
+
+### Projects
+
+A project is a private workspace: its own sources, its own chat history, and its
+own analysis target. Membership is reconciled against the live index on every
+read, so a deleted source cannot linger in a project or inflate its source count.
+
+`GET|POST /projects` · `GET|PATCH|DELETE /projects/{id}` ·
+`POST|DELETE /projects/{id}/sources` · `PUT /projects/{id}/tool-source`
+
+Chat sessions persist per project in SQLite, and **each message records the exact
+source selection it was answered with** — so re-reading history after you change
+the workspace selection shows the answer you actually got, not the answer the
+current selection would produce.
+
+### Notes
+
+Pick one source or several, and the system writes a structured Markdown note from
+their indexed content — the same act as a mind map, in prose instead of a diagram.
+The selection is the cache key, so a note is generated once and reused until the
+selection changes; `refresh` forces a regeneration.
+
+The prompt is about writing, not summarising: it leads with the point rather than
+naming the subject the heading already names, requires a section heading that
+carries its argument, and requires three or more discrete things to become a list.
+Notes carry **no** `[n]` passage markers.
+
+`POST /note/generate` · `GET /note/{key}` · output downloadable as `.md`
+
 ### Mind Map
 
-Generate an interactive SVG mind map from any ingested source — with zoom, pan, search, and fullscreen mode.
+Generate an interactive SVG mind map from any ingested source — or from a
+selection of several — with zoom, pan, search, and fullscreen mode. Notes and mind
+maps share one notion of a selection, so both cache side by side over the same
+sources.
+
+`POST /mindmap/generate` · `GET /mindmap/{key}`
+
+### Studio
+
+Four repository analyzers. Each targets one repository (resolved from an explicit
+request, then the project's remembered tool source, then its first GitHub member)
+and caches against a content fingerprint, so an unchanged repository is analysed
+once.
+
+| Tool | Route | Output |
+|---|---|---|
+| Architecture Diagram | `POST /architecture/generate` (SSE) | Mermaid diagram of the real request and domain paths, every code node carrying the exact file path it came from |
+| Security & Quality | `POST /security/scan` | Dependency advisories (OSV), code-level findings via `ast-grep`, and quality rules |
+| Dependency & Tech Stack | `POST /tech-stack/scan` | Manifest and lockfile inventory with per-service detection |
+| Health Score & Hotspots | `POST /health/scan` | Structural risk scoring and ranked hotspots |
+
+Each has a `/rescan` variant that ignores the cache and a `GET /{project_id}`
+that returns the stored result.
+
+### Model Hub
+
+There is **no built-in provider order.** You register models in the UI, then serve
+either a single model or an ordered fallback chain. A provider returning `429` is
+put in cooldown (honouring `Retry-After`) and the next one in the chain answers;
+providers that fail before emitting a single token fall through, and one that fails
+mid-stream re-raises rather than switching underneath the user.
+
+Nine hosted providers are configurable — OpenAI, Google Gemini, Groq, OpenRouter,
+Cerebras, NVIDIA NIM, Together, Mistral, DeepSeek — plus any local
+OpenAI-compatible server (llama.cpp, Ollama, vLLM, LM Studio).
+
+Keys are **encrypted at rest** with Fernet when `CREDENTIAL_ENCRYPTION_KEY` is set.
+Ciphertexts are self-describing (`enc:v1:`), so a database holding a mix of
+plaintext and encrypted rows reads correctly row by row. An undecryptable key
+reports `has_api_key: false` and asks for the key again, rather than returning
+garbage that `bool()` would treat as usable. Keys never appear in a response.
+
+`GET|POST /models` · `POST /models/{id}/test` (a real call, not a mock — an
+embedding probe also auto-detects and persists the vector dimension) ·
+`GET|POST /chains` · `GET|PUT /serving`
 
 <br>
 
@@ -240,9 +359,11 @@ The architecture is deliberately **provider-agnostic**: every external capabilit
 
 - Python 3.14+
 - Node.js 22+
-- A Voyage AI API key (`VOYAGE_API_KEY`)
-- A Google Gemini API key (`GOOGLE_API_KEY`) — primary LLM
-- *(Optional)* A Groq API key (`GROQ_API_KEY`) — fallback LLM
+- A Voyage AI API key (`VOYAGE_API_KEY`) — the **only** key required to start
+
+No LLM key is needed in the environment. Which model answers is owned by the
+**Model Hub** in the UI (http://localhost:5173/models), where you add a provider
+and select it under Serving. See [Model Hub](#model-hub) below.
 
 ### 1 · Backend
 
@@ -250,25 +371,22 @@ The architecture is deliberately **provider-agnostic**: every external capabilit
 git clone https://github.com/AdnanZamanNiloy/ContexForge.git
 cd contextforge
 
-python -m venv .venv && source .venv/bin/activate
-pip install -r backend/requirements.txt
-
-# Set API keys as environment variables (never commit them):
-export VOYAGE_API_KEY="..."
-export GOOGLE_API_KEY="..."
-
-uvicorn backend.app.main:app --reload --port 8000
+make install                                  # venv + deps for both halves
+cp backend/.env.example backend/.env          # then set VOYAGE_API_KEY
+make dev-backend                              # FastAPI on :8000
 ```
+
+> **Why not `uvicorn backend.app.main:app`?** Every module inside `backend/app/`
+> imports `from app.…`, so `app` has to be the package and `backend/` the working
+> directory. `make dev-backend` runs `cd backend && uvicorn app.main:app`, or you
+> can pass `--app-dir backend` from the repo root.
 
 > All settings load via `pydantic-settings` from environment variables or a `.env` file in `backend/`. Secrets are env-only — defaults in `settings.py` are intentionally empty, and the app fails loudly when a required key is missing.
 
 ### 2 · Frontend
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env    # defaults to http://localhost:8000
-npm run dev             # starts on http://localhost:5173
+make dev-frontend                             # Vite on :5173
 ```
 
 ### 3 · Verify
@@ -278,7 +396,9 @@ curl http://localhost:8000/health
 # → {"status":"ok","service":"contextforge"}
 ```
 
-Then open **http://localhost:5173** in your browser.
+Then open **http://localhost:5173** in your browser, and open **Model Hub** to add
+a model and put it in service. Until you do, generation raises
+`NotConfiguredError` — this is deliberate. See [Model Hub](#model-hub).
 
 ### 4 · Run with Docker
 
@@ -303,23 +423,33 @@ All configuration lives in `backend/app/config/settings.py` via `pydantic-settin
 
 | Variable | Description |
 |---|---|
-| `VOYAGE_API_KEY` | Embedding API key |
-| `GOOGLE_API_KEY` | Primary LLM (Gemini) API key |
+| `VOYAGE_API_KEY` | Embedding API key. The only variable the app refuses to start without. |
+
+### Recommended
+
+| Variable | Description |
+|---|---|
+| `CREDENTIAL_ENCRYPTION_KEY` | Fernet key protecting provider keys stored in the Model Hub. Without it those keys are written to `backend/data/model_hub/model_hub.db` **in plaintext** and the app warns once. |
+
+### LLM credentials are not environment variables
+
+Provider keys for chat models are entered in the **Model Hub UI** and stored in
+SQLite, not in `.env`. `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`,
+`CEREBRAS_API_KEY` and `NVIDIA_API_KEY` are all still read by `settings.py` but
+are **dead for the chat path** — no environment-driven provider chain exists.
+`dependencies.get_llm()` returns a not-configured sentinel until the Model Hub
+serves something.
 
 ### Optional
 
 | Variable | Default | Description |
 |---|---|---|
-| `GROQ_API_KEY` | — | Fallback LLM provider |
-| `OPENROUTER_API_KEY` | — | Fallback aggregator |
-| `CEREBRAS_API_KEY` | — | Fallback provider |
-| `NVIDIA_API_KEY` | — | Fallback provider |
 | `LANGFUSE_PUBLIC_KEY` | — | Langfuse tracing (public key) |
 | `LANGFUSE_SECRET_KEY` | — | Langfuse tracing (secret key) |
 | `LANGFUSE_HOST` | `https://cloud.langfuse.com` | Langfuse host |
-| `GEMINI_MODEL` | `gemini-flash-latest` | Gemini model ID |
-| `GROQ_MODEL` | `openai/gpt-oss-20b` | Groq model ID |
 | `VOYAGE_MODEL` | `voyage-3-lite` | Voyage embedding model |
+| `GEMINI_MODEL` | `gemini-flash-latest` | Default model ID for a Gemini entry |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Default model ID for a Groq entry |
 | `CHUNK_SIZE` | `512` | Text chunk size (tokens) |
 | `CHUNK_OVERLAP` | `50` | Chunk overlap (tokens) |
 | `TOP_K_RETRIEVAL` | `20` | Chunks retrieved per query |
