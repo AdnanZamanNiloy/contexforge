@@ -114,15 +114,19 @@ export default function AddModelTab({ onCreated }) {
 
   const isEmbedding = form.model_type === 'embedding'
   const isLocal = form.runtime === 'local'
-  const providerOptions = PROVIDERS.filter((p) => !(isEmbedding && p.id === 'google'))
+  // The two providers that do not serve both model types. Google offers no
+  // embedding API, and Voyage is embeddings-only — the backend raises
+  // `Unknown LLM provider: voyage` for a chat model, so offering it there turned
+  // a mis-typed field into a hard save-time error.
+  const UNSUPPORTED = { llm: new Set(['voyage']), embedding: new Set(['google']) }
+  const providerOptions = PROVIDERS.filter((p) => !UNSUPPORTED[form.model_type]?.has(p.id))
 
   const updateType = (id) => {
     setForm((prev) => ({
       ...prev,
       model_type: id,
-      // Google offers no embedding API — fall back instead of keeping a
-      // hidden, invalid provider selection.
-      provider: id === 'embedding' && prev.provider === 'google' ? 'openai' : prev.provider,
+      // Fall back rather than keeping a provider the new type does not support.
+      provider: UNSUPPORTED[id]?.has(prev.provider) ? 'openai' : prev.provider,
     }))
   }
 

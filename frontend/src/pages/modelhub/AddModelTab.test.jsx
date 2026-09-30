@@ -37,6 +37,29 @@ afterEach(() => {
 })
 
 describe('AddModelTab wizard', () => {
+  it('hides providers the selected model type cannot use', async () => {
+    const u = await user()
+    render(<AddModelTab onCreated={vi.fn()} />)
+
+    // Default type is LLM: Voyage is embeddings-only and the backend raises
+    // `Unknown LLM provider: voyage`, so it must not be offered.
+    await u.click(screen.getByRole('button', { name: /^continue$/i }))
+    await u.click(screen.getByRole('button', { name: /^continue$/i }))
+    expect(screen.getByRole('radiogroup', { name: /provider/i })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /voyage/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /google gemini/i })).toBeInTheDocument()
+
+    // Switching to Embedding reveals Voyage and hides Google — the mirror case.
+    // Back is one step at a time: details -> runtime -> type.
+    await u.click(screen.getByRole('button', { name: /^back$/i }))
+    await u.click(screen.getByRole('button', { name: /^back$/i }))
+    await u.click(screen.getByRole('button', { name: /embedding/i }))
+    await u.click(screen.getByRole('button', { name: /^continue$/i }))
+    await u.click(screen.getByRole('button', { name: /^continue$/i }))
+    expect(screen.getByRole('radio', { name: /voyage/i })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /google gemini/i })).not.toBeInTheDocument()
+  })
+
   it('walks type → runtime → details and hides Google for embeddings', async () => {
     const u = await user()
     render(<AddModelTab onCreated={vi.fn()} />)
