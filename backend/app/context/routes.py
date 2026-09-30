@@ -85,6 +85,7 @@ async def estimate_selection(
         total_token_count=estimate.total_token_count,
         prompt_token_estimate=estimate.prompt_token_estimate,
         prompt_chunk_limit=estimate.prompt_chunk_limit,
+        per_source_cap=estimate.per_source_cap,
         usable_fraction=round(estimate.usable_fraction, 4),
         depth=payload.depth or "focused",
         effective_depth=estimate.effective_depth,

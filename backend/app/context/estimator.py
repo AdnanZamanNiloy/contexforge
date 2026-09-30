@@ -36,7 +36,6 @@ __all__ = [
     "ContextDepth",
     "SelectionEstimate",
     "SourceCost",
-    "clamp_depth_for_selection",
     "estimate_context",
     "resolve_context_depth",
 ]
@@ -56,16 +55,22 @@ ContextDepth = Literal["focused", "balanced", "broad"]
 #   broad    — as much of the selection as the prompt will hold. Slowest, and
 #              the setting to reach for when the answer needs the whole corpus.
 #
-# ``per_source_cap`` mirrors the reranker's diversification limit.  It is the
-# ceiling that actually bites for documents: a single web source can contribute
-# at most that many chunks no matter how high ``top_k_rerank`` is set, because
-# the reranker deliberately refuses to let one source crowd out the others.  A
-# repository is not limited the same way — its coverage groups are file paths,
-# not the source — so this is a conservative figure for the estimate.
+# ``per_source_cap`` is now a real pipeline limit, passed through to the
+# reranker's per-source ceiling, so widening the depth reads more of the
+# material that is selected.  It is what makes the depth control work for a
+# single selected document: with one source there is no crowding to prevent, and
+# top_k_rerank alone is not enough, because the reranker will not draw more than
+# the cap from one document.
+#
+# A repository is not limited the same way — its coverage groups are file paths,
+# ``focused`` is 5 rather than 4 because that is what a single-source selection
+# already received before the cap was plumbed through.  Lowering it would have
+# quietly made the default answer from *less* than it does now, which is the
+# opposite of what a user who widens the depth is asking for.
 CONTEXT_DEPTHS: dict[str, dict[str, int]] = {
-    "focused": {"max_sources": 2, "top_k_retrieval": 20, "top_k_rerank": 5, "per_source_cap": 4},
-    "balanced": {"max_sources": 6, "top_k_retrieval": 40, "top_k_rerank": 12, "per_source_cap": 6},
-    "broad": {"max_sources": 25, "top_k_retrieval": 80, "top_k_rerank": 25, "per_source_cap": 10},
+    "focused": {"max_sources": 2, "top_k_retrieval": 20, "top_k_rerank": 5, "per_source_cap": 5},
+    "balanced": {"max_sources": 6, "top_k_retrieval": 40, "top_k_rerank": 12, "per_source_cap": 8},
+    "broad": {"max_sources": 25, "top_k_retrieval": 80, "top_k_rerank": 25, "per_source_cap": 12},
 }
 
 # Prompts are assembled with roughly this many tokens of material.  It is an
@@ -220,7 +225,17 @@ async def estimate_context(
         total_token_count=total_tokens,
         prompt_token_estimate=capped,
         prompt_chunk_limit=limits["top_k_rerank"],
-        effective_depth=clamp_depth_for_selection(depth, selected_count=len(costs)),
+        # The requested depth is the depth that runs.  It used to be clamped
+        # down when the selection was small, on the theory that a wider setting
+        # over two sources "would behave like a narrower one".  That was false:
+        # every depth differs in top_k_rerank and per_source_cap as well as
+        # max_sources, so a wider depth reads strictly more of the material
+        # that is there.  With one source selected the old clamp discarded the
+        # user's only lever, because per-source crowding — the thing the caps
+        # exist to prevent — cannot happen with a single source.  The caps are
+        # already hard limits that cannot overflow the prompt, so honouring the
+        # request is safe and the estimate simply reports what will run.
+        effective_depth=depth if depth in CONTEXT_DEPTHS else "focused",
         per_source_cap=limits["per_source_cap"],
         over_budget=over,
         beyond_diminishing_returns=total_tokens > DIMINISHING_RETURNS_TOKENS,
@@ -238,24 +253,3 @@ def resolve_context_depth(depth: str | None) -> dict[str, int]:
     so a bad client cannot widen the context window by accident.
     """
     return dict(CONTEXT_DEPTHS.get(depth or "focused", CONTEXT_DEPTHS["focused"]))
-
-
-def clamp_depth_for_selection(
-    depth: str | None,
-    *,
-    selected_count: int,
-) -> str:
-    """Downgrade a depth the selection cannot justify.
-
-    Asking for ``broad`` with two sources selected would silently behave like
-    ``balanced``: the caps on chunk counts are never reached because there is
-    not that much material.  Returning the effective depth lets the UI show what
-    is actually in force instead of claiming a depth that is not running.
-    """
-    if not depth or depth not in CONTEXT_DEPTHS:
-        return "focused"
-    order = list(CONTEXT_DEPTHS)
-    index = order.index(depth)
-    while index > 0 and selected_count <= CONTEXT_DEPTHS[order[index]]["max_sources"] // 2:
-        index -= 1
-    return order[index]

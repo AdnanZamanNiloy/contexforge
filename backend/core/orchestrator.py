@@ -504,9 +504,15 @@ class Orchestrator:
         source_id: str | None = None,
         source_ids: set[str] | list[str] | None = None,
         use_knowledge_base: bool = True,
+        per_source_cap: int | None = None,
         # Return type now includes mean_confidence from the reranker
     ) -> tuple[list[RerankedChunk], dict[str, float], float]:
         """Expand query, embed, retrieve, and rerank.
+
+        Args:
+            per_source_cap:  Ceiling on chunks drawn from any one source,
+                supplied by the context depth.  ``None`` keeps the reranker's
+                own default.
 
         Returns:
             Tuple of (reranked chunks, timing breakdown, mean_confidence).
@@ -591,6 +597,7 @@ class Orchestrator:
                 hyde_question,
                 retrieved,
                 k_rerank,
+                per_source_cap=per_source_cap,
             )
         except Exception:
             logger.exception(
@@ -1017,6 +1024,7 @@ class Orchestrator:
         source_ids: set[str] | list[str] | None = None,
         file_manifest: list[str] | None = None,
         use_knowledge_base: bool = True,
+        per_source_cap: int | None = None,
     ) -> GenerationResult:
         """Full RAG pipeline: retrieve → generate → return with sources and confidence.
 
@@ -1034,6 +1042,7 @@ class Orchestrator:
                 use_hyde=use_hyde,
                 source_id=source_id,
                 source_ids=source_ids,
+                per_source_cap=per_source_cap,
             )
         else:
             reranked, timings, mean_confidence = [], {}, 0.0

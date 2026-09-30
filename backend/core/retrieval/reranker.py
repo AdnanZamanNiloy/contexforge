@@ -79,6 +79,7 @@ def _coverage_group(item: tuple[RetrievedChunk, float]) -> str:
 def _diversify(
     scored: list[tuple[RetrievedChunk, float]],
     top_k: int,
+    max_per_source: int = _MAX_CHUNKS_PER_SOURCE,
 ) -> list[tuple[RetrievedChunk, float]]:
     """Select up to ``top_k`` chunks while keeping per-source coverage.
 
@@ -88,7 +89,7 @@ def _diversify(
 
     1. Every distinct source is guaranteed at least one chunk (its current
        best), so nothing is silently dropped.
-    2. Remaining slots (up to ``_MAX_CHUNKS_PER_SOURCE`` per source) are filled
+    2. Remaining slots (up to ``max_per_source`` per source) are filled
        greedily: at each step we take the highest-scoring *available* chunk of
        whichever source currently offers the strongest next candidate.
 
@@ -96,12 +97,12 @@ def _diversify(
     why that matters for a single-repository corpus.
 
     Chunks with no ``source_id`` are grouped as one anonymous source so they
-    still get a fair share.  If there is only a single group, the relevance
-    order is preserved unchanged.
+    still get a fair share.
 
     Args:
-        scored:    Candidate ``(RetrievedChunk, prob)`` pairs, sorted best-first.
-        top_k:     Maximum number of chunks to return.
+        scored:        Candidate ``(RetrievedChunk, prob)`` pairs, sorted best-first.
+        top_k:         Maximum number of chunks to return.
+        max_per_source: Ceiling on chunks drawn from any one group.
 
     Returns:
         Up to ``top_k`` pairs, ranked best-first.
@@ -109,9 +110,15 @@ def _diversify(
     if not scored or top_k <= 0:
         return scored[:top_k]
 
-    # One group (or everything fits): relevance order is the answer.
+    # One group (or everything fits): relevance order is the answer, but the
+    # per-source ceiling still applies.  It used to be skipped here on the
+    # grounds that there was nothing to diversify, which meant a single-source
+    # selection ignored the ceiling entirely — so the context-depth control had
+    # no effect at all on the most common case of one selected document.
     distinct_sources = {_coverage_group(item) for item in scored}
-    if len(distinct_sources) <= 1 or len(scored) <= top_k:
+    if len(distinct_sources) <= 1:
+        return scored[: min(top_k, max_per_source)]
+    if len(scored) <= top_k:
         return scored[:top_k]
 
     # Group each source's candidates, best-first within each group.
@@ -141,7 +148,7 @@ def _diversify(
         best_score = None
         for sid, data in by_source.items():
             idx = cursors[sid]
-            if idx >= len(data) or idx >= _MAX_CHUNKS_PER_SOURCE:
+            if idx >= len(data) or idx >= max_per_source:
                 continue
             if best_score is None or data[idx][1] > best_score:
                 best_score = data[idx][1]
@@ -167,6 +174,7 @@ class Reranker:
         query: str,
         candidates: list[RetrievedChunk],
         top_k: int,
+        per_source_cap: int | None = None,
     ) -> tuple[list[RerankedChunk], float]:
         """Rerank candidates with a cross-encoder, returning (chunks, confidence).
 
@@ -178,9 +186,13 @@ class Reranker:
         are valid results.
 
         Args:
-            query:      User question used as the cross-encoder premise.
-            candidates: RetrievedChunk list from hybrid retrieval.
-            top_k:      Number of reranked chunks to keep.
+            query:           User question used as the cross-encoder premise.
+            candidates:      RetrievedChunk list from hybrid retrieval.
+            top_k:           Number of reranked chunks to keep.
+            per_source_cap:  Ceiling on chunks drawn from any one source.  This
+                comes from the context depth, so widening the depth reads more
+                of a single document.  ``None`` uses the default
+                ``_MAX_CHUNKS_PER_SOURCE``.
 
         Returns:
             Tuple of (list of RerankedChunk, confidence in [0.0, 1.0]).
@@ -212,7 +224,11 @@ class Reranker:
             reverse=True,
         )
 
-        trimmed = _diversify(scored, top_k)
+        trimmed = _diversify(
+            scored,
+            top_k,
+            max_per_source=per_source_cap if per_source_cap is not None else _MAX_CHUNKS_PER_SOURCE,
+        )
 
         results = [
             RerankedChunk(chunk=item.chunk, score=prob, rank=rank) for rank, (item, prob) in enumerate(trimmed, start=1)

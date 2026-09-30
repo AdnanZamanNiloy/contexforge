@@ -92,14 +92,16 @@ async def test_depth_changes_what_reaches_the_model(client):
 
 
 @pytest.mark.asyncio
-async def test_broad_over_a_small_selection_reports_the_effective_depth(client):
+async def test_broad_over_a_single_source_is_honoured(client):
     async with client as c:
         body = (await c.post("/context/estimate", json={"source_ids": ["a"], "depth": "broad"})).json()
 
-        # Requested broad, but two sources cannot justify it; the response must
-        # say so rather than claim a breadth it will not deliver.
+        # One source is the case where widening must work: the per-source caps
+        # exist to stop sources crowding each other out, which cannot happen with
+        # a single document, so reducing the depth here left the control inert.
         assert body["depth"] == "broad"
-        assert body["effective_depth"] in {"focused", "balanced"}
+        assert body["effective_depth"] == "broad"
+        assert body["per_source_cap"] > 5
 
 
 @pytest.mark.asyncio

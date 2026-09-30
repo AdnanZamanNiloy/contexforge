@@ -15,7 +15,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
-from app.context.estimator import clamp_depth_for_selection, resolve_context_depth
+from app.context.estimator import resolve_context_depth
 from app.schemas.query import QueryRequest
 from core.generation.grounding import check_grounding
 from core.orchestrator import Orchestrator, _is_structure_question
@@ -30,22 +30,20 @@ def _limits_for(request: QueryRequest) -> dict[str, int]:
     """Resolve the retrieval limits for a request.
 
     An explicit ``top_k_retrieval`` / ``top_k_rerank`` still wins: those are the
-    precise knobs, and a client that sets them knows what it wants.  ``context_depth``
-    is the coarse control for clients that do not, and it is clamped to the
-    selection so "broad" over two sources reports as the narrower depth that
-    will actually run rather than claiming a breadth it cannot deliver.
+    precise knobs, and a client that sets them knows what it wants.  Otherwise
+    ``context_depth`` is the coarse control, and it is applied as asked.
+
+    It used to be clamped down when few sources were selected, so that "broad"
+    over two sources reported as the narrower depth.  That clamp made the depth
+    control inert for a single source — the one case where the user most wants
+    to widen it, because the caps exist to stop sources crowding each other out
+    and crowding is impossible when there is only one.  Every depth differs in
+    chunk limits as well as source count, so honouring the request always reads
+    strictly more, and the caps are hard limits that cannot overflow the prompt.
     """
     if request.top_k_retrieval is not None or request.top_k_rerank is not None:
         return {}
-    depth = resolve_context_depth(request.context_depth)
-    if request.context_depth:
-        depth = resolve_context_depth(
-            clamp_depth_for_selection(
-                request.context_depth,
-                selected_count=len(request.source_ids or []),
-            )
-        )
-    return depth
+    return resolve_context_depth(request.context_depth)
 
 
 class QueryService:
@@ -116,6 +114,7 @@ class QueryService:
             source_ids=request.source_ids,
             file_manifest=await self._manifest_for(request),
             use_knowledge_base=not request.no_sources,
+            per_source_cap=limits.get("per_source_cap"),
         )
         logger.info(
             "answer complete: sources=%d latency=%s confidence=%s",
@@ -176,6 +175,7 @@ class QueryService:
             source_id=request.source_id,
             source_ids=request.source_ids,
             use_knowledge_base=not request.no_sources,
+            per_source_cap=limits.get("per_source_cap"),
         )
 
         # The sources are known now and generation has not started, so this is

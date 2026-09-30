@@ -26,6 +26,7 @@ function response(overrides = {}) {
     total_token_count: 2400,
     prompt_token_estimate: 240,
     prompt_chunk_limit: 5,
+    per_source_cap: 5,
     usable_fraction: 0.1,
     depth: 'focused',
     effective_depth: 'focused',
@@ -64,7 +65,7 @@ describe('ContextMeter readout', () => {
     await renderMeter()
     fireEvent.click(screen.getByRole('button', { name: /context details/i }))
 
-    expect(screen.getByText(/keeps the best 5 chunks/i)).toBeInTheDocument()
+    expect(screen.getByText(/best 5 chunks overall/i)).toBeInTheDocument()
   })
 
   it('requests the estimate with the current selection and depth', async () => {
@@ -119,16 +120,53 @@ describe('ContextMeter depth control', () => {
     expect(onDepthChange).toHaveBeenCalledWith('broad')
   })
 
-  it('marks the effective depth when the request was reduced', async () => {
+  it('marks the depth that was requested, even when sources are capped', async () => {
     vi.mocked(estimateContext).mockResolvedValue(
-      response({ depth: 'broad', effective_depth: 'focused' }),
+      response({ depth: 'broad', effective_depth: 'broad', dropped_source_ids: ['c'] }),
     )
     await renderMeter({ depth: 'broad' })
     fireEvent.click(screen.getByRole('button', { name: /context details/i }))
 
-    // The active button follows what will actually run, not what was asked for.
-    expect(screen.getByRole('button', { name: 'Focused' }).className).toContain('is-active')
-    expect(screen.getByText(/is reduced to/i)).toBeInTheDocument()
+    // A click must always visibly register. The button used to track a clamped
+    // "effective" depth, so choosing Broad left Focused highlighted and the
+    // control read as broken.
+    expect(screen.getByRole('button', { name: 'Broad' }).className).toContain('is-active')
+    expect(screen.getByRole('button', { name: 'Focused' }).className).not.toContain('is-active')
+  })
+
+  it('never claims a depth was reduced', async () => {
+    // There is no reduction to report any more: a depth is applied as asked and
+    // the caps it carries are hard limits.
+    vi.mocked(estimateContext).mockResolvedValue(
+      response({ depth: 'broad', effective_depth: 'broad', dropped_source_ids: ['c'] }),
+    )
+    await renderMeter({ depth: 'broad' })
+    fireEvent.click(screen.getByRole('button', { name: /context details/i }))
+
+    expect(screen.queryByText(/is reduced to/i)).not.toBeInTheDocument()
+  })
+
+  it('reports a cap on breadth as a cap, with a way out', async () => {
+    vi.mocked(estimateContext).mockResolvedValue(
+      response({ depth: 'focused', effective_depth: 'focused', dropped_source_ids: ['c'] }),
+    )
+    await renderMeter({ depth: 'focused' })
+    fireEvent.click(screen.getByRole('button', { name: /context details/i }))
+
+    // 1 of 3 sources is dropped, so the user is told which and how to include it.
+    expect(screen.getByText(/1 of 3 selected sources exceed/i)).toBeInTheDocument()
+    expect(screen.getByText(/widen the depth to include it/i)).toBeInTheDocument()
+  })
+
+  it('states both limits so a single source is not silently capped', async () => {
+    vi.mocked(estimateContext).mockResolvedValue(
+      response({ depth: 'broad', effective_depth: 'broad', prompt_chunk_limit: 25, per_source_cap: 12 }),
+    )
+    await renderMeter({ depth: 'broad' })
+    fireEvent.click(screen.getByRole('button', { name: /context details/i }))
+
+    expect(screen.getByText(/best 25 chunks overall/i)).toBeInTheDocument()
+    expect(screen.getByText(/at most 12 from any one source/i)).toBeInTheDocument()
   })
 })
 

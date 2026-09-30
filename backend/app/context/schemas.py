@@ -83,6 +83,14 @@ class ContextEstimateResponse(BaseModel):
         ge=1,
         description="Maximum chunks the reranker will keep at this depth.",
     )
+    per_source_cap: int = Field(
+        ge=1,
+        description=(
+            "Maximum chunks drawn from any one source at this depth. This is the "
+            "limit that governs a single selected document, so it is what makes "
+            "widening the depth read more of one source."
+        ),
+    )
     usable_fraction: float = Field(
         ge=0.0,
         le=1.0,
@@ -92,8 +100,9 @@ class ContextEstimateResponse(BaseModel):
     depth: ContextDepthName = Field(description="The depth requested.")
     effective_depth: ContextDepthName = Field(
         description=(
-            "The depth actually in force. Lower than requested when the selection "
-            "is too small to justify the larger one."
+            "The depth actually in force. Always equal to ``depth``: a depth is "
+            "applied as asked, and the caps it carries are hard limits that bound "
+            "the prompt rather than an approximation of it."
         ),
     )
 

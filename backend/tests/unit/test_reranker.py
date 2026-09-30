@@ -83,6 +83,59 @@ def test_diversify_keeps_top_k_when_candidates_fit() -> None:
     assert _diversify(scored, top_k=5) == scored
 
 
+def test_diversify_caps_a_single_source_at_the_requested_ceiling() -> None:
+    """The per-source ceiling applies even when there is nothing to diversify.
+
+    This is what makes the context depth work for one selected document. The cap
+    used to be skipped for a single group on the grounds that diversification was
+    unnecessary, so a wider depth changed nothing at all and the buttons looked
+    broken.
+    """
+    scored = [(_chunk(f"a{i}", "doc-a"), 0.9 - 0.01 * i) for i in range(20)]
+
+    assert len(_diversify(scored, top_k=20, max_per_source=4)) == 4
+    assert len(_diversify(scored, top_k=20, max_per_source=12)) == 12
+
+
+def test_diversify_widening_the_ceiling_never_reads_less() -> None:
+    """A wider depth must not return fewer chunks than a narrower one."""
+    scored = [(_chunk(f"a{i}", "doc-a"), 0.9 - 0.01 * i) for i in range(20)]
+
+    narrow = _diversify(scored, top_k=25, max_per_source=5)
+    wide = _diversify(scored, top_k=25, max_per_source=12)
+
+    assert len(narrow) < len(wide)
+    # Both are prefixes of the same relevance order, so widening only adds.
+    assert [i[0].chunk.chunk_id for i in narrow] == [i[0].chunk.chunk_id for i in wide][: len(narrow)]
+
+
+def test_diversify_still_reports_every_source_in_a_mixed_pool() -> None:
+    """Raising the ceiling must not undo coverage for multi-source questions."""
+    scored = [(_chunk(f"a{i}", "doc-a"), 0.95 - 0.01 * i) for i in range(20)] + [
+        (_chunk(f"b{i}", "doc-b"), 0.4 - 0.01 * i) for i in range(10)
+    ]
+
+    result = _diversify(scored, top_k=14, max_per_source=12)
+
+    assert any(item[0].chunk.source_id == "doc-b" for item in result)
+    assert sum(1 for item in result if item[0].chunk.source_id == "doc-a") <= 12
+
+
+@pytest.mark.asyncio
+async def test_rerank_passes_the_per_source_cap_through(monkeypatch) -> None:
+    """The orchestrator's depth limit has to reach the selection, not just the UI."""
+    reranker = Reranker()
+    monkeypatch.setattr(reranker, "_load_model_sync", lambda: setattr(reranker, "_model", FakeModel()))
+
+    candidates = [_chunk(f"a{i}", "doc-a") for i in range(10)]
+
+    narrow, _ = await reranker.rerank("query", candidates, top_k=10, per_source_cap=3)
+    wide, _ = await reranker.rerank("query", candidates, top_k=10, per_source_cap=8)
+
+    assert len(narrow) == 3
+    assert len(wide) == 8
+
+
 @pytest.mark.asyncio
 async def test_reranker_surfaces_second_source(monkeypatch) -> None:
     """The pipeline reranker surfaces a weaker second source in the top-k."""

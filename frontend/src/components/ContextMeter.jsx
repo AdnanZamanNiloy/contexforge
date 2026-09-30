@@ -101,7 +101,10 @@ export default function ContextMeter({
     return <div className={`context-meter is-loading ${className}`} aria-hidden="true" />
 
   const usablePct = Math.round((estimate.usable_fraction || 0) * 100)
-  const usingAll = estimate.effective_depth !== estimate.depth
+  // Sources the depth will not read. This is a real ceiling on breadth, and it
+  // is worth naming — but it is not a rejection of the setting the user picked,
+  // so it is reported as a cap rather than as the depth being "reduced".
+  const droppedCount = (estimate.dropped_source_ids || []).length
 
   return (
     <div className={`context-meter ${className}`}>
@@ -142,8 +145,11 @@ export default function ContextMeter({
       {expanded ? (
         <div className="context-meter-detail">
           <p className="context-meter-explainer">
-            Retrieval keeps the best {estimate.prompt_chunk_limit} chunks, so a large selection is
-            sampled rather than read whole. Widen the depth to read more of it.
+            “{DEPTHS.find((d) => d.id === estimate.depth)?.label}” reads the best{' '}
+            {estimate.prompt_chunk_limit} chunks overall, and at most{' '}
+            {estimate.per_source_cap} from any one source. A larger selection is
+            therefore sampled rather than read whole — widen the depth to read more
+            of it.
           </p>
 
           <ul className="context-meter-sources">
@@ -172,11 +178,12 @@ export default function ContextMeter({
             </p>
           ) : null}
 
-          {usingAll ? (
+          {droppedCount > 0 ? (
             <p className="context-meter-warning">
-              “{DEPTHS.find((d) => d.id === estimate.depth)?.label}” is reduced to “
-              {DEPTHS.find((d) => d.id === estimate.effective_depth)?.label}” — there is not enough
-              selected to justify the wider setting.
+              {droppedCount} of {estimate.source_count} selected source
+              {estimate.source_count === 1 ? '' : 's'} exceed what “
+              {DEPTHS.find((d) => d.id === estimate.depth)?.label}” reads, and will not be
+              used. Widen the depth to include {droppedCount === 1 ? 'it' : 'them'}.
             </p>
           ) : null}
 
@@ -192,7 +199,7 @@ export default function ContextMeter({
               <button
                 key={option.id}
                 type="button"
-                className={`context-meter-depth${option.id === estimate.effective_depth ? ' is-active' : ''}`}
+                className={`context-meter-depth${option.id === estimate.depth ? ' is-active' : ''}`}
                 onClick={() => onDepthChange?.(option.id)}
                 title={option.hint}
               >

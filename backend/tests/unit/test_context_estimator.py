@@ -16,7 +16,6 @@ import pytest
 
 from app.context.estimator import (
     CONTEXT_DEPTHS,
-    clamp_depth_for_selection,
     estimate_context,
     resolve_context_depth,
 )
@@ -73,29 +72,65 @@ class TestDepthResolution:
         assert broad["max_sources"] > focused["max_sources"]
 
 
-class TestDepthClamping:
-    def test_broad_over_two_sources_reduces_to_something_runnable(self):
-        # "broad" over two small sources cannot deliver a broad context, and
-        # reporting it as broad would be the exact dishonesty this prevents.
-        effective = clamp_depth_for_selection("broad", selected_count=2)
+class TestDepthIsAppliedAsAsked:
+    """A depth is applied as requested; it is never quietly downgraded.
 
-        assert effective in CONTEXT_DEPTHS
-        assert CONTEXT_DEPTHS[effective]["max_sources"] <= 2
+    The estimator used to clamp a wide depth down to a narrow one whenever few
+    sources were selected, reasoning that a wide setting "would behave like a
+    narrow one".  That was false — every depth differs in chunk limits as well as
+    source count — and it made the control completely inert for a single selected
+    document, which is the case a user widens the depth precisely to read more of.
+    """
 
-    def test_broad_over_many_sources_is_kept(self):
-        assert clamp_depth_for_selection("broad", selected_count=15) == "broad"
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("depth", ["focused", "balanced", "broad"])
+    async def test_effective_depth_matches_the_request(self, depth: str) -> None:
+        index = _index({"a": 4})
+        estimate = await estimate_context(source_ids=["a"], chunk_index=index, depth=depth)
 
-    def test_unknown_depth_reduces_to_focused(self):
-        assert clamp_depth_for_selection("nonsense", selected_count=50) == "focused"
-        assert clamp_depth_for_selection(None, selected_count=50) == "focused"
+        assert estimate.effective_depth == depth
 
-    def test_never_raises_above_the_requested_depth(self):
-        for name in CONTEXT_DEPTHS:
-            for count in range(0, 30):
-                assert (
-                    CONTEXT_DEPTHS[clamp_depth_for_selection(name, selected_count=count)]["max_sources"]
-                    <= CONTEXT_DEPTHS[name]["max_sources"]
-                )
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("depth", ["focused", "balanced", "broad"])
+    async def test_a_single_source_still_gets_that_depths_chunk_limits(self, depth: str) -> None:
+        # The regression that made the buttons look broken: with one source
+        # selected, every depth reported the focused limits.
+        index = _index({"a": 30})
+        estimate = await estimate_context(source_ids=["a"], chunk_index=index, depth=depth)
+
+        assert estimate.prompt_chunk_limit == CONTEXT_DEPTHS[depth]["top_k_rerank"]
+        assert estimate.per_source_cap == CONTEXT_DEPTHS[depth]["per_source_cap"]
+
+    @pytest.mark.asyncio
+    async def test_widening_the_depth_never_reads_less(self) -> None:
+        index = _index({"a": 30})
+        focused = await estimate_context(source_ids=["a"], chunk_index=index, depth="focused")
+        balanced = await estimate_context(source_ids=["a"], chunk_index=index, depth="balanced")
+        broad = await estimate_context(source_ids=["a"], chunk_index=index, depth="broad")
+
+        assert focused.prompt_token_estimate <= balanced.prompt_token_estimate
+        assert balanced.prompt_token_estimate <= broad.prompt_token_estimate
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_depth_falls_back_to_focused(self) -> None:
+        index = _index({"a": 4})
+        estimate = await estimate_context(source_ids=["a"], chunk_index=index, depth="nonsense")
+
+        assert estimate.effective_depth == "focused"
+
+    @pytest.mark.asyncio
+    async def test_sources_beyond_the_depth_are_named_not_hidden(self) -> None:
+        # Dropping sources is a real ceiling, so it has to be reported — but as a
+        # cap, not as the depth being reduced.
+        index = _index({f"s{i}": 2 for i in range(10)})
+        estimate = await estimate_context(
+            source_ids=[f"s{i}" for i in range(10)],
+            chunk_index=index,
+            depth="focused",
+        )
+
+        assert estimate.effective_depth == "focused"
+        assert len(estimate.dropped_source_ids) == 10 - CONTEXT_DEPTHS["focused"]["max_sources"]
 
 
 class TestEstimateContext:
