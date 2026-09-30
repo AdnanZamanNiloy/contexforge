@@ -39,8 +39,17 @@ async def test_fallback_returns_first_success() -> None:
 @pytest.mark.asyncio
 async def test_fallback_reraises_when_all_providers_fail() -> None:
     chain = FallbackLLM(providers=[_FakeLLM("a", fail=True), _FakeLLM("b", fail=True)])
-    with pytest.raises(OSError):
+    with pytest.raises(RuntimeError) as excinfo:
         await chain.generate("hi")
+    # The terminal error names every provider that was tried and what it said.
+    # A bare "All providers failed" is the least useful message this feature can
+    # emit — the reader cannot act on it.
+    message = str(excinfo.value)
+    assert "2 provider(s) failed" in message
+    assert "a (OSError" in message
+    assert "b (OSError" in message
+    # Chained so the original exception type survives in __cause__.
+    assert isinstance(excinfo.value.__cause__, OSError)
 
 
 @pytest.mark.asyncio
@@ -174,13 +183,16 @@ async def test_all_providers_cooling_down_still_tries_the_soonest() -> None:
     b = _CountingLLM("b", error=_rate_limited(headers={"retry-after": "300"}))
     chain = FallbackLLM(providers=[a, b])
 
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(RuntimeError):
         await chain.generate("q")  # both refuse
 
     calls_before = a.calls + b.calls
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(RuntimeError) as excinfo:
         await chain.generate("q")  # still tried, rather than failing outright
     assert a.calls + b.calls > calls_before, "waiting indefinitely is worse than trying"
+    # The rate limit is the actionable fact, so it must survive into the message
+    # instead of being flattened into a bare "all providers failed".
+    assert "HTTPStatusError" in str(excinfo.value)
 
 
 @pytest.mark.asyncio
@@ -192,3 +204,29 @@ async def test_streaming_also_honours_the_cooldown() -> None:
     assert [t async for t in chain.stream("q1")] == ["token-from-groq"]
     assert [t async for t in chain.stream("q2")] == ["token-from-groq"]
     assert limited.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_a_cooldown_at_the_tail_does_not_hide_the_earlier_failure() -> None:
+    """Regression: the tail-of-chain check used the full chain, not the available set.
+
+    With the last provider cooling down, a retryable failure on an earlier
+    provider fell out of the loop and surfaced as a bare
+    ``RuntimeError("All providers failed")`` — the rate limit that actually
+    caused it was discarded into ``__cause__`` where nobody reads it.
+    """
+    tail = _CountingLLM("tail", error=_rate_limited(headers={"retry-after": "300"}))
+    head = _CountingLLM("head", error=OSError("head is down"))
+    chain = FallbackLLM(providers=[head, tail])
+
+    # Put the tail into cooldown so only the head is available.
+    with pytest.raises(RuntimeError):
+        await chain.generate("warm-up")
+    assert tail.calls == 1
+
+    with pytest.raises(RuntimeError) as excinfo:
+        await chain.generate("q")
+
+    message = str(excinfo.value)
+    assert "head (OSError: head is down)" in message
+    assert isinstance(excinfo.value.__cause__, OSError)

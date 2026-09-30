@@ -141,13 +141,15 @@ class FallbackLLM(BaseLLM):
         prompt: str,
         system_prompt: str | None,
     ) -> str:
-        last_exc: Exception | None = None
-        available = self._available()
-        for idx, llm in available:
+        failures: list[tuple[str, Exception]] = []
+        for idx, llm in self._available():
             try:
                 return await llm.generate(prompt, system_prompt=system_prompt)
             except Exception as exc:
-                if not isinstance(exc, _RETRYABLE) or idx == len(self._providers) - 1:
+                # A non-retryable failure is a request this provider will reject
+                # for everyone, so it propagates at once rather than being
+                # replayed against every other provider.
+                if not isinstance(exc, _RETRYABLE):
                     raise
                 self._note_failure(idx, llm, exc)
                 logger.warning(
@@ -158,15 +160,15 @@ class FallbackLLM(BaseLLM):
                     type(exc).__name__,
                     exc,
                 )
-                last_exc = exc
-        raise RuntimeError("All providers failed") from last_exc
+                failures.append((_model_name(llm), exc))
+        raise _all_failed("generate", failures) from (failures[-1][1] if failures else None)
 
     async def _stream_impl(
         self,
         prompt: str,
         system_prompt: str | None,
     ) -> AsyncIterator[str]:
-        last_exc: Exception | None = None
+        failures: list[tuple[str, Exception]] = []
         for idx, llm in self._available():
             tokens_yielded = 0
             try:
@@ -175,7 +177,7 @@ class FallbackLLM(BaseLLM):
                     yield token
                 return
             except Exception as exc:
-                if not isinstance(exc, _RETRYABLE) or idx == len(self._providers) - 1:
+                if not isinstance(exc, _RETRYABLE):
                     raise
                 if tokens_yielded > 0:
                     logger.error(
@@ -192,9 +194,25 @@ class FallbackLLM(BaseLLM):
                     type(exc).__name__,
                     exc,
                 )
-                last_exc = exc
-        raise RuntimeError("All providers failed to stream") from last_exc
+                failures.append((_model_name(llm), exc))
+        raise _all_failed("stream", failures) from (failures[-1][1] if failures else None)
 
 
 def _model_name(llm: LLM) -> str:
     return getattr(llm, "_model", type(llm).__name__)
+
+
+def _all_failed(operation: str, failures: list[tuple[str, Exception]]) -> RuntimeError:
+    """The terminal error when every available provider has failed.
+
+    Names each provider that was tried and what it said.  A bare "All providers
+    failed" is the least useful message this feature can emit: the whole point of
+    a fallback chain is that something specific went wrong with a specific
+    provider, and the reader cannot act on either.  Chained from the last
+    exception so the original type survives in ``__cause__``.
+    """
+    if not failures:
+        # No provider was available to try — everything is in cooldown.
+        return RuntimeError(f"No provider was available to {operation}; all are rate limited.")
+    detail = "; ".join(f"{name} ({type(exc).__name__}: {exc})" for name, exc in failures)
+    return RuntimeError(f"All {len(failures)} provider(s) failed to {operation}: {detail}")
