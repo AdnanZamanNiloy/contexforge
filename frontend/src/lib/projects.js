@@ -80,6 +80,43 @@ export function coverForId(id) {
   return COVERS[hash % COVERS.length]
 }
 
+// Library filter pills.
+//
+// These filter on `source_category`, the family a project was created for,
+// rather than on the free-text `category` the user types.  `source_category` is
+// set once at creation and is a closed set, which is what makes it usable as a
+// row of pills — the free-text field has as many values as the user invented,
+// so it can only be a dropdown.
+//
+// "All" and "Any family" both match everything: a project saved as `all`
+// (the legacy default, before families existed) is not scoped to one, so it
+// should not disappear from a family filter.
+export const FAMILY_FILTERS = [
+  { id: 'all', label: 'All', icon: 'all' },
+  { id: 'documents', label: SOURCE_CATEGORIES[0].label, icon: 'doc', short: 'Documents' },
+  { id: 'youtube', label: SOURCE_CATEGORIES[1].label, icon: 'youtube', short: 'YouTube' },
+  { id: 'github', label: SOURCE_CATEGORIES[2].label, icon: 'github', short: 'Repositories' },
+]
+
+export function filterByFamily(projects, familyId = 'all') {
+  if (!familyId || familyId === 'all') return projects
+  return projects.filter((p) => (p.source_category || 'all') === familyId)
+}
+
+export function familyLabel(project) {
+  const id = project?.source_category || 'all'
+  if (id === 'all') return project?.category || 'Uncategorised'
+  return SOURCE_CATEGORIES.find((c) => c.id === id)?.label || 'Uncategorised'
+}
+
+// Short form for the card badge, where a four-word label will not fit.
+export function familyShort(project) {
+  const id = project?.source_category || 'all'
+  const found = FAMILY_FILTERS.find((f) => f.id === id)
+  if (found && found.short) return found.short
+  return project?.category || 'Notes'
+}
+
 export function timeAgo(iso) {
   if (!iso) return 'Never opened'
   const then = new Date(iso).getTime()
@@ -111,6 +148,33 @@ export function lastOpenedLabel(iso) {
   if (!iso) return 'Never opened'
   const label = timeAgo(iso)
   return label.replace(/^Updated/, 'Opened')
+}
+
+// Compact relative time for the library card footer.
+//
+// The full label ("Opened 59 minutes ago") is 21 characters, and a four-across
+// card is ~238px with a 12px meta row — the tail truncated to "Opened 59
+// minutes…" on exactly the card a user is most likely to have just opened.
+// Units are abbreviated so the whole phrase fits at four-across density.
+export function lastOpenedLabelShort(iso) {
+  if (!iso) return 'Never opened'
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return 'Unknown'
+  const diff = Date.now() - then
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const week = 7 * day
+  if (diff < 2 * minute) return 'Opened just now'
+  if (diff < hour) return `Opened ${Math.round(diff / minute)}m ago`
+  if (diff < day) return `Opened ${Math.round(diff / hour)}h ago`
+  if (diff < 2 * day) return 'Opened yesterday'
+  if (diff < week) return `Opened ${Math.round(diff / day)}d ago`
+  if (diff < 2 * week) return 'Opened last week'
+  if (diff < 30 * day) return `Opened ${Math.round(diff / week)}w ago`
+  const months = Math.round(diff / (30 * day))
+  if (months < 12) return `Opened ${months}mo ago`
+  return `Opened ${Math.round(months / 12)}y ago`
 }
 
 // Featured templates ship a real photograph per notebook so the cover reads as
@@ -250,9 +314,4 @@ export function filterProjects(projects, { query = '', category = 'all' } = {}) 
       (p.category || '').toLowerCase().includes(q)
     )
   })
-}
-
-export function projectCategories(projects) {
-  const set = new Set(projects.map((p) => p.category || 'General'))
-  return ['all', ...Array.from(set).sort()]
 }

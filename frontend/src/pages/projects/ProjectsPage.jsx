@@ -4,17 +4,98 @@ import { useNavigate } from 'react-router-dom'
 import ContextForgeMark from '../../components/ContextForgeMark'
 import { useProjects } from '../../hooks/useProjects'
 import {
+  FAMILY_FILTERS,
   FEATURED_PROJECTS,
   SORT_OPTIONS,
+  familyShort,
+  filterByFamily,
   filterProjects,
-  lastOpenedLabel,
-  projectCategories,
+  lastOpenedLabelShort,
   sortProjects,
   timeAgo,
 } from '../../lib/projects'
 import '../../styles/projects.css'
 import CommandPalette from './CommandPalette'
 import NewProjectModal from './NewProjectModal'
+
+// One icon set, reused by the filter pills and the card badges so a family
+// looks the same wherever it appears.  Stroke-based at 24x24 like the rest of
+// the icon work in this app.
+const FAMILY_ICONS = {
+  all: (
+    <>
+      <rect x="3.5" y="4.5" width="7" height="7" rx="1.8" />
+      <rect x="13.5" y="4.5" width="7" height="7" rx="1.8" />
+      <rect x="3.5" y="14.5" width="7" height="5" rx="1.8" />
+      <rect x="13.5" y="14.5" width="7" height="5" rx="1.8" />
+    </>
+  ),
+  doc: (
+    <>
+      <path d="M6 3.5h7.5L18 8v12.5H6z" />
+      <path d="M13.5 3.5V8H18" />
+      <path d="M9 12.5h6M9 16h4" />
+    </>
+  ),
+  youtube: (
+    <>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="4" />
+      <path d="M10.2 9.3l4.6 2.7-4.6 2.7z" />
+    </>
+  ),
+  github: (
+    <path d="M9 19c-4.3 1.3-4.3-2.2-6-2.6m12 5.1v-3.3c0-.9.1-1.3-.4-1.8 2.3-.3 4.4-1.1 4.4-5a3.9 3.9 0 0 0-1.1-2.7 3.6 3.6 0 0 0-.1-2.7s-.9-.3-2.9 1.1a10 10 0 0 0-5.2 0C7.7 4.6 6.8 4.9 6.8 4.9a3.6 3.6 0 0 0-.1 2.7A3.9 3.9 0 0 0 5.6 10.3c0 3.9 2.1 4.7 4.4 5-.3.3-.4.7-.4 1.3v3.9" />
+  ),
+}
+
+function FamilyIcon({ name, size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {FAMILY_ICONS[name] || FAMILY_ICONS.doc}
+    </svg>
+  )
+}
+
+// Which icon a project's badge shows.  Falls back to the document glyph for an
+// unscoped project, which is the common case for anything saved as `all`.
+function familyIconFor(project) {
+  const found = FAMILY_FILTERS.find((f) => f.id === (project?.source_category || 'all'))
+  return found?.icon || 'doc'
+}
+
+function ViewIcon({ view }) {
+  return view === 'grid' ? (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.6" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" />
+    </svg>
+  ) : (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M4 6.5h16M4 12h16M4 17.5h16" />
+    </svg>
+  )
+}
 
 // Original abstract cover artwork — soft topographic / orbital motifs in
 // muted tones.  Deliberately distinct from any third-party product.
@@ -89,7 +170,8 @@ export default function ProjectsPage() {
 
   const [query, setQuery] = useState('')
   const [sortId, setSortId] = useState('recent')
-  const [category, setCategory] = useState('all')
+  const [family, setFamily] = useState('all')
+  const [view, setView] = useState('grid')
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [menuId, setMenuId] = useState(null)
@@ -155,12 +237,10 @@ export default function ProjectsPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [renameTarget])
 
-  const categories = useMemo(() => projectCategories(projects), [projects])
-
   const visible = useMemo(() => {
-    const filtered = filterProjects(projects, { query, category })
+    const filtered = filterProjects(filterByFamily(projects, family), { query })
     return sortProjects(filtered, sortId)
-  }, [projects, query, category, sortId])
+  }, [projects, query, family, sortId])
 
   const persistRecent = useCallback((q) => {
     const trimmed = q.trim()
@@ -369,69 +449,115 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          <div className="pg-toolbar" role="search">
-            <div className="pg-toolbar-search">
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path d="M21 21l-4.3-4.3" />
-              </svg>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') persistRecent(query)
-                }}
-                placeholder="Search projects…"
-                aria-label="Search your projects"
-              />
+          <div className="pg-toolbar">
+            {/* Family pills replace the old category <select>. The free-text
+                category has as many values as the user invented, so it can only
+                be a dropdown; the creation-time family is a closed set and reads
+                as a row of filters. */}
+            <div className="pg-pills" role="group" aria-label="Filter by source family">
+              {FAMILY_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`pg-pill${family === f.id ? ' is-active' : ''}`}
+                  aria-pressed={family === f.id}
+                  onClick={() => setFamily(f.id)}
+                >
+                  <FamilyIcon name={f.icon} size={14} />
+                  <span>{f.short || f.label}</span>
+                </button>
+              ))}
             </div>
-            <select
-              className="pg-select"
-              value={sortId}
-              onChange={(e) => setSortId(e.target.value)}
-              aria-label="Sort projects"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="pg-select"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              aria-label="Filter by category"
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c === 'all' ? 'All categories' : c}
-                </option>
-              ))}
-            </select>
-            <button className="pg-new-btn" onClick={() => setModalOpen(true)}>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              New Project
-            </button>
+
+            <div className="pg-toolbar-right">
+              <div className="pg-toolbar-search">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') persistRecent(query)
+                  }}
+                  placeholder="Search projects…"
+                  aria-label="Search your projects"
+                />
+              </div>
+              <div className="pg-sort">
+                <select
+                  className="pg-select"
+                  value={sortId}
+                  onChange={(e) => setSortId(e.target.value)}
+                  aria-label="Sort projects"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <svg
+                  className="pg-sort-chevron"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+
+              <div className="pg-viewtoggle" role="group" aria-label="Card layout">
+                <button
+                  type="button"
+                  className={`pg-view-btn${view === 'grid' ? ' is-active' : ''}`}
+                  aria-pressed={view === 'grid'}
+                  aria-label="Grid view"
+                  onClick={() => setView('grid')}
+                >
+                  <ViewIcon view="grid" />
+                </button>
+                <button
+                  type="button"
+                  className={`pg-view-btn${view === 'list' ? ' is-active' : ''}`}
+                  aria-pressed={view === 'list'}
+                  aria-label="List view"
+                  onClick={() => setView('list')}
+                >
+                  <ViewIcon view="list" />
+                </button>
+              </div>
+
+              <button className="pg-new-btn" onClick={() => setModalOpen(true)}>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New Project
+              </button>
+            </div>
           </div>
 
           <div style={{ marginTop: 18 }}>
@@ -488,7 +614,7 @@ export default function ProjectsPage() {
                     className="pg-btn-ghost"
                     onClick={() => {
                       setQuery('')
-                      setCategory('all')
+                      setFamily('all')
                     }}
                   >
                     Clear filters
@@ -499,11 +625,11 @@ export default function ProjectsPage() {
                 </div>
               </div>
             ) : (
-              <div className="pg-grid">
+              <div className={`pg-grid${view === 'list' ? ' is-list' : ''}`}>
                 {visible.map((p) => (
                   <div
                     key={p.id}
-                    className="pg-card"
+                    className={`pg-card is-family-${p.source_category || 'all'}`}
                     role="button"
                     tabIndex={0}
                     aria-label={`Open project ${p.name}, ${p.source_count || 0} sources`}
@@ -517,7 +643,12 @@ export default function ProjectsPage() {
                   >
                     <span className={`pg-cover is-${p.cover || 'aurora'}`}>
                       <CoverArt cover={p.cover} seed={p.id} />
-                      <span className="pg-provider-badge">{p.category || 'General'}</span>
+                      {/* A round family badge reads as an identity marker; the
+                          old rectangular "General" chip read as a filter label
+                          and duplicated what the pill row already says. */}
+                      <span className="pg-badge" aria-hidden="true">
+                        <FamilyIcon name={familyIconFor(p)} size={16} />
+                      </span>
                       <button
                         className="pg-more-btn pg-more-over-cover"
                         aria-label={`More actions for ${p.name}`}
@@ -544,23 +675,30 @@ export default function ProjectsPage() {
                         </svg>
                       </button>
                     </span>
-                    <span className="pg-featured-body" style={{ display: 'block' }}>
-                      <span className="pg-featured-title">
-                        <span className="pg-title-text">{p.name}</span>
-                        <span className="pg-open-arrow">
-                          <ArrowMark />
-                        </span>
-                      </span>
-                      <span className="pg-featured-desc">
-                        {p.description ||
-                          'No description yet — add one to describe this line of research.'}
-                      </span>
-                      <span className="pg-featured-meta">
+                    <span className="pg-card-body">
+                      <span className="pg-card-kind">{familyShort(p)}</span>
+                      <span className="pg-card-title">{p.name}</span>
+                      <span className="pg-card-desc">{p.description || 'No description yet.'}</span>
+                      <span className="pg-card-meta">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M6 3.5h7.5L18 8v12.5H6z" />
+                          <path d="M13.5 3.5V8H18" />
+                        </svg>
                         <span>
                           {p.source_count ?? 0} source{(p.source_count ?? 0) === 1 ? '' : 's'}
                         </span>
                         <span className="pg-dot" />
-                        <span>{lastOpenedLabel(p.last_opened_at)}</span>
+                        <span>{lastOpenedLabelShort(p.last_opened_at)}</span>
                       </span>
                     </span>
                     {menuId === p.id ? (
