@@ -28,6 +28,7 @@ lint: lint-backend lint-frontend ## Run every linter
 lint-backend: ## Ruff lint + format check (backend)
 	$(RUFF) check backend
 	$(RUFF) format --check backend
+	$(PY) backend/scripts/check_readme_api.py
 
 lint-frontend: ## ESLint + Prettier check (frontend)
 	$(NPM) run lint

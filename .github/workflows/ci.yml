@@ -29,6 +29,15 @@ jobs:
           ruff check backend
           ruff format --check backend
 
+      # The README documents a curated set of endpoints by hand. This fails if
+      # one of them stops existing, if a method is wrong, or if a path parameter
+      # no longer matches the spec — the previous list had drifted to 24 of 59
+      # operations and included an endpoint that was never real.
+      - name: Docs (README API matches the OpenAPI spec)
+        run: python backend/scripts/check_readme_api.py
+        env:
+          VALIDATE_ON_START: "false"
+
       - name: Test (pytest)
         run: pytest backend/tests -q
         env:

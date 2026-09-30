@@ -41,6 +41,7 @@ Ingest documents, web pages, and GitHub repositories — then query your knowled
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
+- [Documentation](#documentation)
 - [Development](#development)
 - [Contributing](#contributing)
 - [License](#license)
@@ -533,74 +534,80 @@ contextforge/
 
 ## API Reference
 
-<details open>
-<summary><strong>Health</strong></summary>
+**The complete, always-current API reference is generated from the running
+application** and served by FastAPI — it cannot drift from the code:
+
+| | |
+|---|---|
+| **http://localhost:8000/docs** | Swagger UI — try every endpoint from the browser |
+| **http://localhost:8000/redoc** | ReDoc — better for reading top to bottom |
+| **http://localhost:8000/openapi.json** | The raw OpenAPI 3.1 spec (43 paths, 59 operations) |
+
+This section is deliberately **curated, not exhaustive** — the calls you are
+likely to make by hand. Everything else is one click away at `/docs`.
+
+```
+Health
+GET  /health                              Liveness check
+
+Ingest
+POST /ingest/source                       Ingest a URL or GitHub repo
+POST /ingest/file                         Upload a PDF or DOCX
+GET  /ingest/sources                      List indexed sources
+GET  /ingest/source/{source_id}           Extraction verdict and provenance
+GET  /ingest/source/{source_id}/content   The indexed chunk text
+PATCH /ingest/source/{source_id}          Rename a source
+DELETE /ingest/source/{source_id}         Remove a source and its chunks
+
+Ask
+POST /query                               Answer (JSON: passages, scores, confidence)
+POST /query/stream                        Stream answer tokens over SSE
+POST /context/estimate                    Price a selection against the prompt budget
+
+Turn a selection into something
+POST /mindmap/generate                    Generate or fetch the cached mind map
+GET  /mindmap/{key}                       Fetch a stored mind map
+POST /note/generate                       Generate or fetch the cached note
+GET  /note/{key}                          Fetch a stored note
+
+Projects
+GET  /projects                            List projects
+POST /projects                            Create a project
+GET  /projects/{project_id}               One project
+POST /projects/{project_id}/sources       Attach a source to a project
+
+Studio (repository analyzers)
+POST /architecture/generate               Architecture diagram (SSE)
+POST /security/scan                       Security and quality scan
+POST /tech-stack/scan                     Dependency and tech stack
+POST /health/scan                         Structural health and hotspots
+
+Model Hub
+GET  /models                              List configured models (keys redacted)
+POST /models                              Add a model (LLM or embedding, API or local)
+POST /models/{model_id}/test              Live-test a model
+GET  /serving                             Current serving configuration
+PUT  /serving                             Select the served model or chain (applies live)
+```
+
+> The list above is checked against the live spec in CI — see
+> `backend/scripts/check_readme_api.py`. Adding an endpoint without updating this
+> curated set, or documenting one that does not exist, fails the build.
+
 <br>
 
-```
-GET  /health                                    Service health check
-```
+## Documentation
 
-</details>
+| Guide | Read it when |
+|---|---|
+| [Getting started](docs/getting-started.md) | Ingesting your first source, per format, and confirming it worked |
+| [Troubleshooting](docs/troubleshooting.md) | Something is wrong and you have a symptom |
+| [Pipeline](docs/pipeline.md) | What each retrieval stage does |
+| [Architecture](docs/architecture.md) | Changing the code — layout, data flow, feature packages |
+| [Evaluation](docs/evaluation.md) | What the confidence numbers do and do not mean |
 
-<details open>
-<summary><strong>Ingestion</strong></summary>
-<br>
-
-```
-POST    /ingest/source                          Ingest a URL or GitHub repo
-POST    /ingest/file                            Upload a PDF or DOCX file
-DELETE  /ingest/source/{id}                      Remove a source and its chunks
-GET     /ingest/sources                          List all ingested sources
-DELETE  /ingest/clear                            Wipe the entire knowledge base
-```
-
-</details>
-
-<details open>
-<summary><strong>Query</strong></summary>
-<br>
-
-```
-POST    /query                                  Answer a question (JSON: sources + confidence)
-POST    /query/stream                           Stream answer tokens via SSE
-```
-
-</details>
-
-<details open>
-<summary><strong>Mind Map</strong></summary>
-<br>
-
-```
-POST    /mindmap/generate                       Generate or fetch cached mind map for one or more sources
-GET     /mindmap/{source_id}                     Fetch a previously generated mind map
-```
-
-</details>
-
-<details open>
-<summary><strong>Model Hub</strong></summary>
-<br>
-
-```
-GET     /models                                  List configured models (API keys redacted)
-POST    /models                                  Create a model (LLM or embedding, API or local)
-GET     /models/{id}                             Get one model
-PATCH   /models/{id}                             Update a model
-DELETE  /models/{id}                             Delete a model
-POST    /models/{id}/test                        Live-test a model (detects embedding dimension)
-GET     /chains                                  List fallback chains
-POST    /chains                                  Create a fallback chain
-GET     /chains/{id}                             Get one chain
-PATCH   /chains/{id}                             Update a chain
-DELETE  /chains/{id}                             Delete a chain
-POST    /chains/{id}/test                        Test a chain end-to-end
-GET     /serving                                 Current LLM/embedding serving configuration
-PUT     /serving                                 Select the served model or chain (applies live)
-```
-
-</details>
+The full API reference is generated from the running application at
+**`/docs`** — see [API Reference](#api-reference).
 
 <br>
 
