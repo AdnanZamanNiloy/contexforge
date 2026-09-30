@@ -20,13 +20,9 @@ from core.interfaces.llm import LLM
 
 __all__ = ["NotConfiguredError", "NullEmbedder", "NullLLM"]
 
-_NO_LLM = (
-    "No LLM model is being served. Open the Model Hub, add an LLM model, "
-    "and select it under Serving."
-)
+_NO_LLM = "No LLM model is being served. Open the Model Hub, add an LLM model, and select it under Serving."
 _NO_EMBEDDER = (
-    "No embedding model is being served. Open the Model Hub, add an embedding "
-    "model, and select it under Serving."
+    "No embedding model is being served. Open the Model Hub, add an embedding model, and select it under Serving."
 )
 
 

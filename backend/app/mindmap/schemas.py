@@ -1,4 +1,5 @@
 """Request and response schemas for the Mind Map endpoints."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -27,7 +28,7 @@ def composite_key(source_ids: list[str]) -> str:
 def split_composite_key(key: str) -> list[str]:
     """Inverse of :func:`composite_key` — recover the source ids from a key."""
     if key.startswith(MULTI_PREFIX):
-        return [s for s in key[len(MULTI_PREFIX):].split(",") if s]
+        return [s for s in key[len(MULTI_PREFIX) :].split(",") if s]
     return [key]
 
 
@@ -52,10 +53,7 @@ class GenerateRequest(BaseModel):
     )
     source_id: str | None = Field(
         default=None,
-        description=(
-            "A single source to generate a mind map from.  Ignored when "
-            "source_ids is supplied."
-        ),
+        description=("A single source to generate a mind map from.  Ignored when source_ids is supplied."),
         examples=["repo:AdnanZamanNiloy/PhoneNumIdentify-"],
     )
     refresh: bool = Field(
@@ -117,12 +115,8 @@ class MindMapResponse(BaseModel):
         description="Every source that contributed to this map.",
     )
     title: str = Field(description="Human-readable title used as the root node.")
-    markdown: str = Field(
-        description="Markdown list outline rendered by the mind map component."
-    )
+    markdown: str = Field(description="Markdown list outline rendered by the mind map component.")
     chunk_count: int = Field(ge=0, description="Number of source chunks used.")
-    created_at: str | None = Field(
-        default=None, description="ISO-8601 creation timestamp (when persisted)."
-    )
+    created_at: str | None = Field(default=None, description="ISO-8601 creation timestamp (when persisted).")
 
     model_config = {"frozen": True}

@@ -768,8 +768,7 @@ class Orchestrator:
             if focus >= min_focus and tier_confidence > best:
                 best = tier_confidence
         logger.debug(
-            "_apply_confidence: focus=%.3f dominant=%s chunks=%d total=%d "
-            "base=%.4f relevance=%.4f → %.4f",
+            "_apply_confidence: focus=%.3f dominant=%s chunks=%d total=%d base=%.4f relevance=%.4f → %.4f",
             focus,
             dominant,
             source_counts[dominant],
@@ -840,8 +839,7 @@ class Orchestrator:
         penalty = 1.0 - report.support_ratio
         adjusted = confidence * (1.0 - self._UNGROUNDED_PENALTY * penalty)
         logger.warning(
-            "grounding: %d of %d checkable claims unsupported %s — "
-            "confidence %.4f -> %.4f",
+            "grounding: %d of %d checkable claims unsupported %s — confidence %.4f -> %.4f",
             len(report.unsupported),
             report.checked,
             list(report.unsupported),
@@ -958,8 +956,7 @@ class Orchestrator:
         citations = parse_citations(answer_text, len(reranked))
         if citations.discarded:
             logger.warning(
-                "citations: dropped %d out-of-range marker(s) %s — the model cited "
-                "a passage that was not retrieved",
+                "citations: dropped %d out-of-range marker(s) %s — the model cited a passage that was not retrieved",
                 len(citations.discarded),
                 list(citations.discarded),
             )

@@ -196,9 +196,7 @@ class TestFileLevelCoverage:
         # surplus slot goes to a second chunk of a file already within
         # _MAX_CHUNKS_PER_SOURCE, which is intended.
         assert set(paths) == {"LICENSE", "frontend/src/logo.svg", "backend/app.py", "README.md"}
-        assert paths.count("frontend/src/logo.svg") < 4, (
-            "one file should no longer take four of five slots"
-        )
+        assert paths.count("frontend/src/logo.svg") < 4, "one file should no longer take four of five slots"
 
     def test_a_single_repeated_file_still_yields_its_best_chunks(self) -> None:
         # With nothing else to show, coverage must not starve a legitimate

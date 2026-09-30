@@ -121,5 +121,3 @@ async def test_deleting_a_source_drops_its_rename(client, meta_store):
         assert deleted.status_code == 200
         # The rename must not outlive the source.
         assert await meta_store.all_titles() == {}
-
-

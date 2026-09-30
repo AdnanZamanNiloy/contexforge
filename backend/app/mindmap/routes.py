@@ -11,14 +11,16 @@ sources are keyed by a sorted composite key.  The ``:path`` converter lets those
 keys (``repo:<owner>/<name>``) survive the slash in the URL.  Errors are mapped
 to clean HTTP responses.
 """
+
 from __future__ import annotations
 
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from app.dependencies import get_mindmap_service
 from app.mindmap.schemas import GenerateRequest, MindMapResponse, split_composite_key
 from app.mindmap.service import MindMapError, MindMapService
-from fastapi import APIRouter, Depends, HTTPException, status
 
 __all__ = ["router"]
 
@@ -44,12 +46,10 @@ async def generate(
     regeneration after the sources changed.
     """
     try:
-        result = await service.generate(
-            request.resolved_source_ids(), refresh=request.refresh
-        )
+        result = await service.generate(request.resolved_source_ids(), refresh=request.refresh)
     except MindMapError as exc:
         logger.warning("mindmap generate failed: %s", exc)
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     return _to_response(result)
 
 

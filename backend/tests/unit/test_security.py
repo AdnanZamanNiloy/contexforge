@@ -86,14 +86,7 @@ async def test_finds_a_real_call_but_not_the_same_word_in_prose():
     # string are not code, and reporting them would be the first reason to stop
     # reading the report.
     result = await scan_code(
-        {
-            "app/run.py": (
-                "# never call eval on user input\n"
-                'EXAMPLE = "eval(x)"\n'
-                "def run(cmd):\n"
-                "    return eval(cmd)\n"
-            )
-        }
+        {"app/run.py": ('# never call eval on user input\nEXAMPLE = "eval(x)"\ndef run(cmd):\n    return eval(cmd)\n')}
     )
     locations = [(f.location, f.line) for f in result.findings if f.id == "dynamic-eval"]
     assert locations == [("app/run.py", 4)]
@@ -157,7 +150,7 @@ def test_prose_lines_cover_docstrings_and_comments():
 def test_prose_lines_are_computed_only_for_python():
     # Guessing where another language's docstrings are would be worse than not
     # trying, so the filter is Python-only and other languages rely on confidence.
-    assert _prose_lines('DEBUG = True\n', "config.js") == set()
+    assert _prose_lines("DEBUG = True\n", "config.js") == set()
 
 
 def test_prose_lines_survive_an_unparseable_file():

@@ -10,6 +10,7 @@ Each operation opens its own connection (``check_same_thread=False``); WAL
 coordinates concurrent reads/writes so a single connection is never shared
 across threads.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,9 +57,7 @@ class MindMapStore:
         markdown: str,
         chunk_count: int,
     ) -> dict[str, Any]:
-        return await asyncio.to_thread(
-            self._upsert_sync, source_id, title, markdown, chunk_count
-        )
+        return await asyncio.to_thread(self._upsert_sync, source_id, title, markdown, chunk_count)
 
     @observe(name="mindmap_store_delete")
     async def delete(self, source_id: str) -> None:
@@ -93,9 +92,7 @@ class MindMapStore:
         finally:
             conn.close()
 
-    def _upsert_sync(
-        self, source_id: str, title: str, markdown: str, chunk_count: int
-    ) -> dict[str, Any]:
+    def _upsert_sync(self, source_id: str, title: str, markdown: str, chunk_count: int) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
         conn = self._connect()
         try:

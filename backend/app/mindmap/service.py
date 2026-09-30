@@ -8,6 +8,7 @@ native input), and persists the result keyed by the selection so a given set
 is generated only once.  It reuses the existing singletons (LLM fallback chain
 + FaissStore) rather than building new infrastructure.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -160,8 +161,7 @@ class MindMapService:
         chunks = await self._collect_chunks(selected)
         if not chunks:
             raise MindMapError(
-                "No indexed content found for the selected source(s). Re-ingest "
-                "them to generate a mind map."
+                "No indexed content found for the selected source(s). Re-ingest them to generate a mind map."
             )
 
         title = self._resolve_title(selected, chunks)
@@ -180,7 +180,8 @@ class MindMapService:
         except TimeoutError as exc:  # pragma: no cover - timing guard
             logger.exception(
                 "mindmap: generation timed out after %.0fs for key=%s",
-                MAX_GENERATION_SECONDS, key,
+                MAX_GENERATION_SECONDS,
+                key,
             )
             raise MindMapError(
                 "Mind map generation timed out. The AI providers may be under "
@@ -198,12 +199,13 @@ class MindMapService:
         if not markdown:
             raise MindMapError("The AI provider returned no mind map to render.")
 
-        saved = await self._store.upsert(
-            key, title, markdown, len(sampled)
-        )
+        saved = await self._store.upsert(key, title, markdown, len(sampled))
         logger.info(
             "mindmap: generated for key=%s sources=%d chunks=%d elapsed=%.1f ms",
-            key, len(selected), len(sampled), elapsed,
+            key,
+            len(selected),
+            len(sampled),
+            elapsed,
         )
         return saved
 
@@ -268,10 +270,7 @@ class MindMapService:
                 "source-specific branch where a source has content no other source "
                 "covers."
             )
-        lines.append(
-            f"Build a mind map from its {len(chunks)} indexed chunk(s). "
-            "Return only the Markdown list."
-        )
+        lines.append(f"Build a mind map from its {len(chunks)} indexed chunk(s). Return only the Markdown list.")
         lines.append("---")
         for i, chunk in enumerate(chunks, start=1):
             text = (chunk.text or "").strip()[:MAX_CHUNK_CHARS]
@@ -287,6 +286,7 @@ class MindMapService:
 # ---------------------------------------------------------------------------
 # Module-level helpers
 # ---------------------------------------------------------------------------
+
 
 def _sample_chunks(chunks) -> list:
     """Return a representative spread of up to ``MAX_CHUNKS`` chunks.
@@ -309,7 +309,7 @@ def _normalize_markdown(markdown: str) -> str:
     Strips a leading code fence and root heading that some models add, leaving
     the nested '-'-prefixed list the mind map parser expects.
     """
-    text = (markdown or '').strip()
+    text = (markdown or "").strip()
 
     # Strip a single triple-backtick fenced block if the model wrapped the list.
     if text.startswith("```"):

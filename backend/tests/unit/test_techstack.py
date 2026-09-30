@@ -532,7 +532,7 @@ def test_workflow_actions_become_dependencies_with_tags():
 @pytest.mark.parametrize(
     "uses",
     [
-        "actions/cache@main",          # a moving branch, not a version
+        "actions/cache@main",  # a moving branch, not a version
         "actions/cache@0123456789abcdef0123456789abcdef01234567",  # a commit sha
     ],
 )
@@ -637,14 +637,10 @@ def test_manager_gating_still_applies_to_the_new_categories():
 
 def _monorepo():
     manifests = [
-        ManifestResult(
-            "npm", "JavaScript", "package.json", [Dependency("next", "14"), Dependency("@acme/api", "1.0")]
-        ),
+        ManifestResult("npm", "JavaScript", "package.json", [Dependency("next", "14"), Dependency("@acme/api", "1.0")]),
         ManifestResult("npm", "JavaScript", "apps/web/package.json", [Dependency("next", "14")]),
         ManifestResult("npm", "JavaScript", "packages/api/package.json", [Dependency("pg", "8.11")]),
-        ManifestResult(
-            "pip", "Python", "services/ml/requirements.txt", [Dependency("psycopg2", "2.9")]
-        ),
+        ManifestResult("pip", "Python", "services/ml/requirements.txt", [Dependency("psycopg2", "2.9")]),
     ]
     paths = [
         "package.json",
@@ -784,9 +780,7 @@ def test_graph_sibling_edge_ignores_generic_dependency_names():
         ManifestResult("npm", "JavaScript", "apps/web/package.json", [Dependency("utils", "1.0")]),
         ManifestResult("npm", "JavaScript", "packages/utils/package.json", []),
     ]
-    graph = build_graph(
-        manifests, ["apps/web/package.json", "packages/utils/package.json"], "acme/x"
-    )
+    graph = build_graph(manifests, ["apps/web/package.json", "packages/utils/package.json"], "acme/x")
     assert graph["edges"] == []
 
 
@@ -795,9 +789,7 @@ def test_graph_sibling_edge_links_a_named_service():
         ManifestResult("npm", "JavaScript", "apps/web/package.json", [Dependency("@acme/billing", "1.0")]),
         ManifestResult("npm", "JavaScript", "services/billing/package.json", []),
     ]
-    graph = build_graph(
-        manifests, ["apps/web/package.json", "services/billing/package.json"], "acme/x"
-    )
+    graph = build_graph(manifests, ["apps/web/package.json", "services/billing/package.json"], "acme/x")
     assert [e["from"] for e in graph["edges"]] == ["apps/web"]
     assert [e["to"] for e in graph["edges"]] == ["services/billing"]
 
@@ -825,8 +817,7 @@ def test_graph_reports_the_real_service_total_when_capped():
     # A capped tree that reported only the capped number would understate a
     # large monorepo, so the real total is carried alongside it.
     manifests = [
-        ManifestResult("npm", "JavaScript", f"pkg{index}/package.json", [])
-        for index in range(MAX_SERVICES + 25)
+        ManifestResult("npm", "JavaScript", f"pkg{index}/package.json", []) for index in range(MAX_SERVICES + 25)
     ]
     graph = build_graph(manifests, [f"pkg{index}/package.json" for index in range(MAX_SERVICES + 25)], "acme/x")
     assert graph["service_count"] == MAX_SERVICES

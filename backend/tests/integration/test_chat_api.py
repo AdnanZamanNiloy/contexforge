@@ -176,4 +176,3 @@ async def test_update_message_records_streaming_result(client):
         assert updated.status_code == 200
         assert updated.json()["text"] == "final answer"
         assert updated.json()["status"] == "done"
-

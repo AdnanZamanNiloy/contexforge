@@ -181,4 +181,3 @@ async def test_blank_and_duplicate_source_ids_are_cleaned(tmp_path):
 async def test_add_message_to_missing_session_returns_none(tmp_path):
     service, _, _ = _service(tmp_path)
     assert await service.add_message("chat_missing", "user", "q") is None
-

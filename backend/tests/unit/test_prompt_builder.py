@@ -66,10 +66,7 @@ class TestSourceLabels:
     def test_numbering_matches_citation_marker_order(self) -> None:
         # [n] must point at the nth source in the response, or every citation
         # resolves to the wrong file.
-        chunks = [
-            Chunk(chunk_id=f"c{i}", text=f"body {i}", metadata={"path": f"f{i}.py"})
-            for i in range(1, 4)
-        ]
+        chunks = [Chunk(chunk_id=f"c{i}", text=f"body {i}", metadata={"path": f"f{i}.py"}) for i in range(1, 4)]
         prompt = PromptBuilder().build("q", chunks).user_prompt
         for i, chunk in enumerate(chunks, start=1):
             marker = f"[{i}] file: {chunk.metadata['path']}"

@@ -193,4 +193,3 @@ class PromptBuilder:
             else:
                 blocks.append(f"[{i}] {chunk.text}")
         return "\n\n".join(blocks)
-

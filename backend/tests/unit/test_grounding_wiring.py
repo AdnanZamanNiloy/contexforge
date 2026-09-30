@@ -17,6 +17,7 @@ from core.types import Chunk, RerankedChunk
 
 class _StubLLM:
     """LLM stub whose answer is supplied by the test."""
+
     text = ""
 
     async def generate(self, prompt, system_prompt=None):
@@ -51,6 +52,7 @@ def _orchestrator_returning(llm_text: str, context: str) -> Orchestrator:
     orch.retrieve_context = fake_retrieve
     return orch
 
+
 @pytest.mark.asyncio
 async def test_answer_path_applies_grounding_penalty() -> None:
     """An answer inventing figures must not keep a 0.95 retrieval score."""
@@ -61,12 +63,8 @@ async def test_answer_path_applies_grounding_penalty() -> None:
 
     result = await orch.answer("How fast is the service?")
 
-    assert result.confidence.answer_confidence < 0.95, (
-        "invented figures must reduce confidence"
-    )
-    assert result.confidence.source_coverage != "Excellent", (
-        "the coverage label must track the adjusted number"
-    )
+    assert result.confidence.answer_confidence < 0.95, "invented figures must reduce confidence"
+    assert result.confidence.source_coverage != "Excellent", "the coverage label must track the adjusted number"
 
 
 @pytest.mark.asyncio

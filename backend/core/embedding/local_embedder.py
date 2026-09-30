@@ -75,9 +75,7 @@ class LocalEmbedder(Embedder):
             from sentence_transformers import SentenceTransformer
         except Exception as exc:  # pragma: no cover - optional dependency path
             logger.exception("sentence-transformers is not installed")
-            raise RuntimeError(
-                "Local embedding models require the sentence-transformers package."
-            ) from exc
+            raise RuntimeError("Local embedding models require the sentence-transformers package.") from exc
 
         device = None if self._device == "auto" else self._device
         logger.info("Loading local embedding model '%s' (device=%s).", self._model_id, device or "auto")

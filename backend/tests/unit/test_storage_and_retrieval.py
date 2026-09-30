@@ -65,9 +65,7 @@ async def test_bm25_scoped_search_is_not_starved_by_other_sources(tmp_path: Path
         Chunk(chunk_id=f"other-{i}", text="source source source source", metadata={}, source_id="other")
         for i in range(10)
     ]
-    selected = [
-        Chunk(chunk_id="sel-1", text="source material about widgets", metadata={}, source_id="sel")
-    ]
+    selected = [Chunk(chunk_id="sel-1", text="source material about widgets", metadata={}, source_id="sel")]
     await index.add([*other, *selected])
 
     # Exclude every source except the selected one.
@@ -85,9 +83,7 @@ async def test_faiss_scoped_search_survives_low_global_rank(tmp_path: Path) -> N
     # 20 near-identical "other" vectors all closer to the query than the
     # selected one, plus a distinct selected vector that still points the right
     # way but scores lowest.
-    others = [
-        Chunk(chunk_id=f"other-{i}", text="x", metadata={}, source_id="other") for i in range(20)
-    ]
+    others = [Chunk(chunk_id=f"other-{i}", text="x", metadata={}, source_id="other") for i in range(20)]
     other_vecs = [[1.0, 0.01 * i, 0.0] for i in range(20)]
     selected = Chunk(chunk_id="sel-1", text="y", metadata={}, source_id="sel")
     await store.add([*others, selected], [*other_vecs, [0.6, 0.0, 0.8]])

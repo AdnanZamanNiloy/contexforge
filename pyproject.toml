@@ -19,7 +19,7 @@ dev = [
 [tool.ruff]
 target-version = "py314"
 line-length = 120
-extend-exclude = [".venv", "frontend", "data", "mindmap", "node_modules", "dist", "build"]
+extend-exclude = [".venv", "frontend", "data", "node_modules", "dist", "build"]
 
 # Curated, opinionated-but-pragmatic rule set. Errors (E), pyflakes (F) and
 # import sorting (I) are non-negotiable; UP/B/C4/SIM/RUF read the code the way

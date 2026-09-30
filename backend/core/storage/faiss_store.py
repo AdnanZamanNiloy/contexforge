@@ -307,10 +307,7 @@ class FaissStore:
         # entirely outside that window, so the leg returns nothing for a query
         # the selected source can actually answer.  Widen the candidate pool so
         # the selection is covered even in a large multi-source index.
-        if exclude_source_ids:
-            fetch_k = max(top_k * 3, min(self._index.ntotal, top_k * 20))
-        else:
-            fetch_k = top_k
+        fetch_k = max(top_k * 3, min(self._index.ntotal, top_k * 20)) if exclude_source_ids else top_k
         fetch_k = min(fetch_k, self._index.ntotal)
         scores, indices = self._index.search(query, fetch_k)
 

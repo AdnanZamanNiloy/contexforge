@@ -287,7 +287,7 @@ class BM25Index:
         for (raw,) in rows:
             try:
                 meta = json.loads(raw) if raw else {}
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             path = meta.get("path") or meta.get("filename")
             if isinstance(path, str) and path.strip():
