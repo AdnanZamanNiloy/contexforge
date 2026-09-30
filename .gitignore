@@ -32,3 +32,8 @@ frontend/*.png
 # Local Risk Score formula and the per-function metric definitions ported into
 # backend/app/health/; none of its Rust is part of this app.
 /hotspots/
+
+# Upstream Open Notebook clone (its own repo).  Read as a feature reference for
+# the source-inspection view, notes and custom transformations; none of its
+# Python or Next.js code is part of this app.
+/open-notebook/

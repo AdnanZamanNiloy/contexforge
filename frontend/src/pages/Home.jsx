@@ -5,6 +5,7 @@ import AppShell from '../components/layout/AppShell'
 import Sidebar from '../components/layout/Sidebar'
 import ChatBox from '../components/ChatBox'
 import SourceViewer from '../components/SourceViewer'
+import SourceDetailPanel from '../components/SourceDetailPanel'
 import MindMapPanel from '../components/MindMapPanel'
 import RepoStudio, { STUDIO_TOOLS, StudioView } from '../components/RepoStudio'
 import {
@@ -493,6 +494,15 @@ export default function Home() {
     setRenameValue(source.title || '')
   }, [])
 
+  // Inspecting a source answers "did the extraction actually work?" — the
+  // question the source list cannot, since a scanned PDF and a clean one look
+  // identical there.
+  const [inspectTarget, setInspectTarget] = useState(null)
+  const handleRequestInspectSource = useCallback((source) => {
+    setInspectTarget(source)
+  }, [])
+  const handleCloseInspect = useCallback(() => setInspectTarget(null), [])
+
   const handleCommitRename = useCallback(async () => {
     const clean = renameValue.trim()
     if (!renameTarget || !clean || renameSaving) return
@@ -659,6 +669,7 @@ export default function Home() {
             onSelectAllSources={selectAllSources}
             onClearSourceSelection={clearSourceSelection}
             selectedSourceIds={selectedSourceIds}
+            onInspectSource={handleRequestInspectSource}
             onRenameSource={handleRequestRenameSource}
             onDeleteSource={handleRequestRemoveSource}
             scopeTypes={sidebarScope}
@@ -966,6 +977,14 @@ export default function Home() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {inspectTarget ? (
+        <SourceDetailPanel
+          sourceId={inspectTarget.id}
+          sourceTitle={inspectTarget.title || ''}
+          onClose={handleCloseInspect}
+        />
       ) : null}
 
       {confirmState.open && (

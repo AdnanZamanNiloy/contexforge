@@ -7,6 +7,8 @@ Endpoints:
     PATCH /ingest/source/{id}     — Rename a source (persist a title override).
     DELETE /ingest/source/{id}    — Delete a previously ingested source.
     GET /ingest/sources           — List current source/chunk counts.
+    GET /ingest/source/{id}       — Inspect one source: metadata and extraction stats.
+    GET /ingest/source/{id}/content — The indexed chunk text for one source.
 """
 
 from __future__ import annotations
@@ -24,7 +26,13 @@ from app.schemas.ingest import (
     SourcesResponse,
 )
 from app.services.ingest_service import IngestService
-from app.sources.schemas import UpdateSourceRequest, UpdateSourceResponse
+from app.sources.inspection import build_source_content, build_source_detail
+from app.sources.schemas import (
+    SourceContentResponse,
+    SourceDetailResponse,
+    UpdateSourceRequest,
+    UpdateSourceResponse,
+)
 from app.sources.storage import SourceMetaStore
 
 __all__ = ["router"]
@@ -265,6 +273,131 @@ async def get_sources(
         ) from exc
 
     return SourcesResponse(total_chunks=total_chunks, sources=sources)
+
+
+def _require_source_id(source_id: str) -> None:
+    """Reject a blank source id before it reaches the index lookup."""
+    if not source_id or not source_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="source_id must not be empty.",
+        )
+
+
+async def _source_chunks(service: IngestService, source_id: str):
+    """Every indexed chunk for *source_id*, or 404 when the source is unknown."""
+    chunks = await service._orchestrator._faiss.get_chunks_by_source_id(source_id)
+    if not chunks:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Source '{source_id}' is not in the index.",
+        )
+    return chunks
+
+
+def _derived_title(chunks) -> str:
+    """The source's loader-derived title, matching how the list resolves it.
+
+    The list groups by source id and keeps whichever title it saw first, so a
+    repository resolves to ``repo`` rather than to the title of whichever file
+    happened to be indexed first — which for a repo is usually LICENSE.
+    """
+    meta = chunks[0].metadata or {}
+    if str(meta.get("source_type") or meta.get("source") or "") == "github" and meta.get("repo"):
+        return str(meta["repo"])
+    return str(meta.get("title") or "Untitled source")
+
+
+# NOTE: this route is declared before the `{source_id:path}` detail route on
+# purpose. `path` is greedy, so `/source/{id:path}` would otherwise swallow a
+# trailing `/content` and report the whole thing as an unknown source id. FastAPI
+# matches in declaration order, so the more specific route has to come first.
+@router.get(
+    "/source/{source_id:path}/content",
+    response_model=SourceContentResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get the indexed chunk text for one source",
+)
+async def get_source_content(
+    source_id: str,
+    service: IngestService = Depends(get_ingest_service),
+) -> SourceContentResponse:
+    """Return the chunk text retrieval actually holds for *source_id*.
+
+    This is the index's view, not the original document: what a user reads here
+    is exactly what can be retrieved and quoted. Chunks are capped, and
+    ``truncated`` reports when a long source was cut.
+
+    Raises:
+        404: If the source is not in the index.
+    """
+    _require_source_id(source_id)
+
+    try:
+        chunks = await _source_chunks(service, source_id)
+        content = build_source_content(chunks, source_id=source_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_source_content failed for source_id=%s: %s", source_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to read source '{source_id}': {exc}",
+        ) from exc
+
+    return content
+
+
+@router.get(
+    "/source/{source_id:path}",
+    response_model=SourceDetailResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Inspect one ingested source",
+)
+async def get_source_detail(
+    source_id: str,
+    service: IngestService = Depends(get_ingest_service),
+    meta_store: SourceMetaStore = Depends(get_source_meta_store),
+) -> SourceDetailResponse:
+    """Describe a single source: how it was labelled and what was indexed.
+
+    Answers the question the source list cannot: *did the extraction actually
+    work?* A scanned PDF with no text layer, a DOCX that lost its tables, or a
+    fetch that captured navigation instead of the article all still produce a
+    source that appears in the sidebar and answers questions.
+
+    Raises:
+        404: If the source is not in the index.
+    """
+    _require_source_id(source_id)
+
+    try:
+        chunks = await _source_chunks(service, source_id)
+        overrides = await meta_store.all_titles()
+        detail = build_source_detail(
+            chunks,
+            source_id=source_id,
+            derived_title=_derived_title(chunks),
+            title_override=overrides.get(source_id),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_source_detail failed for source_id=%s: %s", source_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to inspect source '{source_id}': {exc}",
+        ) from exc
+
+    logger.info(
+        "get_source_detail: source_id=%s type=%s chunks=%d chars=%d renamed=%s",
+        source_id,
+        detail.source_type,
+        detail.chunk_count,
+        detail.char_count,
+        detail.renamed,
+    )
+    return detail
 
 
 async def _read_with_limit(upload: UploadFile, max_bytes: int) -> bytes:

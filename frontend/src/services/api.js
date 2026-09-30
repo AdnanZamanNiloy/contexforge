@@ -119,6 +119,24 @@ export async function fetchSources() {
   })
 }
 
+// Inspect one source: how it was labelled, where it came from, and what the
+// loader actually extracted.  Answers "did the extraction work?" for a scanned
+// PDF, a DOCX that lost its tables, or a fetch that captured navigation.
+export async function fetchSourceDetail(sourceId) {
+  return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
+    method: 'GET',
+  })
+}
+
+// The chunk text retrieval holds for one source.  This is the index's view of
+// the document, not the original file — what a user reads here is exactly what
+// can be retrieved and quoted.  Capped server-side; `truncated` reports a cut.
+export async function fetchSourceContent(sourceId) {
+  return request(`/ingest/source/${encodeURIComponent(sourceId)}/content`, {
+    method: 'GET',
+  })
+}
+
 export async function queryAnswer(payload) {
   return request('/query', {
     method: 'POST',

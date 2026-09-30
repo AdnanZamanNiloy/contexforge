@@ -207,11 +207,12 @@ function SourcesSortMenu({ value, onChange }) {
 }
 
 const MENU_WIDTH = 176
-const MENU_HEIGHT = 92
+// Three items plus the popover's padding and border.
+const MENU_HEIGHT = 132
 const MENU_GAP = 6
 const VIEWPORT_MARGIN = 8
 
-function SourceActionsMenu({ source, open, onToggle, onClose, onRename, onRemove }) {
+function SourceActionsMenu({ source, open, onToggle, onClose, onRename, onRemove, onInspect }) {
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
 
@@ -219,7 +220,6 @@ function SourceActionsMenu({ source, open, onToggle, onClose, onRename, onRemove
     triggerRef,
     menuRef,
     width: MENU_WIDTH,
-    // Two items plus the popover's padding and border.
     minHeight: MENU_HEIGHT,
     gap: MENU_GAP,
     margin: VIEWPORT_MARGIN,
@@ -251,10 +251,11 @@ function SourceActionsMenu({ source, open, onToggle, onClose, onRename, onRemove
   const run = useCallback(
     (action) => {
       onClose()
-      if (action === 'rename') onRename?.(source)
+      if (action === 'inspect') onInspect?.(source)
+      else if (action === 'rename') onRename?.(source)
       else onRemove?.(source)
     },
-    [onClose, onRename, onRemove, source],
+    [onClose, onInspect, onRename, onRemove, source],
   )
 
   return (
@@ -281,6 +282,31 @@ function SourceActionsMenu({ source, open, onToggle, onClose, onRename, onRemove
       {open
         ? createPortal(
             <div className="source-action-menu" role="menu" ref={menuRef}>
+              <button
+                type="button"
+                role="menuitem"
+                className="source-action-item"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  run('inspect')
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span>View source details</span>
+              </button>
               <button
                 type="button"
                 role="menuitem"
@@ -358,6 +384,7 @@ export default function Sidebar({
   onSelectAllSources,
   onClearSourceSelection,
   selectedSourceIds = [],
+  onInspectSource,
   onRenameSource,
   onDeleteSource,
   header,
@@ -574,6 +601,7 @@ export default function Sidebar({
                     open={openMenuId === source.id}
                     onToggle={() => toggleMenu(source.id)}
                     onClose={closeMenu}
+                    onInspect={onInspectSource}
                     onRename={onRenameSource}
                     onRemove={onDeleteSource}
                   />
