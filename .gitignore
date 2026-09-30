@@ -37,3 +37,8 @@ frontend/*.png
 # the source-inspection view, notes and custom transformations; none of its
 # Python or Next.js code is part of this app.
 /open-notebook/
+
+# Upstream lynote-notes clone (its own repo).  Read as a reference for its
+# chunk-level citation validation and offline heuristic provider; the Note
+# feature in backend/app/notes/ is an independent implementation.
+/lynote-notes/
