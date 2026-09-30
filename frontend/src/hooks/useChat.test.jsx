@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, act } from '@testing-library/react'
 
 // The streaming client is mocked so the token sequence is deterministic and the
@@ -44,6 +44,7 @@ vi.mock('../services/api', () => ({
 }))
 
 import { useChat } from './useChat'
+import { streamQuery } from '../services/api'
 
 // Minimal probe component so we can drive the hook through real DOM events.
 //
@@ -292,5 +293,75 @@ describe('streaming progress label', () => {
     for (const message of chat().messages) {
       expect(message.text).not.toMatch(/Searching your sources|composing an answer/)
     }
+  })
+})
+
+describe('useChat follow-up resolution', () => {
+  // The stream mock is module-level, so earlier suites in this file have
+  // already sent messages. Clear it so the payload indices below line up with
+  // the turns of each test.
+  beforeEach(() => {
+    streamQuery.mockClear()
+  })
+
+  // A pronoun-only follow-up carries no searchable topic, so retrieval has
+  // nothing to match on and the answer returns at the confidence floor. The
+  // previous turn named the subject, so it is carried into the query that goes
+  // to the server.
+  it('sends the previous subject when the follow-up names none', async () => {
+    const chat = mountChat()
+    await act(async () => {
+      await chat().sendMessage('tell me about Jashore University of Science and Technology')
+    })
+    await act(async () => {
+      await chat().sendMessage('give me details about it')
+    })
+
+    const payloads = streamQuery.mock.calls.map((call) => call[0])
+    expect(payloads).toHaveLength(2)
+    expect(payloads[0].question).toBe('tell me about Jashore University of Science and Technology')
+    expect(payloads[1].question).toContain('jashore')
+    expect(payloads[1].question).toContain('give me details about it')
+  })
+
+  it('keeps what the user typed in the bubble', async () => {
+    // Only the retrieval query is expanded. The transcript is the user's own
+    // words, and the saved row must match what they see.
+    const chat = mountChat()
+    await act(async () => {
+      await chat().sendMessage('tell me about Jashore University of Science and Technology')
+    })
+    await act(async () => {
+      await chat().sendMessage('give me details about it')
+    })
+
+    const asked = chat().messages.filter((m) => m.role === 'user').map((m) => m.text)
+    expect(asked).toContain('give me details about it')
+    expect(asked.some((t) => t.includes('Jashore University of Science and Technology —'))).toBe(false)
+  })
+
+  it('leaves a self-contained follow-up exactly as typed', async () => {
+    const chat = mountChat()
+    await act(async () => {
+      await chat().sendMessage('tell me about the university')
+    })
+    await act(async () => {
+      await chat().sendMessage('When did it open?')
+    })
+
+    const payloads = streamQuery.mock.calls.map((call) => call[0])
+    // "it" here refers to a named university, so the question already stands
+    // alone and rewriting it would only add noise.
+    expect(payloads[1].question).toBe('When did it open?')
+  })
+
+  it('resolves against a single selected source when history is empty', async () => {
+    const chat = mountChat({ sourceIds: ['src-a'], sourceTitles: ['Jashore University of Science and Technology'] })
+    await act(async () => {
+      await chat().sendMessage('summarize it')
+    })
+
+    const payload = streamQuery.mock.calls[0][0]
+    expect(payload.question).toContain('jashore')
   })
 })

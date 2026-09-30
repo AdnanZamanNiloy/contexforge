@@ -8,6 +8,8 @@ import {
   updateChatMessage,
 } from '../services/api'
 
+import { resolveFollowUpQuery } from '../lib/followUpQuery'
+
 // Progress labels shown in the assistant bubble while the server works. Kept as
 // named values so the label and the "is this a placeholder?" test cannot drift
 // apart — the test has to recognise exactly the strings that were written.
@@ -63,6 +65,7 @@ export function useChat({
   resolveSessionId = null,
   onNewSession = null,
   sourceIds = [],
+  sourceTitles = [],
   contextDepth = 'focused',
 } = {}) {
   const [input, setInput] = useState('')
@@ -82,7 +85,18 @@ export function useChat({
   const resolveSessionRef = useRef(resolveSessionId)
   const onNewSessionRef = useRef(onNewSession)
   const sourceIdsRef = useRef(sourceIds)
+  const sourceTitlesRef = useRef(sourceTitles)
   const contextDepthRef = useRef(contextDepth)
+  // The thread is read during a send, before any state update from that send
+  // has landed, so a ref is the only way to see the preceding turns.
+  const messagesRef = useRef([])
+
+  // Mirrors `messages` for `send`, which cannot close over the current value:
+  // by the time a follow-up is sent the previous turn is committed, so an
+  // effect has long since run and the ref is accurate.
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
   // Sessions whose in-memory thread is already authoritative.  A session we
   // created ourselves (lazily, mid-send) has its messages in hand before the id
   // exists, so re-fetching it could race the still-in-flight POST and drop the
@@ -95,8 +109,9 @@ export function useChat({
     resolveSessionRef.current = resolveSessionId
     onNewSessionRef.current = onNewSession
     sourceIdsRef.current = sourceIds
+    sourceTitlesRef.current = sourceTitles
     contextDepthRef.current = contextDepth
-  }, [sessionId, resolveSessionId, onNewSession, sourceIds, contextDepth])
+  }, [sessionId, resolveSessionId, onNewSession, sourceIds, sourceTitles, contextDepth])
 
   // Load persisted history whenever the bound session changes.  A different
   // project or session replaces the thread; changing the *selection* does not,
@@ -259,6 +274,20 @@ export function useChat({
       const controller = new AbortController()
       abortRef.current = controller
 
+      // A follow-up like "give me details about it" names no topic, so the
+      // retriever has nothing to match on and the answer comes back at the
+      // confidence floor. The subject is carried over from the previous turn
+      // for retrieval only — the bubble and the saved row keep the words the
+      // user actually typed, so this rewrite is never surfaced as a rewrite.
+      //
+      // Resolved before the try so the streaming path and the non-streaming
+      // fallback below ask the same question; a fallback that re-asked the bare
+      // pronoun would score differently for no reason.
+      const resolved = resolveFollowUpQuery(trimmed, {
+        messages: messagesRef.current,
+        sourceTitles: sourceTitlesRef.current,
+      })
+
       try {
         let hasTokens = false
         // Accumulated across the stream so the finished answer can be written
@@ -267,7 +296,7 @@ export function useChat({
         // vanished on the next load.
         let assistantText = ''
         const payload = {
-          question: trimmed,
+          question: resolved.question,
           source_ids: usedSourceIds.length ? usedSourceIds : undefined,
           // No source selected: answer from general knowledge, never from the
           // corpus, so the reply cannot cite a source the user did not choose.
@@ -355,7 +384,7 @@ export function useChat({
         stopStream()
         try {
           const fallback = await queryAnswer({
-            question: trimmed,
+            question: resolved.question,
             source_ids: usedSourceIds.length ? usedSourceIds : undefined,
             no_sources: usedSourceIds.length === 0,
             context_depth: contextDepthRef.current,

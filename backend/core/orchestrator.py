@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import AsyncIterator
+from dataclasses import replace
 
 from app.config.settings import settings
 from core.chunking.code_chunker import CodeChunker
 from core.chunking.text_chunker import TextChunker
 from core.generation.citations import parse_citations
-from core.generation.grounding import check_grounding
+from core.generation.grounding import GroundingReport, check_grounding
 from core.generation.prompt_builder import PromptBuilder
 from core.interfaces.embedder import Embedder
 from core.interfaces.llm import LLM
@@ -35,6 +37,9 @@ __all__ = ["Orchestrator"]
 
 logger = logging.getLogger(__name__)
 
+# Punctuation stripped when tokenizing a question for the heuristics below.
+_NON_WORD = re.compile(r"[^0-9a-z\u0980-\u09ff]+")
+
 # Phrases that signal a generic "tell me about / summarize" intent.  These are
 # poor lexical matches against specific document chunks, so HyDE expansion is
 # worth the extra LLM call for them.
@@ -50,6 +55,16 @@ _VAGUE_INTENT_MARKERS = (
     "what can you tell me about",
     "explain this",
 )
+
+
+def _word_tokens(text: str) -> list[str]:
+    """Lowercase word tokens, used by the question heuristics.
+
+    The character class keeps Latin and Bengali letters so a Bengali question
+    is tokenized on real word boundaries rather than split into punctuation.
+    """
+    cleaned = _NON_WORD.sub(" ", text.lower())
+    return [tok for tok in cleaned.split() if tok]
 
 
 def _is_vague_query(question: str) -> bool:
@@ -808,11 +823,99 @@ class Orchestrator:
             retrieved_chunks=retrieved_chunks,
         )
 
+    # Confidence at or below this level earns an explanation in the UI. Above it
+    # the number speaks for itself and a caption would only be noise.
+    _LOW_CONFIDENCE_CEILING = 0.40
+    # A question of this many words or fewer is treated as carrying no topic of
+    # its own; "give me details about it" is four words and one pronoun.
+    _UNSPECIFIED_MAX_WORDS = 6
+    _UNSPECIFIED_PRONOUNS = frozenset(
+        {
+            "it",
+            "its",
+            "this",
+            "that",
+            "these",
+            "those",
+            "them",
+            "they",
+            "their",
+            "he",
+            "him",
+            "his",
+            "she",
+            "her",
+            "hers",
+        }
+    )
+
+    def _low_confidence_reason(
+        self,
+        question: str,
+        reranked: list[RerankedChunk],
+        confidence: float,
+        *,
+        ungrounded_claims: int | None = None,
+    ) -> str | None:
+        """Explain a low confidence score in terms the user can act on.
+
+        A bare percentage is unactionable: "15%" does not say whether the
+        question, the selection or the pipeline is at fault, so users tend to
+        conclude the tool is broken. Each branch names a cause and the next
+        action, ordered so the most specific explanation wins.
+
+        Args:
+            question:           The question as asked.
+            reranked:           Chunks the reranker returned.
+            confidence:         The final, post-penalty confidence.
+            ungrounded_claims:  Count of checkable claims absent from the
+                                retrieved text, or ``None`` if grounding was
+                                never evaluated.
+
+        Returns:
+            A short sentence, or ``None`` when confidence is healthy.
+        """
+        if confidence > self._LOW_CONFIDENCE_CEILING:
+            return None
+        if ungrounded_claims:
+            return (
+                f"{ungrounded_claims} specific detail"
+                f"{'s' if ungrounded_claims != 1 else ''} in this answer "
+                "could not be found in your sources, so the score was reduced."
+            )
+        if not reranked:
+            return "No passages matched this question, so the answer carries no source support."
+        if self._is_underspecified_question(question):
+            return (
+                "This question has no topic words of its own, so it was matched "
+                "against your sources blind. Name the subject to search for it "
+                "properly."
+            )
+        return (
+            "The retrieved passages did not closely match this question. "
+            "Try naming the specific detail you need, or select a different source."
+        )
+
+    @staticmethod
+    def _is_underspecified_question(question: str) -> bool:
+        """Whether a question leans on a pronoun instead of naming its subject.
+
+        "give me details about it" is short and built on a pronoun, so there is
+        nothing for the retriever to match on. Longer questions, or ones that
+        name a subject ("what did JUST do in 2008?"), are left alone.
+        """
+        words = _word_tokens(question)
+        if not words or len(words) > Orchestrator._UNSPECIFIED_MAX_WORDS:
+            return False
+        return any(w in Orchestrator._UNSPECIFIED_PRONOUNS for w in words)
+
     def _grounded_confidence(
         self,
         confidence: float,
         answer: str,
         reranked: list[RerankedChunk],
+        *,
+        report: GroundingReport | None = None,
     ) -> float:
         """Reduce confidence when the answer asserts unsupported figures.
 
@@ -826,13 +929,22 @@ class Orchestrator:
         being all-or-nothing, so a single stray number does not erase an
         otherwise well-grounded answer. Answers with nothing checkable (a
         refusal, or a purely qualitative answer) are left alone.
+
+        Args:
+            confidence: Confidence from the retrieval side.
+            answer:     Generated answer text.
+            reranked:   Chunks the answer was supposed to come from.
+            report:     Precomputed grounding report, so a caller that also
+                        needs the unsupported-claim count does not pay for a
+                        second scan of the same text.
         """
         if not reranked:
             return confidence
         # Full chunk text, never text_preview: a figure commonly sits past the
         # first 200 characters of its chunk, and checking the preview would
         # flag a correctly-sourced number as invented.
-        report = check_grounding(answer, [c.chunk.text for c in reranked])
+        if report is None:
+            report = check_grounding(answer, [c.chunk.text for c in reranked])
         if report.is_grounded:
             return confidence
 
@@ -939,14 +1051,26 @@ class Orchestrator:
         reported = self._build_confidence(reranked, mean_confidence)
         # Retrieval confidence is about the question, not the answer. Verify the
         # answer's own checkable claims before reporting it as trustworthy.
+        # The report is computed once and reused for the explanation below, so
+        # the penalty and the message can never disagree about what was found.
+        grounding = check_grounding(answer_text, [item.chunk.text for item in reranked]) if reranked else None
         adjusted = self._grounded_confidence(
             reported.answer_confidence,
             answer_text,
             reranked,
+            report=grounding,
         )
         # Rebuilt so the coverage label tracks the adjusted number instead of
         # continuing to say "Excellent" over a penalised confidence.
         confidence = self._build_confidence(reranked, adjusted)
+        reason = self._low_confidence_reason(
+            question,
+            reranked,
+            confidence.answer_confidence,
+            ungrounded_claims=0 if grounding is None or grounding.is_grounded else len(grounding.unsupported),
+        )
+        if reason is not None:
+            confidence = replace(confidence, low_confidence_reason=reason)
 
         # Validate citation markers against the sources actually retrieved, and
         # return the rewritten answer. A model asked to cite can cite a passage

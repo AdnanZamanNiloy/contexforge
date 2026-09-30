@@ -180,6 +180,13 @@ export default function Home() {
     clear: clearSourceSelection,
   } = selection
 
+  // The titles behind the current selection, resolved once per selection change
+  // rather than on every render.
+  const selectedSourceTitles = useMemo(() => {
+    const chosen = new Set(selectedSourceIds)
+    return visibleSources.filter((s) => chosen.has(s.id)).map((s) => s.title)
+  }, [selectedSourceIds, visibleSources])
+
   // How much context a question may retrieve.  A real pipeline control — each
   // depth maps to concrete retrieval limits — so it is per workspace rather than
   // per question, and the composer reports what it will actually reach.
@@ -259,6 +266,11 @@ export default function Home() {
     resolveSessionId: ensureSession,
     onNewSession: handleNewSession,
     sourceIds: selectedSourceIds,
+    // Titles of the current selection, so a follow-up that says only "it" can
+    // still be resolved when the previous turn named no subject of its own.
+    // Memoised because a fresh array each render would re-sync the hook's refs
+    // on every keystroke-driven re-render.
+    sourceTitles: selectedSourceTitles,
     contextDepth,
   })
 

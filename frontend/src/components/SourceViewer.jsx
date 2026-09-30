@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 
+import { RETRIEVAL_LATENCY_KEYS, retrievalBreakdownText, sumLatency } from '../lib/latency'
+
 function formatSourceTitle(source) {
   const meta = source.metadata || {}
   return meta.filename || meta.title || source.source_id || 'Unknown source'
@@ -170,7 +172,14 @@ export default function SourceViewer({
   const coverage = confidence?.source_coverage ?? 'Pending'
   const sourcesUsed = confidence?.sources_used ?? 0
   const retrievedChunks = confidence?.retrieved_chunks ?? sources.length
-  const retrieveMs = latency?.retrieve_ms
+  // Retrieval time is everything spent *finding* the passages, not just the
+  // vector lookup. Showing `retrieve_ms` alone reported "3 ms" for a turn whose
+  // cross-encoder rerank took 186 ms, which made retrieval look instant and
+  // sent users hunting for the cost elsewhere. Generation is excluded because
+  // that is reported on its own.
+  const retrievalMs = sumLatency(latency, RETRIEVAL_LATENCY_KEYS)
+  const retrievalBreakdown = retrievalBreakdownText(latency, RETRIEVAL_LATENCY_KEYS)
+  const lowConfidenceReason = confidence?.low_confidence_reason ?? null
   const totalChunks = sources.length
 
   const [visibleChunks, setVisibleChunks] = useState(() =>
@@ -390,9 +399,19 @@ export default function SourceViewer({
               </div>
               <div>
                 <span>Retrieval Time</span>
-                <strong>{retrieveMs != null ? `${retrieveMs.toFixed(0)} ms` : '-'}</strong>
+                <strong
+                  title={retrievalBreakdown || undefined}
+                  data-testid="retrieval-time"
+                >
+                  {retrievalMs != null ? `${retrievalMs.toFixed(0)} ms` : '-'}
+                </strong>
               </div>
             </div>
+            {lowConfidenceReason ? (
+              <p className="confidence-reason" data-testid="confidence-reason">
+                {lowConfidenceReason}
+              </p>
+            ) : null}
           </div>
         )}
       </section>

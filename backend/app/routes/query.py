@@ -81,6 +81,7 @@ async def query(
                 source_coverage=result.confidence.source_coverage,
                 sources_used=result.confidence.sources_used,
                 retrieved_chunks=result.confidence.retrieved_chunks,
+                low_confidence_reason=result.confidence.low_confidence_reason,
             )
             if result.confidence
             else None

@@ -39,6 +39,10 @@ class ConfidenceMetrics(BaseModel):
         ge=0,
         description="Total chunks returned by the reranker.",
     )
+    low_confidence_reason: str | None = Field(
+        default=None,
+        description=("Short, actionable explanation shown when the score is low, or null when confidence is healthy."),
+    )
 
     model_config = {"frozen": True}
 

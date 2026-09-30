@@ -105,12 +105,19 @@ class ConfidenceMetrics:
         source_coverage:   Categorical label derived from answer_confidence.
         sources_used:      Count of unique source documents among the reranked chunks.
         retrieved_chunks:  Total reranked chunks returned (top_k).
+        low_confidence_reason:
+            Short, actionable explanation shown when the score is low, or
+            ``None`` when confidence is healthy and needs no commentary.  A
+            bare percentage is not actionable on its own — "15%" tells the
+            user nothing about whether their question, their sources or the
+            pipeline is responsible.
     """
 
     answer_confidence: float
     source_coverage: str
     sources_used: int
     retrieved_chunks: int
+    low_confidence_reason: str | None = None
 
 
 @dataclass(frozen=True)

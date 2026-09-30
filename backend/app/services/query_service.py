@@ -17,6 +17,7 @@ from typing import Any
 
 from app.context.estimator import clamp_depth_for_selection, resolve_context_depth
 from app.schemas.query import QueryRequest
+from core.generation.grounding import check_grounding
 from core.orchestrator import Orchestrator, _is_structure_question
 from core.types import GenerationResult, RerankedChunk
 
@@ -191,6 +192,10 @@ class QueryService:
         # breakdown (time-to-first-token + total generation time).
         gen_start = time.perf_counter()
         first_token_ms: float | None = None
+        # The full answer is needed after the fact to check it against the
+        # retrieved text. Streaming means the text is only complete at the end,
+        # so it is accumulated here rather than re-queried later.
+        answer_parts: list[str] = []
         try:
             async for token in self._orchestrator.stream_answer(
                 request.question,
@@ -199,6 +204,7 @@ class QueryService:
             ):
                 if first_token_ms is None:
                     first_token_ms = (time.perf_counter() - gen_start) * 1000
+                answer_parts.append(token)
                 yield {"type": "token", "token": token}
         finally:
             timings["generate_ms"] = (time.perf_counter() - gen_start) * 1000
@@ -208,8 +214,27 @@ class QueryService:
         # Cache sources so get_last_sources() can return them after streaming.
         self._last_sources = list(reranked)
 
-        # Build ConfidenceMetrics and attach to the done payload
-        confidence_metrics = self._orchestrator._build_confidence(reranked, mean_confidence)
+        # Confidence here must match the non-streaming path exactly. Streaming
+        # previously skipped the grounding check, so the UI reported a higher
+        # score than the same question returned over POST /query and an
+        # invented figure was never penalised. The answer is complete at this
+        # point, so the check runs on the accumulated text.
+        answer_text = "".join(answer_parts)
+        grounding = check_grounding(answer_text, [item.chunk.text for item in reranked]) if reranked else None
+        reported = self._orchestrator._build_confidence(reranked, mean_confidence)
+        adjusted = self._orchestrator._grounded_confidence(
+            reported.answer_confidence,
+            answer_text,
+            reranked,
+            report=grounding,
+        )
+        confidence_metrics = self._orchestrator._build_confidence(reranked, adjusted)
+        reason = self._orchestrator._low_confidence_reason(
+            request.question,
+            reranked,
+            confidence_metrics.answer_confidence,
+            ungrounded_claims=0 if grounding is None or grounding.is_grounded else len(grounding.unsupported),
+        )
 
         # Surface a total now that generate_ms is populated (log only; the
         # stream already emitted the timing dict above).
@@ -227,6 +252,7 @@ class QueryService:
                 "source_coverage": confidence_metrics.source_coverage,
                 "sources_used": confidence_metrics.sources_used,
                 "retrieved_chunks": confidence_metrics.retrieved_chunks,
+                "low_confidence_reason": reason,
             },
         }
         logger.info(
