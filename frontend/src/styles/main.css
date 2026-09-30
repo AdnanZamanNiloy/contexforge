@@ -5301,6 +5301,28 @@ select.mh-input {
   background: var(--canvas-soft);
 }
 
+/* Bring the map's surfaces in line with the workspace theme.
+
+   The library injects its dark palette as an inline style on
+   .mindmap-container, and an inline declaration outranks every stylesheet rule,
+   so overriding it requires !important.  Scoped to the panel's canvas so nothing
+   outside the mind map is affected, and declared once for both the inline and
+   the full-screen layout since they share .mindmap-panel-canvas.
+
+   Only the surfaces move.  Its slate-navy canvas (#1a1a2e) was the one colour
+   that did not belong in a workspace built on near-black; the node, root,
+   selection and highlight colours are the library's own and read correctly
+   against true black. */
+.mindmap-panel-canvas .mindmap-container {
+  --mindmap-canvas-bg: var(--canvas) !important;
+  --mindmap-controls-bg: rgb(26 26 26 / 0.9) !important;
+  --mindmap-controls-hover: rgb(255 255 255 / 0.07) !important;
+  --mindmap-controls-text: #bdbdbd !important;
+  --mindmap-ctx-bg: rgb(26 26 26 / 0.96) !important;
+  --mindmap-ctx-border: rgb(255 255 255 / 0.1) !important;
+  --mindmap-ctx-text: #f2f2f2 !important;
+}
+
 /* Full screen: a viewport-covering layer portalled to <body>, so the workspace
    grid, the sidebar and the evidence rail are all out of the way and the map
    gets the entire screen.  No padding, gap, border or radius — the canvas
