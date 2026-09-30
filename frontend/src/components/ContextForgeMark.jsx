@@ -1,6 +1,14 @@
 // The ContextForge brand mark: a knowledge stack (three faceted bars) on a
 // gradient badge with a spark accent. Pure inline SVG so it scales crisply at
 // any size and needs no network request.
+//
+// The gradient carries the workspace's own blue rather than the violet the mark
+// originally shipped with — the sidebar, the buttons and the mind map all read
+// blue, and a violet badge beside them looked like a different product.  The two
+// stops keep the original light-to-deep relationship, so the plate still has
+// depth: --primary-soft into --primary-deep.  These are the literal hex values
+// of those tokens, because SVG gradient stops cannot read a CSS variable from a
+// stylesheet at this call site; keep them in step with main.css.
 
 const GRAD_ID = 'cf-mark-badge'
 
@@ -22,8 +30,8 @@ export default function ContextForgeMark({
     >
       <defs>
         <linearGradient id={GRAD_ID} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8F87ED" />
-          <stop offset="100%" stopColor="#332C77" />
+          <stop offset="0%" stopColor="#6b92ff" />
+          <stop offset="100%" stopColor="#2f5fe0" />
         </linearGradient>
       </defs>
 
