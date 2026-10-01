@@ -299,7 +299,12 @@ function BrandMark({ size = 24 }) {
 const REPO = 'https://github.com/AdnanZamanNiloy/contexforge'
 const DOCS = `${REPO}/tree/main/docs`
 
+// "About" points at the hero, which is where the product promise and the live
+// retrieval trace live — that opening block is what the project is, so it serves
+// as the About target. It leads the group and is styled like every other link
+// here; the primary CTA on the right is the only button in the bar.
 const NAV_LINKS = [
+  { href: '#about', label: 'About' },
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'How it works' },
   { href: '#quickstart', label: 'Quick start' },
@@ -462,7 +467,7 @@ function RetrievalTrace() {
 function Hero() {
   const ref = useReveal()
   return (
-    <section className="lp-hero" aria-labelledby="lp-hero-title">
+    <section id="about" className="lp-hero" aria-labelledby="lp-hero-title">
       <div ref={ref} className="lp-hero-grid" data-reveal="out">
         <div className="lp-hero-copy">
           <span className="lp-badge">
@@ -484,17 +489,6 @@ function Hero() {
             </Link>
             <a className="lp-btn lp-btn-ghost lp-btn-lg" href="#how-it-works">
               See how it works
-            </a>
-            {/* The About section was removed as a page section; the design
-                principles it carried live in the README's Overview, so the
-                hero action points there rather than at a dead anchor. */}
-            <a
-              className="lp-btn lp-btn-ghost lp-btn-lg"
-              href={`${REPO}#design-principles`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              About
             </a>
           </div>
           <ul className="lp-hero-facts">

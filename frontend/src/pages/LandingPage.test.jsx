@@ -26,29 +26,33 @@ describe('LandingPage', () => {
     ctas.forEach((cta) => expect(cta).toHaveAttribute('href', '/projects'))
   })
 
-  it('runs hero, stats, features, pipeline, capabilities, quickstart', () => {
+  it('runs about(hero), stats, features, pipeline, capabilities, quickstart', () => {
     const { container } = renderPage()
-    // The page carries no About section and no closing CTA band: the visitor
-    // goes from the hero straight into the numbers, and the last thing on the
-    // page is the setup path.
-    // Sectioned elements carry an id. The hero and the stats strip do not, so
-    // they are matched on class — and the stats strip's aria-label is checked
-    // separately, since it wins the fallback chain above.
-    // A section with no id reads back as an empty string from getAttribute, not
-    // as null.
+    // No separate About section: the hero *is* the about block, so it carries
+    // the id the About nav button targets. The page also no longer trails a
+    // closing CTA band — the last thing on it is the setup path.
     const sections = Array.from(container.querySelectorAll('main > *')).map((el) => el.id)
     expect(sections).toEqual([
-      '',
+      'about',
       '',
       'features',
       'how-it-works',
       'capabilities',
       'quickstart',
     ])
-    const [hero, stats] = container.querySelector('main').children
-    expect(hero.className).toContain('lp-hero')
-    expect(stats.className).toContain('lp-stats')
-    expect(stats).toHaveAttribute('aria-label', 'Product by the numbers')
+    expect(container.querySelector('main').children[1].className).toContain('lp-stats')
+  })
+
+  it('puts About first in the nav, styled like the other section links', () => {
+    renderPage()
+    const nav = screen.getByRole('navigation', { name: /sections/i })
+    const first = nav.querySelector('a')
+    expect(first).toHaveAttribute('href', '#about')
+    expect(first).toHaveTextContent('About')
+    // Every entry in the group is a plain link. Only the CTA on the right is a
+    // button, so About does not get singled out in the middle of the bar.
+    expect(first.className).toBe('')
+    expect(nav.querySelectorAll('a')).toHaveLength(4)
   })
 
   it('renders the retrieval pipeline as the five stages the backend times', () => {
@@ -79,10 +83,11 @@ describe('LandingPage', () => {
     renderPage()
     const nav = screen.getByRole('navigation', { name: /sections/i })
     const targets = Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))
-    // Visitor-facing labels, in the order the sections appear. The nav used to
-    // read Pipeline / Workspace / Capabilities / Stack — internal nouns, one of
-    // which pointed at a section that has since been removed.
-    expect(targets).toEqual(['#features', '#how-it-works', '#quickstart'])
+    // Visitor-facing labels, in the order the sections appear, with About
+    // leading because the hero is the about block. The nav used to read
+    // Pipeline / Workspace / Capabilities / Stack — internal nouns, one of which
+    // pointed at a section that has since been removed.
+    expect(targets).toEqual(['#about', '#features', '#how-it-works', '#quickstart'])
   })
 
   it('gives every nav link a target that exists on the page', () => {
