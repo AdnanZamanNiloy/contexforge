@@ -212,7 +212,10 @@ export default function MessageBubble({ role, text, status }) {
           <span className="animate-pulse duration-1000 delay-450">.</span>
         </span>
       ) : (
-        <div className="font-sans text-base leading-relaxed text-[#f2f2f2] markdown-body">
+        // No text colour on this div: .markdown-body owns it, so the chat bubble
+        // and the note share one reading tone. An inline colour class silently
+        // overrode that and left answers at the old, glaring 17:1.
+        <div className="font-sans text-base leading-relaxed markdown-body">
           <MarkdownRenderer content={text || ''} />
         </div>
       )}

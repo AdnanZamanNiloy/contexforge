@@ -31,6 +31,16 @@
   --body-color: #bdbdbd;
   --mute: #8b949e;
 
+  /* Long-form reading surfaces: chat answers and generated notes.  Measured
+     against the #101010 panel, --ink is 17:1 and --ink-strong is 19:1.  Both
+     clear WCAG AAA many times over, and that is the problem: prose held at
+     17:1 for a screenful glares, and the pure-white bold scattered through a
+     note reads as bright patches against near-identical body text.  These sit
+     at 10.1:1 and 13.9:1, which still clears AAA for body text comfortably
+     while lowering the overall level enough to read at length. */
+  --ink-reading: #bdbdbd;
+  --ink-reading-strong: #dcdcdc;
+
   /* --- legacy aliases (re-pointed to the Voltagent scale) --- */
   --bg: #101010;
   --bg-2: #101010;
@@ -2010,7 +2020,9 @@ h3 {
 
 /* Rendered markdown (assistant messages) */
 .markdown-body {
-  color: var(--ink);
+  /* Reading surfaces use the dimmer reading tone rather than --ink: at 17:1
+     against this panel a screenful of prose is harsh to read. */
+  color: var(--ink-reading);
   line-height: 1.65;
   word-break: break-word;
 }
@@ -2029,7 +2041,9 @@ h3 {
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  color: var(--ink-strong);
+  /* Still the brightest text in the note, so hierarchy survives, but well
+     below pure white — 19:1 was the single harshest thing on the page. */
+  color: var(--ink-reading-strong);
   font-weight: 600;
   margin: 1em 0 0.5em;
   line-height: 1.3;
@@ -2052,7 +2066,9 @@ h3 {
   margin: 0.25em 0;
 }
 .markdown-body strong {
-  color: var(--ink-strong);
+  /* A note generator emits its section labels as inline bold, so pure white
+     put a run of hard highlights through otherwise soft prose. */
+  color: var(--ink-reading-strong);
   font-weight: 700;
 }
 .markdown-body a {
@@ -5659,7 +5675,7 @@ select.mh-input {
   padding: 32px 36px 48px;
   font-size: 0.94rem;
   line-height: 1.7;
-  color: var(--ink);
+  color: var(--ink-reading);
 }
 
 .note-doc.is-empty {
