@@ -26,6 +26,16 @@ describe('LandingPage', () => {
     ctas.forEach((cta) => expect(cta).toHaveAttribute('href', '/projects'))
   })
 
+  it('leads with About, directly under the hero', () => {
+    const { container } = renderPage()
+    // The visitor meets what the project is and what it holds to before any
+    // feature list, and the page no longer trails a closing CTA band.
+    const main = container.querySelector('main')
+    expect(main.children[0].className).toContain('lp-hero')
+    expect(main.children[1].id).toBe('about')
+    expect(container.querySelector('.lp-cta')).toBeNull()
+  })
+
   it('renders the retrieval pipeline as the five stages the backend times', () => {
     renderPage()
     const rails = screen.getByRole('list', { name: /retrieval pipeline stages/i })
@@ -54,7 +64,19 @@ describe('LandingPage', () => {
     renderPage()
     const nav = screen.getByRole('navigation', { name: /sections/i })
     const targets = Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))
-    expect(targets).toEqual(['#pipeline', '#workspace', '#capabilities', '#stack'])
+    // Visitor-facing labels, in the order the sections appear. The nav used to
+    // read Pipeline / Workspace / Capabilities / Stack — internal nouns, one of
+    // which pointed at a section that has since been removed.
+    expect(targets).toEqual(['#features', '#how-it-works', '#quickstart', '#about'])
+  })
+
+  it('gives every nav link a target that exists on the page', () => {
+    const { container } = renderPage()
+    const nav = screen.getByRole('navigation', { name: /sections/i })
+    Array.from(nav.querySelectorAll('a')).forEach((a) => {
+      const id = a.getAttribute('href').slice(1)
+      expect(container.querySelector(`#${id}`)).not.toBeNull()
+    })
   })
 
   it('shows the workspace tools, not just the retrieval pipeline', () => {
@@ -68,15 +90,29 @@ describe('LandingPage', () => {
     expect(screen.getByRole('heading', { name: /four repository analyzers/i })).toBeInTheDocument()
   })
 
-  it('ships runnable setup commands', () => {
+  it('ships setup commands that are real Makefile targets', () => {
     renderPage()
-    const code = document.querySelector('.lp-code').textContent
-    expect(code).toMatch(/make install/)
-    expect(code).toMatch(/make dev-backend/)
-    // `backend.app.main:app` raises ModuleNotFoundError: every module inside
-    // backend/app imports `from app.…`, so `app` must be the package and
-    // backend/ the working directory.
-    expect(code).not.toMatch(/backend\.app\.main/)
+    const commands = Array.from(document.querySelectorAll('.lp-quickstart-cmd')).map((n) =>
+      n.textContent.trim(),
+    )
+    expect(commands).toEqual(
+      expect.arrayContaining(['make install', 'make dev-backend', 'make dev-frontend']),
+    )
+    // There is no bare `make dev` target, and an earlier draft of the quickstart
+    // told visitors to run one.
+    expect(commands).not.toContain('make dev')
+    commands
+      .filter((c) => c.startsWith('make '))
+      .forEach((c) => expect(c.split(' ').length).toBe(2))
+  })
+
+  it('does not tell operators to put a provider key in .env', () => {
+    renderPage()
+    // backend/.env.example states that keys are not set there: they are added
+    // in the Model Hub and stored encrypted.
+    expect(document.querySelector('.lp-quickstart').textContent).not.toMatch(
+      /VOYAGE_API_KEY|API_KEY/,
+    )
   })
 
   it('makes no claim about a built-in provider order', () => {

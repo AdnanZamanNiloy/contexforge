@@ -142,6 +142,26 @@ const WORKSPACE = [
   },
 ]
 
+// The design principles, carried over from the README's Overview section. Kept
+// verbatim in substance rather than invented for the page: these are the rules
+// the codebase is actually held to, and they are the most credible thing an
+// About section can say about a project like this one.
+const PRINCIPLES = [
+  ['Grounded or silent', 'Answers come from the sources you selected. Selection is the primary control, not a hidden default.'],
+  ['Report the cost, never smooth it over', 'A reduced depth, a skipped source, or a selected id missing from the index is said, not silently absorbed.'],
+  ['No ambient credentials', 'Provider keys live in the Model Hub and nowhere else. A model with no saved key fails with a named error.'],
+  ['Provider-agnostic by interface', 'Embedder, LLM and retriever sit behind contracts, so swapping one is configuration, not a rewrite.'],
+  ['Ingestion is idempotent', 'A source id is a function of what the source is, so adding the same document twice replaces it in one place.'],
+  ['Documentation that cannot drift', 'The API reference is generated from the running app and checked against the live spec in CI.'],
+]
+
+const ABOUT_FACTS = [
+  ['License', 'MIT'],
+  ['Runtime', 'Your own hardware'],
+  ['Accounts', 'None required'],
+  ['Hosted dependencies', 'Embedding + LLM only'],
+]
+
 const RETRIEVAL_STEPS = [
   ['01', 'HyDE expansion', 'Optional hypothetical passage widens recall before search begins.'],
   ['02', 'Hybrid search', 'Keyword and dense retrievers run in parallel over the same corpus.'],
@@ -205,6 +225,18 @@ function useRetrievalTrace(reduced) {
   const [stage, setStage] = useState(reduced ? PIPELINE.length : 0)
   const [tokens, setTokens] = useState(reduced ? ANSWER_TOKENS.length : 0)
   const [phase, setPhase] = useState(reduced ? 'done' : 'running')
+
+  // The initial `useState` reads `reduced`, but that is still `false` on the
+  // first render — the media query is only synced in an effect, one commit
+  // later. So the reduced-motion branch below never ran and the hero sat on an
+  // empty answer box with a permanently blinking caret for anyone who had
+  // reduced motion enabled. Snap to the finished state once the flag settles.
+  useEffect(() => {
+    if (!reduced) return
+    setStage(PIPELINE.length)
+    setTokens(ANSWER_TOKENS.length)
+    setPhase('done')
+  }, [reduced])
 
   useEffect(() => {
     if (reduced) return undefined
@@ -281,7 +313,37 @@ function BrandMark({ size = 24 }) {
 
 // ---------------------------------------------------------------------------
 
+// Canonical repo slug. It was previously written capitalised as
+// `ContexForge` in every GitHub link on this page; GitHub redirects, but the
+// canonical form in the README and `git remote` is lowercase.
+const REPO = 'https://github.com/AdnanZamanNiloy/contexforge'
+const DOCS = `${REPO}/tree/main/docs`
+
+const NAV_LINKS = [
+  { href: '#features', label: 'Features' },
+  { href: '#how-it-works', label: 'How it works' },
+  { href: '#quickstart', label: 'Quick start' },
+  { href: '#about', label: 'About' },
+]
+
 function Nav() {
+  const [open, setOpen] = useState(false)
+  const panelId = 'lp-nav-menu'
+
+  // Close on Escape and return focus to the toggle, so the disclosure is not a
+  // keyboard trap once opened.
+  const toggleRef = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (event) => {
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      toggleRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+
   return (
     <header className="lp-nav">
       <div className="lp-nav-inner">
@@ -289,24 +351,52 @@ function Nav() {
           <BrandMark />
           <span className="lp-brand-name">Context<span className="lp-brand-accent">Forge</span></span>
         </Link>
-        <nav className="lp-nav-links" aria-label="Sections">
-          <a href="#pipeline">Pipeline</a>
-          <a href="#workspace">Workspace</a>
-          <a href="#capabilities">Capabilities</a>
-          <a href="#stack">Stack</a>
+
+        <nav className="lp-nav-links" aria-label="Sections" id={panelId} data-open={open}>
+          {NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href} onClick={() => setOpen(false)}>
+              {link.label}
+            </a>
+          ))}
         </nav>
+
         <div className="lp-nav-actions">
-          <a
-            className="lp-btn lp-btn-ghost"
-            href="https://github.com/AdnanZamanNiloy/ContexForge"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a className="lp-btn lp-btn-ghost" href={REPO} target="_blank" rel="noreferrer">
             GitHub
+          </a>
+          <a className="lp-btn lp-btn-ghost" href={DOCS} target="_blank" rel="noreferrer">
+            Docs
           </a>
           <Link className="lp-btn lp-btn-primary" to="/projects">
             Open projects
           </Link>
+          <button
+            ref={toggleRef}
+            type="button"
+            className="lp-nav-toggle"
+            aria-expanded={open}
+            aria-controls={panelId}
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            onClick={() => setOpen((value) => !value)}
+          >
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+              {open ? (
+                <path
+                  d="M5 5l10 10M15 5L5 15"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              ) : (
+                <path
+                  d="M3 6h14M3 10h14M3 14h14"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              )}
+            </svg>
+          </button>
         </div>
       </div>
     </header>
@@ -365,7 +455,7 @@ function RetrievalTrace() {
           })}
         </ol>
 
-        <div className="lp-answer" data-phase={phase}>
+        <div className="lp-answer" data-phase={phase} data-empty={tokens === 0}>
           <span className="lp-trace-role">forge</span>
           <p className="lp-answer-text">
             {ANSWER_TOKENS.slice(0, tokens).map((token, index) => (
@@ -413,8 +503,8 @@ function Hero() {
             <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/projects">
               Browse projects
             </Link>
-            <a className="lp-btn lp-btn-ghost lp-btn-lg" href="#pipeline">
-              See the pipeline
+            <a className="lp-btn lp-btn-ghost lp-btn-lg" href="#how-it-works">
+              See how it works
             </a>
           </div>
           <ul className="lp-hero-facts">
@@ -458,9 +548,9 @@ function StatsStrip() {
 function PipelineSection() {
   const ref = useReveal()
   return (
-    <section id="pipeline" className="lp-section" aria-labelledby="lp-pipeline-title">
+    <section id="how-it-works" className="lp-section" aria-labelledby="lp-pipeline-title">
       <SectionHeading
-        eyebrow="Retrieval pipeline"
+        eyebrow="How it works"
         title="Five stages between a question and a grounded answer"
         lede="Every query walks the same path. Each stage is timed, and the timings come back with the answer."
       />
@@ -507,12 +597,12 @@ function CapabilitiesSection() {
   )
 }
 
-function WorkspaceSection() {
+function FeaturesSection() {
   const ref = useReveal()
   return (
-    <section id="workspace" className="lp-section" aria-labelledby="lp-workspace-title">
+    <section id="features" className="lp-section" aria-labelledby="lp-workspace-title">
       <SectionHeading
-        eyebrow="The workspace"
+        eyebrow="Features"
         title="The part you actually use every day"
         lede="The retrieval pipeline is the foundation. These are the tools built on top of it, each one a shipped feature with an endpoint behind it."
       />
@@ -529,103 +619,75 @@ function WorkspaceSection() {
   )
 }
 
-function StackSection() {
+function AboutSection() {
   const ref = useReveal()
-  const backend = [
-    ['Framework', 'FastAPI'],
-    ['Runtime', 'Python 3.14+'],
-    ['Dense index', 'FAISS IndexFlatIP'],
-    ['Sparse index', 'SQLite FTS5'],
-    ['Embeddings', 'Voyage voyage-3-lite'],
-    ['Diagram', 'Mermaid · mindmap'],
-  ]
-  const frontend = [
-    ['Framework', 'React 19'],
-    ['Build', 'Vite 8'],
-    ['Styling', 'Tailwind CSS v4'],
-    ['Routing', 'React Router 7'],
-    ['Animation', 'Framer Motion'],
-    ['Tests', 'Vitest'],
-  ]
   return (
-    <section id="stack" className="lp-section" aria-labelledby="lp-stack-title">
+    <section id="about" className="lp-section" aria-labelledby="lp-about-title">
       <SectionHeading
-        eyebrow="Technology"
-        title="A stack you can audit and self-host"
-        lede="No proprietary runtime, no hosted vector database. Clone it, add one embedding key, and pick the model that answers."
+        eyebrow="About"
+        title="What ContextForge is built to hold to"
+        lede="A self-hosted RAG workspace where the index, the keys and the evidence stay inspectable. These are the rules the codebase is held to."
       />
-      <div ref={ref} className="lp-stack" data-reveal="out">
-        <div className="lp-stack-col">
-          <h3 className="lp-stack-title">
-            <span className="lp-dot lp-dot-backend" aria-hidden="true" />
-            Backend
-          </h3>
-          <dl className="lp-stack-list">
-            {backend.map(([k, v]) => (
-              <div key={k} className="lp-stack-row">
-                <dt>{k}</dt>
-                <dd>{v}</dd>
+      <div className="lp-about">
+        <ol ref={ref} className="lp-principles" data-reveal="out">
+          {PRINCIPLES.map(([title, body], index) => (
+            <li key={title} className="lp-principle">
+              <span className="lp-principle-num">{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h3 className="lp-principle-title">{title}</h3>
+                <p className="lp-principle-body">{body}</p>
               </div>
-            ))}
-          </dl>
-        </div>
-        <div className="lp-stack-col">
-          <h3 className="lp-stack-title">
-            <span className="lp-dot lp-dot-frontend" aria-hidden="true" />
-            Frontend
-          </h3>
-          <dl className="lp-stack-list">
-            {frontend.map(([k, v]) => (
-              <div key={k} className="lp-stack-row">
-                <dt>{k}</dt>
-                <dd>{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        <div className="lp-stack-col lp-stack-run">
-          <h3 className="lp-stack-title">
-            <span className="lp-dot lp-dot-run" aria-hidden="true" />
-            Run it
-          </h3>
-          <pre className="lp-code">
-            <code>
-              {
-                'make install\ncp backend/.env.example backend/.env\n\n# one key is required: VOYAGE_API_KEY\n# then pick a model in the Model Hub\n\nmake dev-backend     # API on :8000\nmake dev-frontend    # UI on :5173'
-              }
-            </code>
-          </pre>
-        </div>
+            </li>
+          ))}
+        </ol>
+        <dl className="lp-about-facts">
+          {ABOUT_FACTS.map(([term, value]) => (
+            <div key={term} className="lp-about-fact">
+              <dt>{term}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   )
 }
 
-function CtaBand() {
+// The Backend/Frontend technology tables were removed from this page; the
+// README and docs/architecture.md are the better home for a stack listing, and
+// a visitor deciding whether to self-host does not need it above the fold. The
+// quickstart survived because a self-hosted product is unusable without it, so
+// it now stands alone as a single compact step.
+// Both of these are real Makefile targets. There is no bare `make dev`, so the
+// two servers are listed as the separate targets the Makefile actually defines.
+const QUICKSTART = [
+  { cmd: 'make install', note: 'Creates backend/.venv and installs both sides.' },
+  { cmd: 'make dev-backend', note: 'API on :8000.' },
+  { cmd: 'make dev-frontend', note: 'UI on :5173.' },
+  {
+    cmd: 'Add a model in the Model Hub',
+    note: 'No provider key goes in .env — the app starts without one and names the model that needs a key.',
+  },
+]
+
+function QuickStartSection() {
   const ref = useReveal()
   return (
-    <section ref={ref} className="lp-cta" data-reveal="out">
-      <div className="lp-cta-inner">
-        <div>
-          <h2 className="lp-cta-title">Bring your own sources. Keep your own answers.</h2>
-          <p className="lp-cta-lede">
-            Ingest a source in seconds and ask your first grounded question.
-          </p>
-        </div>
-        <div className="lp-cta-actions">
-          <Link className="lp-btn lp-btn-primary lp-btn-lg" to="/projects">
-            Browse projects
-          </Link>
-          <a
-            className="lp-btn lp-btn-ghost lp-btn-lg"
-            href="https://github.com/AdnanZamanNiloy/ContexForge"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Read the docs
-          </a>
-        </div>
-      </div>
+    <section id="quickstart" className="lp-section lp-section-quickstart" aria-labelledby="lp-quickstart-title">
+      <SectionHeading
+        eyebrow="Quick start"
+        title="Clone it, run it, add a model"
+        lede="No hosted vector database and no account. Three commands take you from a fresh clone to a running workspace."
+      />
+      <ol ref={ref} className="lp-quickstart" data-reveal="out">
+        {QUICKSTART.map((step, index) => (
+          <li key={step.cmd} className="lp-quickstart-step">
+            <span className="lp-quickstart-num">{index + 1}</span>
+            <code className="lp-quickstart-cmd">{step.cmd}</code>
+            <span className="lp-quickstart-note">{step.note}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   )
 }
@@ -647,31 +709,24 @@ function Footer() {
             <Link to="/projects">Projects</Link>
             <Link to="/workspace">Workspace</Link>
             <Link to="/models">Model Hub</Link>
-            <a href="#pipeline">Pipeline</a>
-            <a href="#workspace">Workspace tour</a>
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="#quickstart">Quick start</a>
+            <a href="#about">About</a>
           </div>
           <div className="lp-footer-col">
-            <span className="lp-footer-head">Resources</span>
-            <a
-              href="https://github.com/AdnanZamanNiloy/ContexForge"
-              target="_blank"
-              rel="noreferrer"
-            >
+            <span className="lp-footer-head">Documentation</span>
+            <a href={REPO} target="_blank" rel="noreferrer">
               GitHub
             </a>
-            <a
-              href="https://github.com/AdnanZamanNiloy/ContexForge#api-reference"
-              target="_blank"
-              rel="noreferrer"
-            >
-              API reference
+            <a href={DOCS} target="_blank" rel="noreferrer">
+              Docs
             </a>
-            <a
-              href="https://github.com/AdnanZamanNiloy/ContexForge#quick-start"
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a href={`${REPO}#quick-start`} target="_blank" rel="noreferrer">
               Quick start
+            </a>
+            <a href={`${REPO}#architecture`} target="_blank" rel="noreferrer">
+              Architecture
             </a>
           </div>
           <div className="lp-footer-col">
@@ -695,12 +750,12 @@ export default function LandingPage() {
       <Nav />
       <main id="top">
         <Hero />
+        <AboutSection />
         <StatsStrip />
+        <FeaturesSection />
         <PipelineSection />
-        <WorkspaceSection />
         <CapabilitiesSection />
-        <StackSection />
-        <CtaBand />
+        <QuickStartSection />
       </main>
       <Footer />
     </div>

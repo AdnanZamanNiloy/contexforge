@@ -2258,6 +2258,10 @@ h3 {
   --lp-line: var(--hairline);
   --lp-line-soft: rgba(61, 58, 57, 0.6);
   --lp-ink: var(--on-primary);
+  /* Single source for the page gutter. The mobile nav panel and every full-bleed
+     child pull by this to reach the viewport edge; at 620px it drops to 16px,
+     and the panel has to follow it or it overhangs. */
+  --lp-gutter: 24px;
   position: relative;
   min-height: 100vh;
   background: var(--canvas);
@@ -2315,25 +2319,32 @@ h3 {
 }
 .lp-h2 {
   margin: 12px 0 12px;
-  font-size: clamp(1.5rem, 3.2vw, 2.25rem);
-  line-height: 1.16;
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+  line-height: 1.14;
   letter-spacing: -0.9px;
   font-weight: 400;
   color: var(--ink-strong);
-  max-width: 24ch;
+  /* 24ch was measured against the old, smaller h2 size. At the larger clamp
+     top end that produced headlines breaking mid-phrase ("Five stages between
+     a question / and a grounded answer"). 18ch keeps the break on a
+     conjunction. */
+  max-width: 18ch;
+  text-wrap: balance;
 }
 .lp-lede {
   margin: 0;
   color: var(--muted);
   font-size: 0.98rem;
   line-height: 1.65;
-  max-width: 62ch;
+  /* 62ch pushed the lede out to nearly 800px on wide screens, well past a
+     comfortable reading measure. 54ch is the usual target for body copy. */
+  max-width: 54ch;
 }
 .lp-head {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  margin-bottom: 34px;
+  margin-bottom: 40px;
 }
 .lp-head[data-align='center'] {
   align-items: center;
@@ -2452,6 +2463,25 @@ h3 {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Hamburger. Hidden at desktop widths; the links are always visible there, so
+   a toggle would be a second way to do something already on screen. */
+.lp-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+.lp-nav-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* The nav pair sat at the full `.lp-btn` size (44px tall, 20px of side padding,
@@ -2752,6 +2782,26 @@ h3 {
   line-height: 1.6;
   color: var(--text);
   min-height: calc(4 * 1.6em);
+  /* The window reserved four lines plus a full citation row, so the hero
+     opened on a mostly-empty box with a blinking caret in it. That reads as a
+     broken render rather than a stream in progress. Faint placeholder lines
+     hold the space instead: the dimensions stay stable, but the region now
+     looks deliberate while tokens fill it. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--lp-line-soft) 0 6px,
+    transparent 6px 1.6em
+  );
+  background-size: 62% calc(4 * 1.6em);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+}
+/* Dropped as soon as the first token lands. The `min-height` above is what
+   prevents layout shift, so removing the placeholder cannot resize the window.
+   Keying it on the token count rather than the phase means the two are never
+   both painted. */
+.lp-answer[data-empty='false'] .lp-answer-text {
+  background-image: none;
 }
 /* The citations row always occupies its finished footprint; the chips fade in
    rather than mounting, so the window height is identical while running. */
@@ -2915,8 +2965,29 @@ h3 {
 .lp-section {
   max-width: 1220px;
   margin: 0 auto;
-  padding: 72px 24px;
-  scroll-margin-top: 70px;
+  /* Was 72px top and bottom, so consecutive sections left 144px of nothing
+     between them and the page read as four identical floating blocks. Padding
+     is now asymmetric: a larger gap above carries the section break, and the
+     hairline does the rest. */
+  padding: 88px 24px 64px;
+  scroll-margin-top: 78px;
+}
+
+/* Section separators. The rhythm used to be carried entirely by whitespace,
+   which is why the gaps looked accidental. A hairline makes the break
+   intentional and lets the padding shrink without the sections running
+   together. */
+.lp-section + .lp-section,
+.lp-stats + .lp-section,
+.lp-section + .lp-footer {
+  border-top: 1px solid var(--lp-line-soft);
+}
+
+/* The stats strip sits between About and Features, so it has to carry a
+   separator on both sides now. It draws its own with a background and a
+   1px gap rather than a border, so a border here would double up. */
+.lp-section + .lp-stats {
+  border-top: 0;
 }
 
 /* --- pipeline steps -------------------------------------------------------- */
@@ -3084,67 +3155,95 @@ h3 {
   min-width: 0;
 }
 
-/* --- stack ----------------------------------------------------------------- */
-.lp-stack {
+/* --- about ---------------------------------------------------------------- */
+/* Two columns: the principles carry the argument, the facts sit beside them as
+   a short reference list. Deliberately not another card row — the four previous
+   sections already are one, and a fifth would flatten the page's hierarchy. */
+.lp-about {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  /* The principles column is the widest thing on the page at 1.55fr, which left
+     the fact card adrift in a large empty right column. Capping the whole grid
+     and splitting it nearer half-and-half keeps the card beside its content
+     instead of stranded. */
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1040px;
   align-items: start;
 }
-.lp-stack-col {
-  border: 1px solid var(--lp-line);
-  border-radius: 18px;
-  padding: 22px;
-  background: rgba(255, 255, 255, 0.014);
-  min-width: 0;
-}
-.lp-stack-title {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0 0 14px;
-  font-size: 0.95rem;
-  font-weight: 650;
-}
-.lp-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-}
-.lp-dot-backend {
-  background: var(--accent);
-}
-.lp-dot-frontend {
-  background: var(--lp-teal);
-}
-.lp-dot-run {
-  background: var(--lp-amber);
-}
-.lp-stack-list {
+.lp-principles {
+  list-style: none;
   margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 9px;
 }
-.lp-stack-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 9px;
-  border-bottom: 1px dashed var(--lp-line-soft);
+.lp-principle {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--lp-line-soft);
 }
-.lp-stack-row:last-child {
+.lp-principle:first-child {
+  padding-top: 0;
+}
+.lp-principle:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
-.lp-stack-row dt {
+.lp-principle-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  padding-top: 3px;
+}
+.lp-principle-title {
+  margin: 0 0 6px;
+  font-size: 0.98rem;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+.lp-principle-body {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 60ch;
+}
+.lp-about-facts {
+  margin: 0;
+  /* `align-self: start` already pins the card to the top of the grid row. As a
+     sticky element it was also sticking for the length of its own container,
+     so it travelled down with the scroll and left a widening void beside the
+     lower principles. */
+  align-self: start;
+  padding: 22px;
+  border: 1px solid var(--lp-line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.014);
+}
+.lp-about-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px dashed var(--lp-line-soft);
+}
+.lp-about-fact:first-child {
+  padding-top: 0;
+}
+.lp-about-fact:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.lp-about-fact dt {
   font-size: 0.78rem;
   color: var(--muted);
   flex: 0 0 auto;
 }
-.lp-stack-row dd {
+.lp-about-fact dd {
   margin: 0;
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -3152,66 +3251,57 @@ h3 {
   text-align: right;
   min-width: 0;
 }
-.lp-code {
+
+/* --- quick start ----------------------------------------------------------- */
+/* Replaces the three-column stack grid. The technology tables moved to the
+   README and docs/architecture.md; what stayed on the page is the runnable
+   path, so it is presented as an ordered list rather than a card row. */
+.lp-quickstart {
+  list-style: none;
   margin: 0;
-  padding: 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 780px;
+}
+.lp-quickstart-step {
+  display: grid;
+  grid-template-columns: 26px minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 16px;
+  padding: 15px 18px;
+  border: 1px solid var(--lp-line);
   border-radius: 14px;
-  background: rgba(15, 18, 22, 0.75);
-  border: 1px solid var(--lp-line-soft);
-  /* Wrap rather than scroll.  A horizontal scrollbar in a card on a marketing
-     page hides the one thing the block exists to show, and the longest line —
-     a clone URL — was simply clipped at the card edge. `anywhere` rather than
-     `break-word` because a shell command with no spaces still has to be able
-     to wrap; the card is a third of the section wide. */
-  white-space: pre-wrap;
+  background: rgba(255, 255, 255, 0.014);
+  min-width: 0;
+}
+.lp-quickstart-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  align-self: center;
+}
+.lp-quickstart-cmd {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--lp-teal);
+  /* A command with no spaces still has to be able to wrap on a narrow screen
+     rather than clip at the card edge, so `anywhere` rather than `break-word`. */
   overflow-wrap: anywhere;
 }
-.lp-code code {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  line-height: 1.75;
-  color: var(--lp-teal);
-  /* Inherits `pre-wrap` from .lp-code. This rule used to force `pre`, which
-     overrode the wrapping above and clipped the longest line at the card edge. */
+/* The last row is an instruction rather than a shell command, so it is set in
+   the sans face and the sentence colour to keep it from reading as something
+   to paste into a terminal. */
+.lp-quickstart-step:last-child .lp-quickstart-cmd {
+  font-family: var(--font-sans);
+  color: var(--text);
 }
-
-/* --- CTA band -------------------------------------------------------------- */
-.lp-cta {
-  max-width: 1220px;
-  margin: 0 auto;
-  padding: 0 24px 72px;
-}
-.lp-cta-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 32px;
-  flex-wrap: wrap;
-  padding: 42px 38px;
-  border: 1px solid var(--lp-line);
-  border-radius: 24px;
-  background:
-    radial-gradient(120% 160% at 8% 0%, rgba(67, 119, 253, 0.14), transparent 58%),
-    radial-gradient(120% 160% at 92% 100%, rgba(67, 119, 253, 0.1), transparent 58%),
-    rgba(16, 16, 16, 0.6);
-}
-.lp-cta-title {
-  margin: 0 0 8px;
-  font-size: clamp(1.3rem, 2.6vw, 1.8rem);
-  font-weight: 680;
-  letter-spacing: -0.02em;
-  max-width: 26ch;
-}
-.lp-cta-lede {
-  margin: 0;
+.lp-quickstart-note {
+  font-size: 0.8rem;
+  line-height: 1.55;
   color: var(--muted);
-  font-size: 0.92rem;
-  max-width: 48ch;
-}
-.lp-cta-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 
 /* --- footer ---------------------------------------------------------------- */
@@ -3344,11 +3434,9 @@ body:has(.mh-standalone) #root {
   .lp-h1 {
     max-width: 18ch;
   }
-  .lp-stack {
-    grid-template-columns: 1fr 1fr;
-  }
-  .lp-stack-run {
-    grid-column: 1 / -1;
+  .lp-about {
+    grid-template-columns: 1fr;
+    gap: 32px;
   }
   .lp-steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3359,8 +3447,47 @@ body:has(.mh-standalone) #root {
 }
 
 @media (max-width: 900px) {
+  /* Nav links used to be display:none below this width, which left the page
+     with no in-page navigation at all on mobile. They now collapse into a
+     disclosure panel under the bar. */
+  /* The bar wraps so the toggle can drop below the links when they become an
+     absolute panel; without this the panel has no vertical space to occupy. */
+  .lp-nav-inner {
+    flex-wrap: wrap;
+  }
+  .lp-nav-toggle {
+    display: inline-flex;
+  }
   .lp-nav-links {
     display: none;
+    /* Taken out of the flex flow and pinned to the bar itself. As a flex item it
+       could only ever be as wide as `.lp-nav-inner`'s content box, so the panel
+       stopped 24px short of the right edge and never lined up with the border
+       above it. `.lp-nav` is `position: sticky`, so it is already a containing
+       block and the panel can be flush to the viewport at any width. */
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    /* The desktop rule offsets the inline link row with `margin-left: 8px`.
+     Carried into the panel as a flex item, that shifted the whole panel 8px
+     right of the viewport edge. Reset here; the panel is a full-bleed block. */
+    margin: 0;
+    padding: 8px var(--lp-gutter) 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    background: var(--canvas);
+    border-top: 1px solid var(--lp-line-soft);
+    border-bottom: 1px solid var(--lp-line-soft);
+    box-shadow: 0 18px 30px rgba(0, 0, 0, 0.45);
+  }
+  .lp-nav-links[data-open='true'] {
+    display: flex;
+  }
+  .lp-nav-links a {
+    padding: 11px 10px;
+    border-radius: 8px;
   }
   .lp-sources {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3388,15 +3515,17 @@ body:has(.mh-standalone) #root {
 }
 
 @media (max-width: 620px) {
+  .lp-root {
+    --lp-gutter: 16px;
+  }
   .lp-nav-inner,
   .lp-hero,
   .lp-stats,
   .lp-section,
-  .lp-cta,
   .lp-footer-inner,
   .lp-footer-base {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: var(--lp-gutter);
+    padding-right: var(--lp-gutter);
   }
   .lp-nav-actions .lp-btn-ghost {
     display: none;
@@ -3425,9 +3554,17 @@ body:has(.mh-standalone) #root {
     padding-bottom: 52px;
   }
   .lp-steps,
-  .lp-stack,
   .lp-workspace {
     grid-template-columns: 1fr;
+  }
+  /* The command is what the reader came for, so it gets its own row above the
+     note rather than competing with it for a shared line. */
+  .lp-quickstart-step {
+    grid-template-columns: 26px minmax(0, 1fr);
+    row-gap: 6px;
+  }
+  .lp-quickstart-note {
+    grid-column: 2 / -1;
   }
   .lp-trace-q,
   .lp-answer {
@@ -3454,19 +3591,8 @@ body:has(.mh-standalone) #root {
     gap: 3px;
   }
   .lp-cap-fact dd,
-  .lp-stack-row dd {
+  .lp-about-fact dd {
     text-align: left;
-  }
-  .lp-stack-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .lp-cta-inner {
-    padding: 26px 20px;
-  }
-  .lp-cta-actions .lp-btn {
-    flex: 1 1 100%;
   }
   .lp-footer-links {
     gap: 28px;
