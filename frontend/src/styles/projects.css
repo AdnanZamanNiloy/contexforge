@@ -147,20 +147,6 @@
   border-color: var(--hairline);
 }
 
-.pg-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2a2f3a, #17181d);
-  border: 1px solid var(--hairline);
-  display: grid;
-  place-items: center;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--ink);
-  cursor: pointer;
-}
-
 /* ---------- page body ---------- */
 
 .pg-body {

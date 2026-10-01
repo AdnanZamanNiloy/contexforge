@@ -364,9 +364,6 @@ export default function ProjectsPage() {
               </svg>
               <span className="pg-nav-link-label">Model Center</span>
             </button>
-            <button className="pg-avatar" aria-label="Your profile">
-              AZ
-            </button>
           </div>
         </div>
       </header>
