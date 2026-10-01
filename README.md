@@ -1,10 +1,14 @@
-![ContextForge](docs/assets/wordmark.svg)
+<div align="center">
+
+<img src="docs/assets/wordmark.svg" alt="ContextForge" width="360">
 
 **A grounded AI workspace for Retrieval-Augmented Generation.**
 
 Point it at your own documents, web pages, YouTube videos and GitHub repositories.
 It ingests them, builds a hybrid index, and answers with inline citations, a
 confidence score, and a per-stage latency breakdown you can actually audit.
+
+<br>
 
 [![Python](https://img.shields.io/badge/python-3.14%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Node](https://img.shields.io/badge/node-22%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -13,7 +17,13 @@ confidence score, and a per-stage latency breakdown you can actually audit.
 [![FAISS](https://img.shields.io/badge/vector-FAISS-4169E1?style=flat-square&logo=faiss&logoColor=white)](https://github.com/facebookresearch/faiss)
 [![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](LICENSE)
 
+<br>
+
 [Quick start](#quick-start) · [Features](#features) · [How it compares](#how-it-compares) · [Architecture](#architecture) · [Security & privacy](#security--privacy) · [API](#api-reference) · [Docs](#documentation)
+
+</div>
+
+<br>
 
 **Why this exists.** Most chat tools answer from a model's training data and
 give you no way to check. ContextForge indexes sources *you* control, cites the
