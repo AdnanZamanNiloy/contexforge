@@ -3155,103 +3155,6 @@ h3 {
   min-width: 0;
 }
 
-/* --- about ---------------------------------------------------------------- */
-/* Two columns: the principles carry the argument, the facts sit beside them as
-   a short reference list. Deliberately not another card row — the four previous
-   sections already are one, and a fifth would flatten the page's hierarchy. */
-.lp-about {
-  display: grid;
-  /* The principles column is the widest thing on the page at 1.55fr, which left
-     the fact card adrift in a large empty right column. Capping the whole grid
-     and splitting it nearer half-and-half keeps the card beside its content
-     instead of stranded. */
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 40px;
-  max-width: 1040px;
-  align-items: start;
-}
-.lp-principles {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.lp-principle {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 16px;
-  padding: 20px 0;
-  border-bottom: 1px solid var(--lp-line-soft);
-}
-.lp-principle:first-child {
-  padding-top: 0;
-}
-.lp-principle:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.lp-principle-num {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--accent);
-  letter-spacing: 0.08em;
-  padding-top: 3px;
-}
-.lp-principle-title {
-  margin: 0 0 6px;
-  font-size: 0.98rem;
-  font-weight: 650;
-  color: var(--ink-strong);
-}
-.lp-principle-body {
-  margin: 0;
-  font-size: 0.86rem;
-  line-height: 1.6;
-  color: var(--muted);
-  max-width: 60ch;
-}
-.lp-about-facts {
-  margin: 0;
-  /* `align-self: start` already pins the card to the top of the grid row. As a
-     sticky element it was also sticking for the length of its own container,
-     so it travelled down with the scroll and left a widening void beside the
-     lower principles. */
-  align-self: start;
-  padding: 22px;
-  border: 1px solid var(--lp-line);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.014);
-}
-.lp-about-fact {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 11px 0;
-  border-bottom: 1px dashed var(--lp-line-soft);
-}
-.lp-about-fact:first-child {
-  padding-top: 0;
-}
-.lp-about-fact:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.lp-about-fact dt {
-  font-size: 0.78rem;
-  color: var(--muted);
-  flex: 0 0 auto;
-}
-.lp-about-fact dd {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text);
-  text-align: right;
-  min-width: 0;
-}
-
 /* --- quick start ----------------------------------------------------------- */
 /* Replaces the three-column stack grid. The technology tables moved to the
    README and docs/architecture.md; what stayed on the page is the runnable
@@ -3434,10 +3337,6 @@ body:has(.mh-standalone) #root {
   .lp-h1 {
     max-width: 18ch;
   }
-  .lp-about {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
   .lp-steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -3590,8 +3489,7 @@ body:has(.mh-standalone) #root {
     flex-direction: column;
     gap: 3px;
   }
-  .lp-cap-fact dd,
-  .lp-about-fact dd {
+  .lp-cap-fact dd {
     text-align: left;
   }
   .lp-footer-links {

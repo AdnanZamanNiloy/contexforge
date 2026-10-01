@@ -142,26 +142,6 @@ const WORKSPACE = [
   },
 ]
 
-// The design principles, carried over from the README's Overview section. Kept
-// verbatim in substance rather than invented for the page: these are the rules
-// the codebase is actually held to, and they are the most credible thing an
-// About section can say about a project like this one.
-const PRINCIPLES = [
-  ['Grounded or silent', 'Answers come from the sources you selected. Selection is the primary control, not a hidden default.'],
-  ['Report the cost, never smooth it over', 'A reduced depth, a skipped source, or a selected id missing from the index is said, not silently absorbed.'],
-  ['No ambient credentials', 'Provider keys live in the Model Hub and nowhere else. A model with no saved key fails with a named error.'],
-  ['Provider-agnostic by interface', 'Embedder, LLM and retriever sit behind contracts, so swapping one is configuration, not a rewrite.'],
-  ['Ingestion is idempotent', 'A source id is a function of what the source is, so adding the same document twice replaces it in one place.'],
-  ['Documentation that cannot drift', 'The API reference is generated from the running app and checked against the live spec in CI.'],
-]
-
-const ABOUT_FACTS = [
-  ['License', 'MIT'],
-  ['Runtime', 'Your own hardware'],
-  ['Accounts', 'None required'],
-  ['Hosted dependencies', 'Embedding + LLM only'],
-]
-
 const RETRIEVAL_STEPS = [
   ['01', 'HyDE expansion', 'Optional hypothetical passage widens recall before search begins.'],
   ['02', 'Hybrid search', 'Keyword and dense retrievers run in parallel over the same corpus.'],
@@ -323,7 +303,6 @@ const NAV_LINKS = [
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'How it works' },
   { href: '#quickstart', label: 'Quick start' },
-  { href: '#about', label: 'About' },
 ]
 
 function Nav() {
@@ -506,6 +485,17 @@ function Hero() {
             <a className="lp-btn lp-btn-ghost lp-btn-lg" href="#how-it-works">
               See how it works
             </a>
+            {/* The About section was removed as a page section; the design
+                principles it carried live in the README's Overview, so the
+                hero action points there rather than at a dead anchor. */}
+            <a
+              className="lp-btn lp-btn-ghost lp-btn-lg"
+              href={`${REPO}#design-principles`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              About
+            </a>
           </div>
           <ul className="lp-hero-facts">
             <li>Your documents stay on your disk</li>
@@ -619,40 +609,6 @@ function FeaturesSection() {
   )
 }
 
-function AboutSection() {
-  const ref = useReveal()
-  return (
-    <section id="about" className="lp-section" aria-labelledby="lp-about-title">
-      <SectionHeading
-        eyebrow="About"
-        title="What ContextForge is built to hold to"
-        lede="A self-hosted RAG workspace where the index, the keys and the evidence stay inspectable. These are the rules the codebase is held to."
-      />
-      <div className="lp-about">
-        <ol ref={ref} className="lp-principles" data-reveal="out">
-          {PRINCIPLES.map(([title, body], index) => (
-            <li key={title} className="lp-principle">
-              <span className="lp-principle-num">{String(index + 1).padStart(2, '0')}</span>
-              <div>
-                <h3 className="lp-principle-title">{title}</h3>
-                <p className="lp-principle-body">{body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <dl className="lp-about-facts">
-          {ABOUT_FACTS.map(([term, value]) => (
-            <div key={term} className="lp-about-fact">
-              <dt>{term}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  )
-}
-
 // The Backend/Frontend technology tables were removed from this page; the
 // README and docs/architecture.md are the better home for a stack listing, and
 // a visitor deciding whether to self-host does not need it above the fold. The
@@ -712,7 +668,6 @@ function Footer() {
             <a href="#features">Features</a>
             <a href="#how-it-works">How it works</a>
             <a href="#quickstart">Quick start</a>
-            <a href="#about">About</a>
           </div>
           <div className="lp-footer-col">
             <span className="lp-footer-head">Documentation</span>
@@ -750,7 +705,6 @@ export default function LandingPage() {
       <Nav />
       <main id="top">
         <Hero />
-        <AboutSection />
         <StatsStrip />
         <FeaturesSection />
         <PipelineSection />

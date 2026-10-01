@@ -26,14 +26,29 @@ describe('LandingPage', () => {
     ctas.forEach((cta) => expect(cta).toHaveAttribute('href', '/projects'))
   })
 
-  it('leads with About, directly under the hero', () => {
+  it('runs hero, stats, features, pipeline, capabilities, quickstart', () => {
     const { container } = renderPage()
-    // The visitor meets what the project is and what it holds to before any
-    // feature list, and the page no longer trails a closing CTA band.
-    const main = container.querySelector('main')
-    expect(main.children[0].className).toContain('lp-hero')
-    expect(main.children[1].id).toBe('about')
-    expect(container.querySelector('.lp-cta')).toBeNull()
+    // The page carries no About section and no closing CTA band: the visitor
+    // goes from the hero straight into the numbers, and the last thing on the
+    // page is the setup path.
+    // Sectioned elements carry an id. The hero and the stats strip do not, so
+    // they are matched on class — and the stats strip's aria-label is checked
+    // separately, since it wins the fallback chain above.
+    // A section with no id reads back as an empty string from getAttribute, not
+    // as null.
+    const sections = Array.from(container.querySelectorAll('main > *')).map((el) => el.id)
+    expect(sections).toEqual([
+      '',
+      '',
+      'features',
+      'how-it-works',
+      'capabilities',
+      'quickstart',
+    ])
+    const [hero, stats] = container.querySelector('main').children
+    expect(hero.className).toContain('lp-hero')
+    expect(stats.className).toContain('lp-stats')
+    expect(stats).toHaveAttribute('aria-label', 'Product by the numbers')
   })
 
   it('renders the retrieval pipeline as the five stages the backend times', () => {
@@ -67,7 +82,7 @@ describe('LandingPage', () => {
     // Visitor-facing labels, in the order the sections appear. The nav used to
     // read Pipeline / Workspace / Capabilities / Stack — internal nouns, one of
     // which pointed at a section that has since been removed.
-    expect(targets).toEqual(['#features', '#how-it-works', '#quickstart', '#about'])
+    expect(targets).toEqual(['#features', '#how-it-works', '#quickstart'])
   })
 
   it('gives every nav link a target that exists on the page', () => {
