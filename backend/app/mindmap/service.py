@@ -277,7 +277,7 @@ class MindMapService:
             if not text:
                 continue
             label = getattr(chunk, "source_id", None) or source_ids[0]
-            lines.append(f"[Chunk {i} — {label}]\n{text}")
+            lines.append(f"[Chunk {i}: {label}]\n{text}")
             if sum(len(line) for line in lines) >= MAX_CONTEXT_CHARS:
                 break
         return "\n\n".join(lines)

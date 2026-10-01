@@ -91,7 +91,7 @@ export default function NewProjectModal({ open, onClose, onCreated, initialName 
         <div className="pg-modal-head">
           <div>
             <h2 id="pg-new-title">Create a new project</h2>
-            <p>Pick a source family — you&apos;ll add the actual sources in its workspace.</p>
+            <p>Pick a source family. You&apos;ll add the actual sources in its workspace.</p>
           </div>
           <button className="pg-icon-btn" onClick={requestClose} aria-label="Close">
             <svg

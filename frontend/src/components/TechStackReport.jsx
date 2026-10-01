@@ -189,7 +189,7 @@ export default function TechStackReport({
           setStatus('ready')
         })
         .catch((err) => {
-          setError(err?.message || 'The tech stack scan failed — please try again.')
+          setError(err?.message || 'The tech stack scan failed. Please try again.')
           setStatus('error')
         })
     },

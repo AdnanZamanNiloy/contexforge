@@ -321,7 +321,7 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
     }
   } catch (error) {
     if (timedOut) {
-      throw new Error('Backend stopped responding — please try again.', { cause: error })
+      throw new Error('Backend stopped responding. Please try again.', { cause: error })
     }
     throw error
   } finally {
@@ -692,14 +692,14 @@ export async function streamArchitecture(payload, handlers = {}, path = '/archit
             try {
               handlers.onDiagram(JSON.parse(json))
             } catch {
-              handlers.onError('The diagram could not be read — please try again.')
+              handlers.onError('The diagram could not be read. Please try again.')
             }
           }
           continue
         }
 
         if (data.startsWith('[ERROR]')) {
-          let message = 'Architecture generation failed — please retry.'
+          let message = 'Architecture generation failed. Please retry.'
           try {
             message = JSON.parse(data.replace('[ERROR]', '').trim()).message || message
           } catch {
@@ -720,12 +720,12 @@ export async function streamArchitecture(payload, handlers = {}, path = '/archit
   } catch (error) {
     if (timedOut) {
       if (handlers.onError) {
-        handlers.onError('The backend stopped responding — please try again.')
+        handlers.onError('The backend stopped responding. Please try again.')
       }
       return
     }
     if (error && error.name === 'AbortError') return
-    if (handlers.onError) handlers.onError('Could not reach the backend — please try again.')
+    if (handlers.onError) handlers.onError('Could not reach the backend. Please try again.')
   } finally {
     if (idleTimer) clearTimeout(idleTimer)
     if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort)

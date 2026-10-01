@@ -309,7 +309,7 @@ export default function SecurityReport({
           ) : (
             <p className="sec-note">
               Nothing flagged. That is a statement about the {scan.code?.files_scanned ?? 0} files
-              scanned, not a guarantee — see the coverage notes below.
+              scanned, not a guarantee. See the coverage notes below.
             </p>
           )}
 

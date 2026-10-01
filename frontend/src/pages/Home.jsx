@@ -751,7 +751,7 @@ export default function Home() {
                 </h2>
                 <p>
                   {projectId && activeProject && activeProject.source_category !== 'all'
-                    ? `This project holds ${sourceCategoryLabel(activeProject.source_category).toLowerCase()} — add them to “${activeProject.name}” below.`
+                    ? `This project holds ${sourceCategoryLabel(activeProject.source_category).toLowerCase()}. Add them to “${activeProject.name}” below.`
                     : 'Ingest sources in multiple formats and keep your RAG workspace grounded.'}
                 </p>
               </div>
@@ -936,7 +936,7 @@ export default function Home() {
 
             {isProcessing ? (
               <div className="processing-banner">
-                Ingestion running — new chunks will appear in the source list.
+                Ingestion running. New chunks will appear in the source list.
               </div>
             ) : null}
           </div>

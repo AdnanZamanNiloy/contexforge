@@ -125,7 +125,7 @@ export default function ChatBox({
       </form>
       {sourceCount === 0 ? (
         <p className="text-center text-xs text-[#c9a227] mt-4">
-          No source selected — answers come from general knowledge only. Select a source in the
+          No source selected, so answers come from general knowledge only. Select a source in the
           sidebar to ground the answer in it.
         </p>
       ) : (

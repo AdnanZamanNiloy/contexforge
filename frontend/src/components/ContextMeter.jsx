@@ -148,7 +148,7 @@ export default function ContextMeter({
             “{DEPTHS.find((d) => d.id === estimate.depth)?.label}” reads the best{' '}
             {estimate.prompt_chunk_limit} chunks overall, and at most{' '}
             {estimate.per_source_cap} from any one source. A larger selection is
-            therefore sampled rather than read whole — widen the depth to read more
+            therefore sampled rather than read whole. Widen the depth to read more
             of it.
           </p>
 

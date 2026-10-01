@@ -169,7 +169,7 @@ export default function HealthReport({
           setStatus('ready')
         })
         .catch((err) => {
-          setError(err?.message || 'The health scan failed — please try again.')
+          setError(err?.message || 'The health scan failed. Please try again.')
           setStatus('error')
         })
     },

@@ -48,7 +48,7 @@ function ChainEditor({ models, chainType, onSave, onCancel, saving, initial }) {
       </div>
 
       <div className="mh-chain-type-note">
-        {chainType === 'llm' ? 'LLM chain' : 'Embedding chain'} — ordered fallback, tried top to
+        {chainType === 'llm' ? 'LLM chain' : 'Embedding chain'}: ordered fallback, tried top to
         bottom.
       </div>
 
@@ -273,7 +273,7 @@ export default function ChainsTab({ models, chains, onChanged }) {
                 <div className={`mh-test-result${testResult.ok ? ' is-ok' : ' is-fail'}`}>
                   {testResult.ok ? (
                     <span>
-                      ✓ Chain connected — first working model: {modelName(testResult.used_model_id)}
+                      ✓ Chain connected. First working model: {modelName(testResult.used_model_id)}
                     </span>
                   ) : (
                     <span>Chain could not reach any model.</span>

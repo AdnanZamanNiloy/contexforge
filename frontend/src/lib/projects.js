@@ -187,7 +187,7 @@ export const FEATURED_PROJECTS = [
     id: 'featured-ai-agents',
     title: 'The Future of AI Agents',
     description:
-      'Planning, tool use, memory and multi-agent orchestration — the papers and posts shaping autonomous systems.',
+      'Planning, tool use, memory and multi-agent orchestration: the papers and posts shaping autonomous systems.',
     sourceCount: 18,
     updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
@@ -213,7 +213,7 @@ export const FEATURED_PROJECTS = [
     id: 'featured-llms',
     title: 'Understanding Large Language Models',
     description:
-      'Transformers, pretraining, alignment and evaluation — a guided path from first principles to frontier practice.',
+      'Transformers, pretraining, alignment and evaluation: a guided path from first principles to frontier practice.',
     sourceCount: 22,
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',
@@ -226,7 +226,7 @@ export const FEATURED_PROJECTS = [
     id: 'featured-history-computing',
     title: 'The History of Computing',
     description:
-      'From stored programs to the personal computer era — key machines, people and turning points.',
+      'From stored programs to the personal computer era: key machines, people and turning points.',
     sourceCount: 11,
     updatedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     provider: 'Curated collection',

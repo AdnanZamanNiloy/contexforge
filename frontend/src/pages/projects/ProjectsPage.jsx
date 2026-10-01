@@ -279,7 +279,7 @@ export default function ProjectsPage() {
           description: template.description,
           category: template.tags?.[0] || 'General',
         })
-        setNotice(`Created “${template.title}” — opening its workspace.`)
+        setNotice(`Created “${template.title}”, opening its workspace.`)
         navigate(`/projects/${encodeURIComponent(project.id)}`)
       } catch (err) {
         setNotice(err.message || 'Could not create from template.')
@@ -378,7 +378,7 @@ export default function ProjectsPage() {
                 Start from a curated collection
               </h2>
               <p className="pg-section-sub">
-                Example libraries — using one creates your own private copy.
+                Example libraries. Using one creates your own private copy.
               </p>
             </div>
           </div>
@@ -760,7 +760,7 @@ export default function ProjectsPage() {
         onCreated={async (project) => {
           setModalOpen(false)
           await refresh()
-          setNotice(`Created “${project.name}” — add sources in its workspace.`)
+          setNotice(`Created “${project.name}”. Add sources in its workspace.`)
           navigate(`/projects/${encodeURIComponent(project.id)}`)
         }}
       />

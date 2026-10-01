@@ -98,7 +98,7 @@ async def generate(
             return
         except Exception:  # pragma: no cover - unexpected
             logger.exception("architecture: unexpected failure")
-            yield f"data: [ERROR] {json.dumps({'message': 'Architecture generation failed — please retry.'})}\n\n"
+            yield f"data: [ERROR] {json.dumps({'message': 'Architecture generation failed. Please retry.'})}\n\n"
             return
 
         payload = _to_payload(record).model_dump()

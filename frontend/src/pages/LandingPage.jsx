@@ -118,7 +118,7 @@ const WORKSPACE = [
   {
     tag: 'Notes',
     title: 'Turn a selection into a note',
-    body: 'Pick one source or several and the system writes a structured Markdown note from their indexed content — cached per selection, regenerable on demand, downloadable as a file.',
+    body: 'Pick one source or several and the system writes a structured Markdown note from their indexed content, cached per selection, regenerable on demand, downloadable as a file.',
   },
   {
     tag: 'Mind maps',
@@ -138,7 +138,7 @@ const WORKSPACE = [
   {
     tag: 'Inspection',
     title: 'Confirm what was actually read',
-    body: 'Every source reports an extraction verdict — a scanned PDF and a healthy one are not the same — alongside page counts, language, file listing and the indexed chunk text itself.',
+    body: 'Every source reports an extraction verdict, because a scanned PDF and a healthy one are not the same, alongside page counts, language, file listing and the indexed chunk text itself.',
   },
 ]
 
@@ -340,7 +340,7 @@ function RetrievalTrace() {
   const question = 'How does ContextForge rank retrieved chunks?'
 
   return (
-    <HudFrame rail="Live trace — the same five stages, and the same timing keys, the backend reports per query.">
+    <HudFrame rail="Live trace: the same five stages, and the same timing keys, the backend reports per query.">
       <div className="lp-trace">
         <div className="lp-trace-q">
           <span className="lp-trace-role">you</span>
@@ -406,7 +406,7 @@ function Hero() {
           </h1>
           <p className="lp-hero-lede">
             ContextForge turns your PDFs, docs, web pages, YouTube videos and GitHub repositories
-            into a workspace you can ask, read and analyse — hybrid retrieval, rank fusion and
+            into a workspace you can ask, read and analyse: hybrid retrieval, rank fusion and
             reranking underneath, projects, notes and mind maps on top.
           </p>
           <div className="lp-hero-cta">
@@ -514,7 +514,7 @@ function WorkspaceSection() {
       <SectionHeading
         eyebrow="The workspace"
         title="The part you actually use every day"
-        lede="The retrieval pipeline is the foundation. These are the tools built on top of it — each one a shipped feature with an endpoint behind it."
+        lede="The retrieval pipeline is the foundation. These are the tools built on top of it, each one a shipped feature with an endpoint behind it."
       />
       <div ref={ref} className="lp-workspace" data-reveal="out">
         {WORKSPACE.map((item) => (

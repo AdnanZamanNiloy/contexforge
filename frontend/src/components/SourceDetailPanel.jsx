@@ -47,7 +47,7 @@ function extractionWarning(detail) {
     return {
       tone: 'danger',
       title: 'No text was extracted',
-      body: 'This source is indexed but holds no readable text, so it cannot answer questions. A scanned document with no text layer is the usual cause — re-upload a text-based copy, or a version that has been OCR’d.',
+      body: 'This source is indexed but holds no readable text, so it cannot answer questions. A scanned document with no text layer is the usual cause. Re-upload a text-based copy, or a version that has been OCR’d.',
     }
   }
   if (detail.is_scanned && detail.non_empty_pages !== null && detail.page_count) {
@@ -231,7 +231,7 @@ export default function SourceDetailPanel({ sourceId, sourceTitle = '', onClose 
                   <ProvenanceRow label="Title">Renamed from “{detail.derived_title}”</ProvenanceRow>
                 ) : null}
                 <ProvenanceRow label="Original file">
-                  Not retained — ContextForge indexes uploads without keeping the source file.
+                  Not retained. ContextForge indexes uploads without keeping the source file.
                 </ProvenanceRow>
               </dl>
 

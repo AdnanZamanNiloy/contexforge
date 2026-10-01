@@ -362,7 +362,7 @@ def _coverage_note(measured: list[str], files: int, unparsed: int, fetched: int 
         if unreachable:
             # The cause matters: a rate limit is temporary and the files are fine.
             note += (
-                f" {_count(unparsed, 'file')} could not be read from GitHub — the branch lookup"
+                f" {_count(unparsed, 'file')} could not be read from GitHub because the branch lookup"
                 f" is rate-limited, so a GITHUB_TOKEN would let this scan measure them."
             )
         else:

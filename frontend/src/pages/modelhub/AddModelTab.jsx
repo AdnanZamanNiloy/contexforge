@@ -226,7 +226,7 @@ export default function AddModelTab({ onCreated }) {
         setMessage({
           type: 'success',
           text: isEmbedding
-            ? `Connected — detected ${result.dimension ?? '?'} dimensions.`
+            ? `Connected. Detected ${result.dimension ?? '?'} dimensions.`
             : `Connected in ${Math.round(result.latency_ms)} ms.`,
         })
       } else {
@@ -331,7 +331,7 @@ export default function AddModelTab({ onCreated }) {
                     <span className="mh-choice-hint">
                       {runtime.id === 'api'
                         ? 'A hosted provider endpoint, billed by usage.'
-                        : 'Self-hosted on this machine — private, no usage fees.'}
+                        : 'Self-hosted on this machine, so private, with no usage fees.'}
                     </span>
                   </span>
                   <span className="mh-type-check" aria-hidden="true">
@@ -471,7 +471,7 @@ export default function AddModelTab({ onCreated }) {
                       className="mh-input"
                       value={form.base_url}
                       onChange={(e) => update('base_url', e.target.value)}
-                      placeholder="Optional for known providers — https://api.example.com/v1"
+                      placeholder="Optional for known providers, e.g. https://api.example.com/v1"
                     />
                   </div>
                   <div className="mh-field">

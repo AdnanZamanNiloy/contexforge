@@ -544,7 +544,7 @@ export default function Sidebar({
               className="sources-select-all"
               title={
                 allSelected
-                  ? 'Clear the selection — search every source'
+                  ? 'Clear the selection and search every source'
                   : 'Select every source in this project'
               }
             >
@@ -577,7 +577,7 @@ export default function Sidebar({
                   aria-pressed={active}
                   title={
                     active
-                      ? 'Selected — click to remove from the workspace scope'
+                      ? 'Selected. Click to remove from the workspace scope'
                       : 'Click to use this source in the workspace'
                   }
                 >
