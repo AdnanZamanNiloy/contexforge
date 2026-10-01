@@ -15,12 +15,13 @@ Same for embeddings: nothing can be ingested without a served embedder.
 
 ## The backend will not start
 
-> `ValueError: VOYAGE_API_KEY is not set`
+It always starts. There is no credential gate, because no provider key is read
+from the environment; keys live in the Model Hub. If startup genuinely fails, the
+traceback names a missing file, port or import, not a missing key.
 
-The only hard requirement. Copy `backend/.env.example` to `backend/.env` and set
-it. Everything else is optional.
-
-In test or CI contexts set `VALIDATE_ON_START=false` to skip the gate.
+If a *query* fails with a message naming an API key, that model has no key
+saved: Model Hub (`/models`) → open the model → paste the key → save. The error
+names the model precisely so you know which one.
 
 ## First ingest appears to hang
 

@@ -47,10 +47,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger.info("ContextForge starting up.")
 
-    # Fail loudly if a required credential is missing (see settings.validate()).
+    # There is deliberately no credential gate here.  Provider keys come from the
+    # Model Hub at call time, so an install with nothing configured yet is a valid
+    # starting state: the app boots, every screen loads, and only the actions that
+    # need a provider fail, naming the model that needs a key.
     _settings = Settings()
-    if _settings.VALIDATE_ON_START:
-        _settings.validate()
 
     # Apply any persisted Model Hub serving selection so a model/chain chosen in
     # a previous session is the one the pipeline uses from the first query.

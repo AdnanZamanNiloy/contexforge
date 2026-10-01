@@ -360,11 +360,15 @@ The architecture is deliberately **provider-agnostic**: every external capabilit
 
 - Python 3.14+
 - Node.js 22+
-- A Voyage AI API key (`VOYAGE_API_KEY`) — the **only** key required to start
+- At least one embedding model and one chat model, each with its API key
 
-No LLM key is needed in the environment. Which model answers is owned by the
-**Model Hub** in the UI (http://localhost:5173/models), where you add a provider
-and select it under Serving. See [Model Hub](#model-hub) below.
+**No API key goes in the environment.** Add them in the app instead: open
+**Model Hub** (http://localhost:5173/models), add a model, paste its key, save,
+then select it under Serving. Keys are stored encrypted and handed to the
+provider at call time. See [Model Hub](#model-hub) below.
+
+The app starts and every screen loads with nothing configured. Only the actions
+that need a provider fail, and they name the model that needs a key.
 
 ### 1 · Backend
 
@@ -373,7 +377,7 @@ git clone https://github.com/AdnanZamanNiloy/ContexForge.git
 cd contextforge
 
 make install                                  # venv + deps for both halves
-cp backend/.env.example backend/.env          # then set VOYAGE_API_KEY
+cp backend/.env.example backend/.env          # no API keys needed here
 make dev-backend                              # FastAPI on :8000
 ```
 
@@ -422,9 +426,8 @@ All configuration lives in `backend/app/config/settings.py` via `pydantic-settin
 
 ### Required
 
-| Variable | Description |
-|---|---|
-| `VOYAGE_API_KEY` | Embedding API key. The only variable the app refuses to start without. |
+.env has no required entries. It carries paths, chunking sizes, optional
+tracing, and the Fernet key used to encrypt Model Hub credentials.
 
 ### Recommended
 
@@ -432,12 +435,17 @@ All configuration lives in `backend/app/config/settings.py` via `pydantic-settin
 |---|---|
 | `CREDENTIAL_ENCRYPTION_KEY` | Fernet key protecting provider keys stored in the Model Hub. Without it those keys are written to `backend/data/model_hub/model_hub.db` **in plaintext** and the app warns once. |
 
-### LLM credentials are not environment variables
+### Provider credentials are not environment variables
 
-Provider keys for chat models are entered in the **Model Hub UI** and stored in
-SQLite, not in `.env`. `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`,
-`CEREBRAS_API_KEY` and `NVIDIA_API_KEY` are all still read by `settings.py` but
-are **dead for the chat path** — no environment-driven provider chain exists.
+Every provider key, embedding included, is entered in the **Model Hub UI** and
+stored in SQLite. `settings.py` reads no provider credential at all.
+
+The environment used to supply `VOYAGE_API_KEY` and `GOOGLE_API_KEY` as a silent
+fallback for a Model Hub row with no saved key. That made a misconfigured install
+look correctly configured: requests succeeded against a credential the UI never
+displayed, so a user who deleted a key in the app had no way to know it was still
+being used. A model with no key now raises a named error pointing at Model Hub.
+
 `dependencies.get_llm()` returns a not-configured sentinel until the Model Hub
 serves something.
 
@@ -450,7 +458,6 @@ serves something.
 | `LANGFUSE_HOST` | `https://cloud.langfuse.com` | Langfuse host |
 | `VOYAGE_MODEL` | `voyage-3-lite` | Voyage embedding model |
 | `GEMINI_MODEL` | `gemini-flash-latest` | Default model ID for a Gemini entry |
-| `GROQ_MODEL` | `openai/gpt-oss-20b` | Default model ID for a Groq entry |
 | `CHUNK_SIZE` | `512` | Text chunk size (tokens) |
 | `CHUNK_OVERLAP` | `50` | Chunk overlap (tokens) |
 | `TOP_K_RETRIEVAL` | `20` | Chunks retrieved per query |
@@ -470,7 +477,7 @@ serves something.
 <summary><strong>Additional configuration categories</strong> (click to expand)</summary>
 <br>
 
-- **Model selection** — `GEMINI_MODEL`, `GROQ_MODEL`, `VOYAGE_MODEL`, `RERANK_MODEL`
+- **Model selection** — `GEMINI_MODEL`, `VOYAGE_MODEL`, `RERANK_MODEL`
 - **Paths** — `FAISS_INDEX_PATH`, `BM25_DB_PATH`, `CACHE_PATH`, `UPLOAD_DIR`, `MINDMAP_DIR`
 
 </details>

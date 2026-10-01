@@ -35,13 +35,9 @@ jobs:
       # operations and included an endpoint that was never real.
       - name: Docs (README API matches the OpenAPI spec)
         run: python backend/scripts/check_readme_api.py
-        env:
-          VALIDATE_ON_START: "false"
 
       - name: Test (pytest)
         run: pytest backend/tests -q
-        env:
-          VALIDATE_ON_START: "false"
 
   frontend:
     name: Frontend (eslint + vitest + build)

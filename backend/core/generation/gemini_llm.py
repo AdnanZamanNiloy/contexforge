@@ -33,14 +33,23 @@ class GeminiLLM(BaseLLM):
         *,
         temperature: float = 0.2,
         max_tokens: int | None = None,
+        api_key: str | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         super().__init__(model or settings.GEMINI_MODEL)
         self._temperature = temperature
         self._max_tokens = max_tokens
 
+        # The key always comes from the Model Hub; there is no environment
+        # fallback, so a registry row without one fails by name instead of
+        # silently borrowing a credential the UI never showed.
+        if http_client is None and not api_key:
+            raise ValueError(
+                "No Google API key. Add one for this model in the Model Hub "
+                "(Model Center → the model → API key) and save it."
+            )
         self._client = http_client or httpx.AsyncClient(
-            headers={"x-goog-api-key": settings.GOOGLE_API_KEY},
+            headers={"x-goog-api-key": api_key},
             timeout=_GENERATE_TIMEOUT,
         )
 

@@ -5,14 +5,19 @@ Assumes the backend is on `:8000` and the frontend on `:5173`.
 
 ## Before anything else
 
-Two things must be true, and they are separate:
+Nothing goes in `backend/.env`. The app starts and every screen loads with no
+configuration at all; only the actions that need a provider fail, and each one
+names the model that is missing its key.
 
-1. **`VOYAGE_API_KEY` is set** in `backend/.env`. Without it the backend refuses
-   to start — ingestion cannot embed anything.
-2. **A model is in service.** Open **Model Hub** (`/models`) in the sidebar, add a
-   provider, then put it under **Serving**. Until you do, every generation raises
-   `NotConfiguredError`. This is deliberate: the app will not quietly fall back to
-   whichever provider happened to have a key in the environment.
+Two things must be true before you can ask a question, and both live in the UI:
+
+1. **An embedding model with a key.** Model Hub (`/models`) → add a model, paste
+   its key, save. Ingestion cannot embed anything until this exists.
+2. **A chat model in service.** Same page, then put it under **Serving**. Until
+   you do, every generation raises `NotConfiguredError`.
+
+There is no environment fallback by design. A key deleted in the app is gone; the
+app will not quietly reuse an old one.
 
 > **First ingest on the Voyage free tier is slow.** Embeddings are throttled to one
 > request per 21 seconds to stay under 3 requests/minute, and each request is

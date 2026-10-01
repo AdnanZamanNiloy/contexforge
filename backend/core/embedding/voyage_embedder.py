@@ -81,9 +81,16 @@ class VoyageEmbedder(Embedder):
         model: str | None = None,
     ) -> None:
         self._cache_path: Path = Path(cache_path or settings.CACHE_PATH)
-        # An explicit key/model (from the Model Hub) overrides the env default;
-        # otherwise the existing settings-driven behaviour is preserved.
-        self._api_key = api_key or settings.VOYAGE_API_KEY
+        # The key always comes from the Model Hub.  There is no environment
+        # fallback: a registry row without a key would otherwise borrow a
+        # credential that the UI never showed, so a wrong answer looked
+        # configured when it was not.
+        if not api_key:
+            raise ValueError(
+                "No Voyage API key. Add one for this model in the Model Hub "
+                "(Model Center → the model → API key) and save it."
+            )
+        self._api_key = api_key
         self._model = model or settings.VOYAGE_MODEL
         self._cache: dict[str, list[float]] = {}
         self._cache_loaded = False

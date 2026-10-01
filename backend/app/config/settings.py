@@ -20,13 +20,15 @@ def data_path(*parts: str) -> Path:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
-    # Secrets are env-only: defaults are intentionally empty. The application
-    # must fail loudly (or disable the provider) when a required key is absent
-    # rather than silently running with a hardcoded credential committed to the
-    # repo.  Populate these via `.env` / environment, never in source.
-    VOYAGE_API_KEY: str = Field(default="")
-    GOOGLE_API_KEY: str = Field(default="")
-    GROQ_API_KEY: str = Field(default="")
+    # LLM and embedding provider credentials are NOT configured here.  They are
+    # entered in the Model Hub, stored encrypted, and handed to the provider
+    # classes by app/model_hub/factory.py.  This used to also accept them from
+    # the environment, which meant a hub row with no saved key silently fell
+    # back to a hidden credential that nothing in the UI revealed.  A missing
+    # key is now a loud, named failure instead.
+    #
+    # LANGFUSE is the exception: it is observability, not a model provider, and
+    # is configured from the environment.
     LANGFUSE_PUBLIC_KEY: str = Field(default="")
     LANGFUSE_SECRET_KEY: str = Field(default="")
     LANGFUSE_HOST: str = Field(default="https://cloud.langfuse.com")
@@ -68,21 +70,11 @@ class Settings(BaseSettings):
     # re-enabled per request via `use_hyde: true`.
     USE_HYDE: bool = Field(default=False)
 
+    # Model-name and batching defaults only.  The credential for each provider
+    # comes from the Model Hub, never from here.
     VOYAGE_MODEL: str = Field(default="voyage-3-lite")
     VOYAGE_BATCH_SIZE: int = Field(default=128)
     GEMINI_MODEL: str = Field(default="gemini-flash-latest")
-    # NOTE: defaults must be models the account actually has access to.  The
-    # previous "llama-3.3-70b-versatile" was no longer served by the key and
-    # caused Groq to return 404 (model_not_found) on every fallback.
-    GROQ_MODEL: str = Field(default="openai/gpt-oss-20b")
-    # Free-tier aggregator providers.  Keys default empty — a provider is only
-    # added to the fallback chain when its key is set (see app/dependencies.py).
-    OPENROUTER_API_KEY: str = Field(default="")
-    OPENROUTER_MODEL: str = Field(default="minimax/minimax-m3:free")
-    CEREBRAS_API_KEY: str = Field(default="")
-    CEREBRAS_MODEL: str = Field(default="gemma-4-31b")
-    NVIDIA_API_KEY: str = Field(default="")
-    NVIDIA_MODEL: str = Field(default="meta/llama-3.3-70b-instruct")
     RERANK_MODEL: str = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
     # Token budget per (query, chunk) pair at rerank time. Reranking is pure CPU
     # and runs on every request before generation starts, so this is a direct
@@ -359,10 +351,6 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(default="INFO")
 
-    # Fail loudly at startup when required credentials are missing. Disable only
-    # in test/CI contexts that stub providers (e.g. VALIDATE_ON_START=false).
-    VALIDATE_ON_START: bool = Field(default=True)
-
     # Persisted generated mind maps (keyed by source_id).
     MINDMAP_DIR: Path = Field(default=data_path("mindmaps"))
 
@@ -401,24 +389,12 @@ class Settings(BaseSettings):
     # history is immutable even as the workspace selection changes.
     CHAT_DB_PATH: Path = Field(default=data_path("chat", "chat.db"))
 
-    # ------------------------------------------------------------------
-    # Validation — fail loudly instead of running with missing credentials
-    # ------------------------------------------------------------------
-
-    def validate(self) -> None:
-        """Raise a clear, actionable error if a required credential is missing.
-
-        Embedding for ingestion still needs a key.  LLM selection is owned by
-        the Model Hub (configured in the UI), so no LLM key is required here —
-        the pipeline reports a clear error at request time if no LLM is served.
-        """
-        if not self.VOYAGE_API_KEY:
-            raise ValueError(
-                "VOYAGE_API_KEY is not set. Ingestion needs an embedding key. "
-                "Copy backend/.env.example to backend/.env and add your "
-                "https://docs.voyageai.com key — or configure an embedding "
-                "model in the Model Hub."
-            )
+    # There is deliberately no startup credential validation any more.  Both the
+    # LLM and the embedding key are owned by the Model Hub, so a fresh install
+    # with nothing configured is a valid state: the app starts, every screen
+    # loads, and only the actions that need a provider fail — naming the model
+    # that needs a key.  Requiring an environment key here used to make a
+    # hub-configured install look broken, and a hub-less install look fine.
 
 
 settings = Settings()

@@ -19,7 +19,6 @@ Runs against the app in-process, so it needs no running server. It never touches
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -93,9 +92,8 @@ def main() -> int:
     readme = Path(args.readme).resolve()
     rows = documented_rows(readme.read_text())
 
-    # Building the app requires settings, and VALIDATE_ON_START would demand a
-    # real embedding key. The script only needs the schema, not a running service.
-    os.environ.setdefault("VALIDATE_ON_START", "false")
+    # The script only needs the schema, not a running service, and the app no
+    # longer demands a credential to import.
     sys.path.insert(0, str(BACKEND_ROOT))
     from app.main import app
 

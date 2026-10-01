@@ -17,7 +17,6 @@ from typing import Any
 from core.embedding.local_embedder import LocalEmbedder
 from core.generation.base_llm import BaseLLM
 from core.generation.fallback_llm import FallbackLLM
-from core.generation.gemini_llm import GeminiLLM
 from core.generation.openai_compat_llm import OpenAICompatLLM
 from core.interfaces.embedder import Embedder
 
@@ -89,7 +88,7 @@ def build_llm(config: dict[str, Any]) -> BaseLLM:
     # known OpenAI-compatible providers) shares one client so a registered key
     # can be injected uniformly.
     if provider in {"google", "gemini"}:
-        return GeminiLLM(model=model_id) if not api_key else _build_gemini(model_id, api_key)
+        return _build_gemini(model_id, api_key)
 
     if provider in _LLM_PROVIDER_CLASSES or provider in _OPENAI_COMPAT_PROVIDERS:
         return _build_openai_compat(
@@ -103,21 +102,14 @@ def build_llm(config: dict[str, Any]) -> BaseLLM:
 
 
 def _build_gemini(model_id: str, api_key: str) -> BaseLLM:
-    """Build a Gemini client with a Model-Hub-supplied key.
+    """Build a Gemini client from a Model-Hub-supplied key.
 
-    The existing :class:`GeminiLLM` reads its key from settings, so a
-    custom-key instance is created by supplying a pre-configured httpx client
-    with the ``x-goog-api-key`` header.
+    The key is passed straight to the constructor, which is the only place one
+    can come from; there is no environment fallback left to bypass.
     """
-    import httpx
+    from core.generation.gemini_llm import GeminiLLM
 
-    from core.generation.gemini_llm import _GENERATE_TIMEOUT, GeminiLLM
-
-    client = httpx.AsyncClient(
-        headers={"x-goog-api-key": api_key},
-        timeout=_GENERATE_TIMEOUT,
-    )
-    return GeminiLLM(model=model_id, http_client=client)
+    return GeminiLLM(model=model_id, api_key=api_key)
 
 
 def _build_openai_compat(
@@ -183,7 +175,7 @@ def build_embedder(config: dict[str, Any]) -> Embedder:
     if provider == "voyage":
         from core.embedding.voyage_embedder import VoyageEmbedder
 
-        return VoyageEmbedder(cache_path=None, api_key=api_key or None, model=model_id)
+        return VoyageEmbedder(cache_path=None, api_key=api_key, model=model_id)
 
     if provider in {"openai", "custom", "api", "together", "mistral", "deepseek"}:
         from core.embedding.openai_compat_embedder import OpenAICompatEmbedder
