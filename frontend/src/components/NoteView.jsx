@@ -22,7 +22,10 @@ import { createNote, getNote } from '../services/api'
 //
 // The parent drives regeneration through the ref (`regenerate()`), which forces
 // a fresh generation rather than a re-fetch of the cached note.
-const NoteView = forwardRef(function NoteView({ sourceIds = [], onReady, onError }, ref) {
+const NoteView = forwardRef(function NoteView(
+  { sourceIds = [], onReady, onError, onBusyChange },
+  ref,
+) {
   const [note, setNote] = useState(null)
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -107,6 +110,13 @@ const NoteView = forwardRef(function NoteView({ sourceIds = [], onReady, onError
     }),
     [create],
   )
+
+  // Regeneration runs with a note already on screen, so the render path never
+  // reaches the "Writing note…" branch and the click looked inert. The panel owns
+  // the button, so it has to learn when work is in flight.
+  useEffect(() => {
+    onBusyChange?.(creating)
+  }, [creating, onBusyChange])
 
   if (!scopeKey) {
     return (

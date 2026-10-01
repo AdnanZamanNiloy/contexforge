@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import { forwardRef, useImperativeHandle } from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { forwardRef, useEffect, useImperativeHandle } from 'react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 import NotePanel from './NotePanel'
 
@@ -16,14 +16,21 @@ const SOURCES = [
 ]
 
 // The view talks to the API on mount; keep it inert and expose the ref calls.
+// `noteBusy` stands in for a view that is mid-write, which is how a test sees
+// the panel's Regenerate button in its working state.
+const { noteBusy } = vi.hoisted(() => ({ noteBusy: { current: false } }))
+
 vi.mock('./NoteView', () => ({
-  default: forwardRef(function MockNoteView({ sourceIds }, ref) {
+  default: forwardRef(function MockNoteView({ sourceIds, onBusyChange }, ref) {
     useImperativeHandle(ref, () => ({
       regenerate: () => {
         document.body.dataset.regenerated = (sourceIds || []).join(',')
       },
       create: () => {},
     }))
+    useEffect(() => {
+      onBusyChange?.(noteBusy.current)
+    }, [onBusyChange])
     return <div data-testid="note-view" data-scope={(sourceIds || []).join(',')} />
   }),
 }))
@@ -109,5 +116,73 @@ describe('NotePanel actions', () => {
   it('passes the selection down to the note view', () => {
     renderPanel({ selectedSourceIds: ['b'] })
     expect(screen.getByTestId('note-view').dataset.scope).toBe('b')
+  })
+})
+
+// Regenerate used to be silent for the same reason the mind map's was: the write
+// happens in the view while the previous note is still on screen, so the view's
+// own "Writing note…" branch was never reached.
+describe('Regenerate busy state', () => {
+  beforeEach(() => {
+    noteBusy.current = false
+  })
+
+  // The panel is controlled: the selection arrives as a prop, so ticking a box
+  // only calls onSelectionChange. Render with a selection rather than clicking.
+  async function selectOne() {
+    const utils = renderPanel({ selectedSourceIds: ['a'] })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    return utils
+  }
+
+  it('shows progress and disables itself while the view is writing', async () => {
+    noteBusy.current = true
+    await selectOne()
+
+    const button = await screen.findByRole('button', { name: /Regenerat/i })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(button.textContent).toMatch(/Regenerating/)
+    expect(document.querySelector('.btn-spinner')).toBeTruthy()
+  })
+
+  it('overlays the note rather than blanking it', async () => {
+    noteBusy.current = true
+    await selectOne()
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const overlay = document.querySelector('.panel-busy')
+    expect(overlay).toBeTruthy()
+    expect(overlay.textContent).toMatch(/Rewriting the note/)
+    // The note underneath stays mounted, so the user keeps reading it.
+    expect(screen.getByTestId('note-view')).toBeTruthy()
+  })
+
+  it('will not let the user copy a half-written note', async () => {
+    noteBusy.current = true
+    await selectOne()
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(screen.getByRole('button', { name: /^copy$/i })).toBeDisabled()
+  })
+
+  it('is live again once the view reports it is free', async () => {
+    await selectOne()
+
+    const button = screen.getByRole('button', { name: /^regenerate$/i })
+    expect(button).not.toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'false')
   })
 })

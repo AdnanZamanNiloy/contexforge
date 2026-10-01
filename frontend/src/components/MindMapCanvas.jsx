@@ -23,7 +23,7 @@ import { createMindMap, getMindMap } from '../services/api'
 // The parent drives regeneration through the ref (`regenerate()`), which forces
 // a fresh generation rather than a re-fetch of the cached outline.
 const MindMapCanvas = forwardRef(function MindMapCanvas(
-  { sourceId = '', isFullscreen = false, onReady, onError },
+  { sourceId = '', isFullscreen = false, onReady, onError, onBusyChange },
   ref,
 ) {
   const [map, setMap] = useState(null)
@@ -134,6 +134,15 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
     [creating, scopeKey, onReady],
   )
 
+  // Regeneration happens with a map already on screen, so the render path never
+  // reaches the "Generating…" branch and the click looked like it did nothing.
+  // The panel owns the Regenerate button, so it has to be told when work is in
+  // flight: otherwise the button stays live, can be clicked repeatedly, and
+  // shows no sign that the request is running.
+  useEffect(() => {
+    onBusyChange?.(creating)
+  }, [creating, onBusyChange])
+
   useImperativeHandle(
     ref,
     () => ({
@@ -145,7 +154,12 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
   )
 
   return (
-    <div className={`mindmap-canvas${isFullscreen ? ' is-fullscreen' : ''}`} ref={shellRef}>
+    <div
+      className={`mindmap-canvas${isFullscreen ? ' is-fullscreen' : ''}${
+        creating && map ? ' is-busy' : ''
+      }`}
+      ref={shellRef}
+    >
       {loading ? (
         <div className="empty">{creating ? 'Creating mind map…' : 'Generating mind map…'}</div>
       ) : error ? (
@@ -188,6 +202,15 @@ const MindMapCanvas = forwardRef(function MindMapCanvas(
           <p className="mindmap-empty-sub">Choose one source above to build a mind map from it.</p>
         </div>
       )}
+      {creating && map ? (
+        <div className="panel-busy" role="status" aria-live="polite">
+          <div className="panel-spinner" aria-hidden="true" />
+          <p className="panel-busy-title">Regenerating the mind map…</p>
+          <p className="panel-busy-note">
+            The current map stays on screen until the new one replaces it.
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 })

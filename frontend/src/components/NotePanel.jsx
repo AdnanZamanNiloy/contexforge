@@ -18,6 +18,9 @@ export default function NotePanel({ sources = [], selectedSourceIds = [], onSele
   const [note, setNote] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  // Mirrors the view's own in-flight state, for the same reason as the mind map:
+  // the button lives here and the work happens in the child.
+  const [busy, setBusy] = useState(false)
 
   const selected = useMemo(
     () => [...new Set(selectedSourceIds.filter(Boolean))],
@@ -148,14 +151,16 @@ export default function NotePanel({ sources = [], selectedSourceIds = [], onSele
         <div className="note-panel-actions">
           <button
             type="button"
-            className="note-action"
+            className={`note-action${busy ? ' is-busy' : ''}`}
             onClick={() => viewRef.current?.regenerate?.()}
-            disabled={!hasSelection}
+            disabled={!hasSelection || busy}
             title="Write a fresh note from the selected sources"
+            aria-busy={busy}
           >
-            Regenerate
+            {busy ? <span className="btn-spinner" aria-hidden="true" /> : null}
+            {busy ? 'Regenerating…' : 'Regenerate'}
           </button>
-          <button type="button" className="note-action" onClick={onCopy} disabled={!note}>
+          <button type="button" className="note-action" onClick={onCopy} disabled={!note || busy}>
             {copied ? 'Copied' : 'Copy'}
           </button>
           <button type="button" className="note-action" onClick={onDownload} disabled={!note}>
@@ -165,7 +170,24 @@ export default function NotePanel({ sources = [], selectedSourceIds = [], onSele
       </div>
 
       <div className="note-panel-body">
-        <NoteView ref={viewRef} sourceIds={selected} onReady={setNote} />
+        <NoteView
+          ref={viewRef}
+          sourceIds={selected}
+          onReady={setNote}
+          onBusyChange={setBusy}
+        />
+        {/* Rendered here rather than inside NoteView because .note-doc is the
+            scroll container: an overlay placed in there would scroll away with
+            the text instead of holding still over it. */}
+        {busy ? (
+          <div className="panel-busy" role="status" aria-live="polite">
+            <div className="panel-spinner" aria-hidden="true" />
+            <p className="panel-busy-title">Rewriting the note…</p>
+            <p className="panel-busy-note">
+              The current note stays readable until the new one replaces it.
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   )

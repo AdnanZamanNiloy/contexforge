@@ -19,6 +19,10 @@ import MindMapCanvas from './MindMapCanvas'
 export default function MindMapPanel({ sources = [], sourceId = '', onSourceChange }) {
   const canvasRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  // Mirrors the canvas's own in-flight state. The button lives here while the
+  // work happens in the child, so without this the click produced no feedback
+  // at all: the map was already on screen, so no loading branch was ever hit.
+  const [busy, setBusy] = useState(false)
 
   const exitFullscreen = useCallback(() => setIsFullscreen(false), [])
   const hasSource = Boolean(sourceId)
@@ -71,12 +75,14 @@ export default function MindMapPanel({ sources = [], sourceId = '', onSourceChan
         <div className="mindmap-panel-actions">
           <button
             type="button"
-            className="mindmap-action"
+            className={`mindmap-action${busy ? ' is-busy' : ''}`}
             onClick={() => canvasRef.current?.regenerate?.()}
-            disabled={!hasSource}
+            disabled={!hasSource || busy}
             title="Generate a fresh mind map from the selected source"
+            aria-busy={busy}
           >
-            Regenerate
+            {busy ? <span className="btn-spinner" aria-hidden="true" /> : null}
+            {busy ? 'Regenerating…' : 'Regenerate'}
           </button>
           <button
             type="button"
@@ -90,7 +96,12 @@ export default function MindMapPanel({ sources = [], sourceId = '', onSourceChan
       </div>
 
       <div className="mindmap-panel-canvas">
-        <MindMapCanvas ref={canvasRef} sourceId={sourceId} isFullscreen={isFullscreen} />
+        <MindMapCanvas
+          ref={canvasRef}
+          sourceId={sourceId}
+          isFullscreen={isFullscreen}
+          onBusyChange={setBusy}
+        />
       </div>
     </>
   )
