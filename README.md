@@ -1,14 +1,10 @@
-<div align="center">
-
-<img src="docs/assets/wordmark.svg" alt="ContextForge" width="420">
+![ContextForge](docs/assets/wordmark.svg)
 
 **A grounded AI workspace for Retrieval-Augmented Generation.**
 
 Point it at your own documents, web pages, YouTube videos and GitHub repositories.
 It ingests them, builds a hybrid index, and answers with inline citations, a
 confidence score, and a per-stage latency breakdown you can actually audit.
-
-<br>
 
 [![Python](https://img.shields.io/badge/python-3.14%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Node](https://img.shields.io/badge/node-22%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -17,25 +13,12 @@ confidence score, and a per-stage latency breakdown you can actually audit.
 [![FAISS](https://img.shields.io/badge/vector-FAISS-4169E1?style=flat-square&logo=faiss&logoColor=white)](https://github.com/facebookresearch/faiss)
 [![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](LICENSE)
 
-[![CI](https://img.shields.io/badge/CI-ruff%20%C2%B7%20pytest%20%C2%B7%20eslint%20%C2%B7%20vitest-8b949e?style=flat-square)](https://github.com/AdnanZamanNiloy/contexforge/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-603%20backend%20%C2%B7%20369%20frontend-2ea44f?style=for-the-badge)](#development)
-[![API](https://img.shields.io/badge/API-59%20operations-6f42c1?style=for-the-badge)](#api-reference)
-[![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=for-the-badge)](#project-status)
-
-<br>
-
 [Quick start](#quick-start) · [Features](#features) · [How it compares](#how-it-compares) · [Architecture](#architecture) · [Security & privacy](#security--privacy) · [API](#api-reference) · [Docs](#documentation)
 
-</div>
-
-<br>
-
-> **Why this exists.** Most chat tools answer from a model's training data and
-> give you no way to check. ContextForge indexes sources *you* control, cites the
-> exact passage behind each claim, and tells you when its own confidence is low
-> and why.
-
-<!-- TODO: embed a workspace screenshot and a short demo GIF here (store them in docs/assets/). -->
+**Why this exists.** Most chat tools answer from a model's training data and
+give you no way to check. ContextForge indexes sources *you* control, cites the
+exact passage behind each claim, and tells you when its own confidence is low
+and why.
 
 ## Highlights
 
@@ -46,54 +29,9 @@ confidence score, and a per-stage latency breakdown you can actually audit.
 - **Repository Studio.** Architecture diagrams, security and quality scans, dependency inventory and health hotspots for any GitHub repository.
 - **Your models, your keys.** Nine hosted providers or any local OpenAI-compatible server, chained with failover. Keys are entered in the UI and encrypted at rest once `CREDENTIAL_ENCRYPTION_KEY` is set.
 
-## Project Status
-
-Active development. Everything described in [Features](#features) is implemented
-and covered by tests; the caveats below are the honest ones.
-
-| Area | State |
-|---|---|
-| RAG pipeline (hybrid retrieval, RRF, cross-encoder rerank, HyDE) | Shipped, tested |
-| Ingestion (PDF, DOCX, TXT, web, YouTube, GitHub) | Shipped, tested |
-| Projects, chat sessions, notes, mind map | Shipped, tested |
-| Studio (architecture, security, tech stack, health) | Shipped, tested |
-| Model Hub (multi-provider, chains, encrypted keys at rest) | Shipped, tested |
-| CI on `main` | **Passing** — ruff, format, docs guard, 603 backend tests, eslint, 369 frontend tests, build |
-| Container deployment | Not provided — no Dockerfiles ship yet |
-
-*Test counts describe the commit this README ships with. The CI badge above is the live signal.*
-
-### Known Issues
-
-These are real and unfixed. Nothing below is planned-and-hidden.
-
-- **The reranker is English-only.** `cross-encoder/ms-marco-MiniLM-L-6-v2` is an
-  English model, so non-English sources are systematically under-scored. The same
-  question scores 0.16 in English and 0.98 in the source's own language. Ask in
-  the language of the source for accurate results, or swap in a multilingual
-  cross-encoder in `RERANK_MODEL` (for example `BAAI/bge-reranker-v2-m3`).
-- **Sources ingested before ids became deterministic are not merged
-  automatically.** Ingestion is now idempotent — every type derives its id from
-  what the source is, so re-adding replaces in place — but an index built by an
-  older version can still hold several copies of one document, and the fix stops
-  new copies rather than collapsing old ones. Re-add each source once and it
-  adopts the first existing entry; any remaining copies need deleting by hand.
-- **No container build.** `docker-compose.yml` is checked in but cannot build:
-  both services declare a build context and neither directory has a Dockerfile.
-  Run from source.
-- **`npm test` needs a constrained pool on low-memory machines.** 31 jsdom
-  environments at once will exhaust a 6–8 GB box and report spurious failures.
-  GitHub's runner has the headroom; locally, run the files in batches or use
-  `--pool=forks --poolOptions.forks.singleFork`.
-
-What ContextForge deliberately does *not* do today is listed under [Scope](#scope-what-contextforge-is-and-is-not), and the plan for the gaps is under [Roadmap](#roadmap).
-
-<br>
-
 ## Table of Contents
 
 - [Highlights](#highlights)
-- [Project Status](#project-status)
 - [Overview](#overview)
 - [How it compares](#how-it-compares)
 - [Features](#features)
@@ -118,12 +56,9 @@ What ContextForge deliberately does *not* do today is listed under [Scope](#scop
 - [API Reference](#api-reference)
 - [Documentation](#documentation)
 - [Development](#development)
-- [Scope](#scope-what-contextforge-is-and-is-not)
-- [Roadmap](#roadmap)
 - [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
-- [Acknowledgments](#acknowledgments)
 
 <br>
 
@@ -661,9 +596,8 @@ Remote *sources* (web pages, YouTube transcripts, GitHub repositories) still nee
 `Dockerfile`. Running `docker compose up --build` fails at the first build step.
 
 Treat the compose file as a starting point rather than a working deployment. The
-two Dockerfiles it needs are tracked as a known gap in
-[Project Status](#project-status). Run from source with `make dev-backend` and
-`npm run dev` in the meantime.
+two Dockerfiles it needs are tracked as a known gap. Run from source with
+`make dev-backend` and `npm run dev` in the meantime.
 
 <br>
 
@@ -713,7 +647,7 @@ serves something.
 | `LANGFUSE_HOST` | `https://cloud.langfuse.com` | Langfuse host |
 | `VOYAGE_MODEL` | `voyage-3-lite` | Voyage embedding model |
 | `GEMINI_MODEL` | `gemini-flash-latest` | Default model ID for a Gemini entry |
-| `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder used for reranking. Swap for a multilingual model to fix [non-English scoring](#known-issues) |
+| `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder used for reranking. Swap for a multilingual model to improve non-English scoring |
 | `CHUNK_SIZE` | `512` | Text chunk size (tokens) |
 | `CHUNK_OVERLAP` | `50` | Chunk overlap (tokens) |
 | `TOP_K_RETRIEVAL` | `20` | Chunks retrieved per query |
@@ -780,7 +714,7 @@ location ~ ^/(query/stream|architecture/generate)$ {
 
 ### Authentication
 
-ContextForge has no built-in user authentication. If it is reachable by anyone other than you, put it behind a reverse proxy that authenticates (basic auth, or an OIDC-aware proxy) and bind the backend to `127.0.0.1`. See [Scope](#scope-what-contextforge-is-and-is-not).
+ContextForge has no built-in user authentication. If it is reachable by anyone other than you, put it behind a reverse proxy that authenticates (basic auth, or an OIDC-aware proxy) and bind the backend to `127.0.0.1`. That is a deliberate boundary, not an oversight.
 
 ### State and backups
 
@@ -841,12 +775,12 @@ Please **do not** open a public issue for a security problem. Use GitHub's priva
 
 ## Performance & Scaling
 
-- **Exact search.** `IndexFlatIP` is brute-force: results are exact with no approximate-recall trade-off, and query cost grows linearly with the number of chunks. It is well suited to personal and small-team corpora. A different index would sit behind the same interfaces (see the [Roadmap](#roadmap)).
+- **Exact search.** `IndexFlatIP` is brute-force: results are exact with no approximate-recall trade-off, and query cost grows linearly with the number of chunks. It is well suited to personal and small-team corpora. A different index would sit behind the same interfaces.
 - **Parallel retrieval.** BM25 and dense search run concurrently, then fuse.
 - **Cheap re-ingest.** The embedding cache means re-ingesting unchanged content does not pay for embeddings twice.
 - **Cached analyses.** Notes and mind maps are keyed by the selection; Studio results are keyed by a content fingerprint of the repository. Unchanged inputs are not recomputed.
 - **Measure, don't guess.** Every answer carries a per-stage latency breakdown, so you can see whether retrieval, reranking or generation dominates *on your hardware with your models*.
-- **No published benchmarks yet.** Retrieval-quality and throughput numbers are on the [Roadmap](#roadmap). Until then, treat any figure you have not measured yourself as unverified.
+- **No published benchmarks yet.** Retrieval-quality and throughput numbers are not published. Until then, treat any figure you have not measured yourself as unverified.
 
 <br>
 
@@ -1039,43 +973,6 @@ Every push and pull request runs: `ruff` lint and format checks, the docs guard 
 
 <br>
 
-## Scope: what ContextForge is and is not
-
-Clear boundaries are part of being production-grade. As of this release:
-
-| ContextForge is | ContextForge is not (yet) |
-|---|---|
-| A self-hosted workspace for one person or a small trusted group | A multi-tenant service with accounts, roles or per-user isolation |
-| A way to ask questions of sources you choose, and check the answers | An enterprise search layer with SaaS connectors and permission syncing |
-| A text-first indexer with extraction verdicts | An OCR or layout-aware parser for scanned or table-heavy documents |
-| A set of repository analyzers | An autonomous agent or workflow builder |
-| Runnable from source on a laptop or server | Packaged as a container image or a managed cloud service |
-
-<br>
-
-## Roadmap
-
-Ordered by how directly each item closes a [Known Issue](#known-issues) or a gap in [Scope](#scope-what-contextforge-is-and-is-not). These are intentions, not commitments, and priorities follow what real users hit first.
-
-**Next: close the known issues**
-
-- [ ] Working `Dockerfile`s for backend and frontend, so `docker compose up --build` succeeds
-- [ ] Multilingual reranking, ideally chosen from the language the extraction verdict already detects
-- [ ] Replace-on-reingest for URL sources, so re-ingesting no longer duplicates
-- [ ] Make the default frontend test pool safe on low-memory machines
-
-**Under consideration**
-
-- [ ] Published retrieval-quality benchmarks and a reproducible evaluation harness
-- [ ] Optional approximate-nearest-neighbour index for larger corpora
-- [ ] OCR for scanned PDFs, building on the existing extraction verdict
-- [ ] Built-in authentication and per-user workspaces
-- [ ] Additional loaders and scheduled source re-sync
-
-Want something prioritised? Open an issue describing the problem you are trying to solve.
-
-<br>
-
 ## FAQ
 
 <details>
@@ -1122,7 +1019,7 @@ It is a server-side signal derived from retrieval, not a probability that the an
 <summary><strong>Why an exact FAISS index instead of HNSW or IVF?</strong></summary>
 <br>
 
-For personal and small-team corpora, exact search is fast enough and removes approximate-recall error from the list of things that can go wrong. Larger corpora would want an approximate index, which is on the [Roadmap](#roadmap).
+For personal and small-team corpora, exact search is fast enough and removes approximate-recall error from the list of things that can go wrong. Larger corpora would want an approximate index instead.
 
 </details>
 
@@ -1130,7 +1027,7 @@ For personal and small-team corpora, exact search is fast enough and removes app
 <summary><strong>Non-English documents score poorly. What should I do?</strong></summary>
 <br>
 
-That is the English-only reranker, a [Known Issue](#known-issues). Ask in the language of the source, or set `RERANK_MODEL` to a multilingual cross-encoder.
+That is the English-only reranker. Ask in the language of the source, or set `RERANK_MODEL` to a multilingual cross-encoder such as `BAAI/bge-reranker-v2-m3`.
 
 </details>
 
@@ -1158,22 +1055,3 @@ Released under the [MIT License](LICENSE). See the `LICENSE` file for the full
 text.
 
 <br>
-
-## Acknowledgments
-
-- [FastAPI](https://fastapi.tiangolo.com/), [React](https://react.dev/) and [Vite](https://vite.dev/) — the application foundation
-- [FAISS](https://github.com/facebookresearch/faiss) by Meta Research — vector search
-- [SQLite FTS5](https://www.sqlite.org/fts5.html) — keyword search
-- [Voyage AI](https://www.voyageai.com) — embedding models
-- [Trafilatura](https://github.com/adbar/trafilatura) — web content extraction
-- [Langfuse](https://langfuse.com) — open-source observability
-- [OSV](https://osv.dev) and [ast-grep](https://ast-grep.github.io/) — advisories and code-level analysis in Studio
-- [Mermaid](https://mermaid.js.org/) — architecture diagrams
-
-<br>
-
-<div align="center">
-
-**ContextForge** · maintained by [@AdnanZamanNiloy](https://github.com/AdnanZamanNiloy)
-
-</div>
