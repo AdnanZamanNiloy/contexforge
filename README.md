@@ -1,4 +1,6 @@
-![ContextForge](docs/assets/wordmark.svg)
+![ContextForge](docs/assets/logo.svg)
+
+# ContextForge
 
 **A grounded AI workspace for Retrieval-Augmented Generation.**
 

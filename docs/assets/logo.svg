@@ -1,15 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="ContextForge">
   <title>ContextForge</title>
   <!--
-    The ContextForge mark, exported from frontend/src/components/ContextForgeMark.jsx
-    so the README shows the same brand the app ships. Keep the two in step: if the
-    mark changes in the component, change it here.
+    The ContextForge mark, exported from
+    frontend/src/components/ContextForgeMark.jsx so the README shows the same
+    brand the app ships. Keep the two in step.
 
     A knowledge stack (three faceted bars) on a gradient plate, with a spark
-    accent. The gradient carries the workspace blue -- --primary-soft into
-    --primary-deep -- because the sidebar, buttons and mind map all read blue.
-    These are the literal hex values of those tokens; SVG gradient stops cannot
+    accent. The gradient carries the workspace blue, from the primary-soft token
+    into primary-deep, because the sidebar, buttons and mind map all read blue.
+    These are the literal hex values of those tokens: SVG gradient stops cannot
     read a CSS variable from a stylesheet at this call site.
+
+    Note: this comment avoids double hyphens on purpose. XML forbids them inside
+    a comment, and a browser loading this file through an img element parses it
+    with a strict XML parser rather than the lenient HTML one.
   -->
   <defs>
     <linearGradient id="cf-badge" x1="0%" y1="0%" x2="100%" y2="100%">
