@@ -1,17 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1873 211" width="1873" height="211" role="img" aria-label="ContextForge — a grounded AI workspace for retrieval-augmented generation">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1438 201" width="1438" height="201" role="img" aria-label="ContextForge">
   <title>ContextForge</title>
   <!--
-    Horizontal lockup: the mark beside the wordmark, for the README header.
-    "Context" is drawn as vector paths rather than <text> so the wordmark renders
-    identically whatever fonts the renderer has, and "Forge" repeats the same
-    glyphs in the workspace blue.
+    The README wordmark: the mark from public/logos/contextforge-mark.svg beside
+    the product name, set in Inter at the brand weight so the lettering is the
+    same typeface the app renders rather than a lookalike.
+
+    Colours are the app tokens verbatim: the ink token for "Context" and the
+    primary token for "Forge", which is what LandingPage does with its
+    .lp-brand-accent class. The mark geometry is identical to the component and
+    to the favicon.
+
+    Lettering is scaled so the cap height equals the 140 unit plate, and the
+    plate is aligned to the cap band rather than to the text bounding box, so the
+    descender on the g does not push the wordmark out of balance.
+
+    The glyphs are real Inter outlines, extracted with fontTools, so this renders
+    identically wherever the font itself might not be installed.
+
+    Avoid double hyphens in this comment: XML forbids them and a browser
+    loading this file through an img element parses it as strict XML.
   -->
   <style>
-    .wf-light { fill: #5b6270; }
-    .wf-accent { fill: #2f5fe0; }
-    @media (prefers-color-scheme: dark) {
-      .wf-light { fill: #e8eaed; }
-      .wf-accent { fill: #5b8cff; }
+    /*
+      "Forge" is the primary token verbatim in both themes, 3.97:1 on white,
+      which is fine for a large lockup and keeps the brand exact.
+
+      "Context" is the ink token, which is a dark theme colour: exact on a dark
+      README at 16.9:1, but 1.12:1 on a light one, i.e. invisible. The light
+      override is the same ink darkened to hold 9.8:1, so the wordmark is
+      legible in both rather than exact in one and unreadable in the other.
+    */
+    .wf-light { fill: #f2f2f2; }
+    .wf-accent { fill: #4377fd; }
+    @media (prefers-color-scheme: light) {
+      .wf-light { fill: #3d4451; }
     }
   </style>
 
@@ -22,45 +44,28 @@
     </linearGradient>
   </defs>
 
-  <g transform="translate(0 12.6)">
+  <g>
     <rect x="0" y="0" width="140" height="140" rx="32" fill="url(#cf-badge)"/>
     <rect x="30" y="34" width="80" height="16" rx="4" fill="#FFFFFF"/>
     <rect x="57" y="50" width="26" height="34" rx="3" fill="#FFFFFF"/>
     <rect x="38" y="84" width="64" height="20" rx="4" fill="#FFFFFF"/>
     <rect x="112" y="16" width="16" height="16" rx="3" fill="#EF9F27" transform="rotate(45 120 24)"/>
   </g>
-
-  <g transform="translate(-189,-78) scale(2.0588)">
-  <!-- "Context" -->
   <g class="wf-light">
-    <!-- C -->
-    <path d="M243 44h-22a34 34 0 0 0 0 68h22v-15h-21a19 19 0 0 1 0-38h21z"/>
-    <!-- o -->
-    <path d="M316 57a25 25 0 1 0 0 50 25 25 0 0 0 0-50zm0 15a10 10 0 1 1 0 20 10 10 0 0 1 0-20z"/>
-    <!-- n -->
-    <path d="M362 59h15v8a21 21 0 0 1 38 0v31h-15V72a8 8 0 0 0-16 0v26h-15z"/>
-    <!-- t -->
-    <path d="M437 40h15v19h13v14h-13v14a6 6 0 0 0 6 6h7v14h-9a20 20 0 0 1-20-20V73h-9V59h9z"/>
-    <!-- e -->
-    <path d="M534 82h-37a12 12 0 0 0 11 17h25v14h-27a25 25 0 0 1-24-36 25 25 0 0 1 24-14 25 25 0 0 1 25 19zm-36-11h25a9 9 0 0 0-9-8 9 9 0 0 0-9 8z"/>
-    <!-- x -->
-    <path d="M560 59h18l9 13 9-13h18l-19 24 20 25h-18l-10-13-10 13h-18l20-25z"/>
-    <!-- t -->
-    <path d="M643 40h15v19h13v14h-13v14a6 6 0 0 0 6 6h7v14h-9a20 20 0 0 1-20-20V73h-9V59h9z"/>
+    <path d="M783 -20Q592 -20 442.5 72.5Q293 165 207.5 336.5Q122 508 122 744Q122 981 207.5 1152.5Q293 1324 442.5 1417.0Q592 1510 783 1510Q896 1510 996.5 1477.0Q1097 1444 1177.0 1380.5Q1257 1317 1310.5 1226.5Q1364 1136 1384 1021H1194Q1178 1098 1139.5 1156.0Q1101 1214 1045.5 1254.0Q990 1294 923.0 1314.0Q856 1334 783 1334Q649 1334 541.0 1266.0Q433 1198 370.0 1066.5Q307 935 307 744Q307 554 370.5 422.5Q434 291 542.0 223.5Q650 156 783 156Q856 156 923.0 176.5Q990 197 1045.5 236.5Q1101 276 1139.5 334.5Q1178 393 1194 469H1384Q1365 355 1311.5 265.0Q1258 175 1178.0 111.0Q1098 47 997.5 13.5Q897 -20 783 -20Z" transform="translate(192.00 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M613 -24Q461 -24 346.5 48.0Q232 120 168.0 250.0Q104 380 104 552Q104 727 168.0 857.5Q232 988 346.5 1060.0Q461 1132 613 1132Q766 1132 881.0 1060.0Q996 988 1060.0 857.5Q1124 727 1124 552Q1124 380 1060.0 250.0Q996 120 881.0 48.0Q766 -24 613 -24ZM613 137Q726 137 799.0 195.0Q872 253 907.0 347.5Q942 442 942 552Q942 663 907.0 758.5Q872 854 799.0 912.5Q726 971 613 971Q501 971 429.0 912.5Q357 854 322.0 759.0Q287 664 287 552Q287 442 322.0 347.5Q357 253 429.0 195.0Q501 137 613 137Z" transform="translate(330.70 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M338 670V0H158V1118H331L332 847H307Q358 1002 452.5 1067.0Q547 1132 674 1132Q787 1132 872.0 1085.5Q957 1039 1004.5 945.5Q1052 852 1052 710V0H872V695Q872 824 804.5 897.0Q737 970 620 970Q540 970 476.0 935.0Q412 900 375.0 833.0Q338 766 338 670Z" transform="translate(444.56 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M598 1118V964H20V1118ZM188 1384H368V290Q368 215 398.5 180.5Q429 146 500 146Q517 146 543.5 150.0Q570 154 592 158L629 6Q601 -4 565.5 -9.0Q530 -14 495 -14Q350 -14 269.0 62.5Q188 139 188 276Z" transform="translate(556.74 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M628 -24Q466 -24 348.5 48.0Q231 120 167.5 249.0Q104 378 104 550Q104 722 166.0 853.0Q228 984 341.5 1058.0Q455 1132 607 1132Q696 1132 782.5 1102.5Q869 1073 939.5 1007.5Q1010 942 1052.0 835.0Q1094 728 1094 573V498H226V650H997L913 594Q913 704 878.5 789.5Q844 875 776.0 923.5Q708 972 607 972Q506 972 434.0 922.5Q362 873 324.0 793.5Q286 714 286 623V522Q286 398 329.0 311.5Q372 225 449.5 180.5Q527 136 629 136Q695 136 749.0 155.0Q803 174 842.0 212.5Q881 251 902 308L1076 260Q1050 176 988.0 112.0Q926 48 834.5 12.0Q743 -24 628 -24Z" transform="translate(618.86 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M65 0 506 643 505 505 88 1118H298L437 901Q491 817 530.5 744.0Q570 671 612 603H518Q561 671 596.5 744.0Q632 817 687 901L829 1118H1035L616 497V630L1053 0H844L680 251Q627 333 588.5 403.5Q550 474 509 539H604Q563 474 528.0 403.5Q493 333 439 251L273 0Z" transform="translate(729.56 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M598 1118V964H20V1118ZM188 1384H368V290Q368 215 398.5 180.5Q429 146 500 146Q517 146 543.5 150.0Q570 154 592 158L629 6Q601 -4 565.5 -9.0Q530 -14 495 -14Q350 -14 269.0 62.5Q188 139 188 276Z" transform="translate(833.22 140.00) scale(0.09272 -0.09272)"/>
   </g>
 
-  <!-- "Forge" -->
   <g class="wf-accent">
-    <!-- F -->
-    <path d="M692 44h44v15h-29v11h26v15h-26v25h-15z"/>
-    <!-- o -->
-    <path d="M793 57a25 25 0 1 0 0 50 25 25 0 0 0 0-50zm0 15a10 10 0 1 1 0 20 10 10 0 0 1 0-20z"/>
-    <!-- r -->
-    <path d="M828 59h15v8a20 20 0 0 1 18-10v16h-8a11 11 0 0 0-10 11v24h-15z"/>
-    <!-- g -->
-    <path d="M912 59h15v45a24 24 0 0 1-24 24h-19V113h18a9 9 0 0 0 9-9zm-22 25a10 10 0 1 0 20 0 10 10 0 0 0-20 0z"/>
-    <!-- e -->
-    <path d="M994 82h-37a12 12 0 0 0 11 17h25v14h-27a25 25 0 0 1-24-36 25 25 0 0 1 24-14 25 25 0 0 1 25 19zm-36-11h25a9 9 0 0 0-9-8 9 9 0 0 0-9 8z"/>
-  </g>
+    <path d="M180 0V1490H1081V1322H370V812H1013V644H370V0Z" transform="translate(895.34 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M613 -24Q461 -24 346.5 48.0Q232 120 168.0 250.0Q104 380 104 552Q104 727 168.0 857.5Q232 988 346.5 1060.0Q461 1132 613 1132Q766 1132 881.0 1060.0Q996 988 1060.0 857.5Q1124 727 1124 552Q1124 380 1060.0 250.0Q996 120 881.0 48.0Q766 -24 613 -24ZM613 137Q726 137 799.0 195.0Q872 253 907.0 347.5Q942 442 942 552Q942 663 907.0 758.5Q872 854 799.0 912.5Q726 971 613 971Q501 971 429.0 912.5Q357 854 322.0 759.0Q287 664 287 552Q287 442 322.0 347.5Q357 253 429.0 195.0Q501 137 613 137Z" transform="translate(1007.43 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M158 0V1118H332V946H344Q375 1031 454.5 1082.5Q534 1134 634 1134Q654 1134 681.5 1133.0Q709 1132 725 1131V950Q717 952 685.0 956.0Q653 960 617 960Q537 960 473.5 926.5Q410 893 374.0 834.5Q338 776 338 700V0Z" transform="translate(1121.28 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M611 -442Q487 -442 396.5 -410.5Q306 -379 246.0 -327.0Q186 -275 151 -214L297 -120Q321 -152 356.5 -191.0Q392 -230 452.5 -257.5Q513 -285 611 -285Q745 -285 831.5 -221.0Q918 -157 918 -19V205H901Q882 173 847.5 129.0Q813 85 748.5 51.5Q684 18 576 18Q442 18 335.0 81.5Q228 145 166.0 267.0Q104 389 104 564Q104 737 165.0 864.5Q226 992 333.5 1062.0Q441 1132 580 1132Q688 1132 752.5 1096.5Q817 1061 852.0 1015.0Q887 969 906 939H923V1118H1098V-29Q1098 -173 1033.0 -264.5Q968 -356 857.5 -399.0Q747 -442 611 -442ZM606 178Q708 178 778.0 224.5Q848 271 884.0 358.5Q920 446 920 568Q920 687 884.5 777.5Q849 868 779.0 919.5Q709 971 606 971Q500 971 429.0 916.5Q358 862 322.5 771.0Q287 680 287 568Q287 453 323.0 365.0Q359 277 430.0 227.5Q501 178 606 178Z" transform="translate(1192.77 140.00) scale(0.09272 -0.09272)"/>
+    <path d="M628 -24Q466 -24 348.5 48.0Q231 120 167.5 249.0Q104 378 104 550Q104 722 166.0 853.0Q228 984 341.5 1058.0Q455 1132 607 1132Q696 1132 782.5 1102.5Q869 1073 939.5 1007.5Q1010 942 1052.0 835.0Q1094 728 1094 573V498H226V650H997L913 594Q913 704 878.5 789.5Q844 875 776.0 923.5Q708 972 607 972Q506 972 434.0 922.5Q362 873 324.0 793.5Q286 714 286 623V522Q286 398 329.0 311.5Q372 225 449.5 180.5Q527 136 629 136Q695 136 749.0 155.0Q803 174 842.0 212.5Q881 251 902 308L1076 260Q1050 176 988.0 112.0Q926 48 834.5 12.0Q743 -24 628 -24Z" transform="translate(1309.22 140.00) scale(0.09272 -0.09272)"/>
   </g>
 </svg>
