@@ -287,7 +287,7 @@ function Nav() {
       <div className="lp-nav-inner">
         <Link to="/" className="lp-brand" aria-label="ContextForge home">
           <BrandMark />
-          <span className="lp-brand-name">ContextForge</span>
+          <span className="lp-brand-name">Context<span className="lp-brand-accent">Forge</span></span>
         </Link>
         <nav className="lp-nav-links" aria-label="Sections">
           <a href="#pipeline">Pipeline</a>

@@ -2413,9 +2413,18 @@ h3 {
 }
 .lp-brand-name {
   color: var(--ink);
-  font-weight: 600;
-  font-size: 1rem;
-  letter-spacing: -0.01em;
+  font-weight: 650;
+  /* Was 1rem, which matched the nav links exactly and made the product name
+     read as one more menu item. 1.1rem gives it the weight a brand lockup
+     needs without crowding the 64px nav bar. */
+  font-size: 1.1rem;
+  letter-spacing: -0.015em;
+}
+
+/* "Forge" in the brand blue, the same treatment the Projects header uses, so
+   the two chrome bars read as one product. */
+.lp-brand-accent {
+  color: var(--primary);
 }
 
 .lp-nav-links {
