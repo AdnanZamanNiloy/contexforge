@@ -320,7 +320,7 @@ export default function ProjectsPage() {
       <header className="pg-nav">
         <div className="pg-nav-inner">
           <button className="pg-brand" onClick={() => navigate('/')} aria-label="ContextForge home">
-            <ContextForgeMark size={30} />
+            <ContextForgeMark size={24} />
             <span>
               Context<span className="pg-brand-accent">Forge</span>
             </span>

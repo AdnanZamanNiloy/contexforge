@@ -275,7 +275,7 @@ function SectionHeading({ eyebrow, title, lede, align = 'start' }) {
   )
 }
 
-function BrandMark({ size = 30 }) {
+function BrandMark({ size = 24 }) {
   return <ContextForgeMark size={size} withPlate className="lp-mark" />
 }
 
@@ -635,7 +635,7 @@ function Footer() {
     <footer className="lp-footer">
       <div className="lp-footer-inner">
         <div className="lp-footer-brand">
-          <BrandMark size={26} />
+          <BrandMark size={22} />
           <div>
             <strong>ContextForge</strong>
             <span>Grounded retrieval-augmented generation workspace.</span>
