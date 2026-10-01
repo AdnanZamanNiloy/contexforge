@@ -30,7 +30,6 @@ function response(overrides = {}) {
     usable_fraction: 0.1,
     depth: 'focused',
     effective_depth: 'focused',
-    over_budget: false,
     beyond_diminishing_returns: false,
     dropped_source_ids: [],
     missing_source_ids: [],
@@ -173,7 +172,7 @@ describe('ContextMeter depth control', () => {
 describe('ContextMeter honesty', () => {
   it('names sources the depth will not read', async () => {
     vi.mocked(estimateContext).mockResolvedValue(
-      response({ dropped_source_ids: ['c'], over_budget: true }),
+      response({ dropped_source_ids: ['c'] }),
     )
     await renderMeter()
     fireEvent.click(screen.getByRole('button', { name: /context details/i }))

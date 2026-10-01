@@ -106,10 +106,6 @@ class ContextEstimateResponse(BaseModel):
         ),
     )
 
-    over_budget: bool = Field(
-        default=False,
-        description="True when the selection exceeds what this depth can use.",
-    )
     beyond_diminishing_returns: bool = Field(
         default=False,
         description=("True when the selection is so large that raising the depth is unlikely to change the answer."),

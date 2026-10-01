@@ -203,13 +203,6 @@ class TestEstimateContext:
         assert estimate.source_count == 1
 
     @pytest.mark.asyncio
-    async def test_reports_over_budget_when_the_depth_cannot_cope(self):
-        index = _index({f"s{i}": 20 for i in range(10)})
-        estimate = await estimate_context(source_ids=[f"s{i}" for i in range(10)], chunk_index=index, depth="focused")
-
-        assert estimate.over_budget is True
-
-    @pytest.mark.asyncio
     async def test_flags_a_selection_beyond_diminishing_returns(self):
         index = _index({f"s{i}": 40 for i in range(12)}, body="q" * 500)
         estimate = await estimate_context(source_ids=[f"s{i}" for i in range(12)], chunk_index=index, depth="broad")

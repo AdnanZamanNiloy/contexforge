@@ -73,11 +73,6 @@ CONTEXT_DEPTHS: dict[str, dict[str, int]] = {
     "broad": {"max_sources": 25, "top_k_retrieval": 80, "top_k_rerank": 25, "per_source_cap": 12},
 }
 
-# Prompts are assembled with roughly this many tokens of material.  It is an
-# estimate of a typical large-context model's usable input, not a hard ceiling:
-# the provider's real limit is not something this module can see.
-TYPICAL_PROMPT_TOKEN_BUDGET = 100_000
-
 # Above this, a depth change is more likely to be refused or truncated by the
 # provider than to change the answer, so the UI is told so rather than letting
 # the user raise the depth and see nothing change.
@@ -93,15 +88,6 @@ class SourceCost:
     chunk_count: int
     char_count: int
     token_count: int
-
-    @property
-    def share_of_selection(self) -> float:
-        """Fraction of the selection's tokens, by token weight.
-
-        Computed by the caller that knows the whole selection; exposed here so a
-        response can present it without re-deriving the ratio.
-        """
-        return 0.0
 
 
 @dataclass
@@ -119,7 +105,6 @@ class SelectionEstimate:
     prompt_chunk_limit: int = 0
     effective_depth: str = "focused"
     per_source_cap: int = 4
-    over_budget: bool = False
     beyond_diminishing_returns: bool = False
     dropped_source_ids: list[str] = field(default_factory=list)
     missing_source_ids: list[str] = field(default_factory=list)
@@ -216,8 +201,6 @@ async def estimate_context(
     per_source_ceiling = sum(min(c.token_count, limits["per_source_cap"] * 512) for c in kept)
     capped = min(prompt_tokens, chunk_ceiling, per_source_ceiling)
 
-    over = len(costs) > limits["max_sources"] or capped > TYPICAL_PROMPT_TOKEN_BUDGET
-
     return SelectionEstimate(
         source_count=len(costs),
         sources=costs,
@@ -237,7 +220,6 @@ async def estimate_context(
         # request is safe and the estimate simply reports what will run.
         effective_depth=depth if depth in CONTEXT_DEPTHS else "focused",
         per_source_cap=limits["per_source_cap"],
-        over_budget=over,
         beyond_diminishing_returns=total_tokens > DIMINISHING_RETURNS_TOKENS,
         # Sources the depth would not use, so the UI can name them rather than
         # showing a selection count that does not match what is sent.

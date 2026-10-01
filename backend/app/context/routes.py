@@ -89,7 +89,6 @@ async def estimate_selection(
         usable_fraction=round(estimate.usable_fraction, 4),
         depth=payload.depth or "focused",
         effective_depth=estimate.effective_depth,
-        over_budget=estimate.over_budget,
         beyond_diminishing_returns=estimate.beyond_diminishing_returns,
         dropped_source_ids=estimate.dropped_source_ids,
         missing_source_ids=estimate.missing_source_ids,
