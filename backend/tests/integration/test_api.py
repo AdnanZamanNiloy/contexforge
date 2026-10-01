@@ -10,10 +10,12 @@ from core.types import Chunk, GenerationResult, RerankedChunk
 
 class FakeIngestService:
     async def ingest_source(self, request):
-        return "source-123", 3
+        # (source_id, chunks_indexed, replaced) — ingestion is idempotent, so the
+        # service reports whether it replaced an existing source.
+        return "source-123", 3, False
 
     async def ingest_file(self, source_type, content, filename):
-        return "source-456", 2
+        return "source-456", 2, False
 
     async def delete_source(self, source_id):
         return 5

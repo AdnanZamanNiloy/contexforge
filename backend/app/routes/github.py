@@ -90,7 +90,7 @@ async def ingest_github(
             source=request.repo_url,
             metadata={"branch": request.branch} if request.branch else None,
         )
-        source_id, chunks_indexed = await service.ingest_source(ingest_request)
+        source_id, chunks_indexed, _replaced = await service.ingest_source(ingest_request)
         rag_message = f"Successfully indexed {chunks_indexed} chunk{'s' if chunks_indexed != 1 else ''}."
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc

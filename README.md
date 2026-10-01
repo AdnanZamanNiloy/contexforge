@@ -72,8 +72,12 @@ These are real and unfixed. Nothing below is planned-and-hidden.
   question scores 0.16 in English and 0.98 in the source's own language. Ask in
   the language of the source for accurate results, or swap in a multilingual
   cross-encoder in `RERANK_MODEL` (for example `BAAI/bge-reranker-v2-m3`).
-- **Re-ingesting a URL creates a second source** rather than replacing the first,
-  so the sidebar accumulates duplicates. Prune them from the source list.
+- **Sources ingested before ids became deterministic are not merged
+  automatically.** Ingestion is now idempotent — every type derives its id from
+  what the source is, so re-adding replaces in place — but an index built by an
+  older version can still hold several copies of one document, and the fix stops
+  new copies rather than collapsing old ones. Re-add each source once and it
+  adopts the first existing entry; any remaining copies need deleting by hand.
 - **No container build.** `docker-compose.yml` is checked in but cannot build:
   both services declare a build context and neither directory has a Dockerfile.
   Run from source.
@@ -142,7 +146,10 @@ Most LLM chat tools are disconnected from your actual data. ContextForge is buil
 2. **Report the cost, never smooth it over.** A reduced depth, a skipped source, or a selected id missing from the index is *said*, not silently absorbed.
 3. **No ambient credentials.** Provider keys live in the Model Hub and nowhere else. A model with no saved key fails with a named error instead of quietly using a key from the environment.
 4. **Provider-agnostic by interface.** Embedder, LLM and retriever sit behind contracts in `core/interfaces/`. Swapping one is a configuration change, not a rewrite.
-5. **Documentation that cannot drift.** The API reference is generated from the running app, and the README's curated API list is checked against the live spec in CI.
+5. **Ingestion is idempotent.** A source id is a function of what the source is, not of the
+   attempt, so adding the same document twice replaces it in one place. URLs are
+   normalised first, so a shared link with tracking parameters is not a new document.
+6. **Documentation that cannot drift.** The API reference is generated from the running app, and the README's curated API list is checked against the live spec in CI.
 
 <br>
 

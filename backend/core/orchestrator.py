@@ -350,6 +350,15 @@ class Orchestrator:
         )
         return deduplicated
 
+    async def get_source_info(self) -> list[dict]:
+        """One entry per indexed source: id, title, type, url and chunk count.
+
+        Exposed here so callers do not have to reach into the FAISS store to ask
+        what is indexed. Ingestion uses it to decide whether a source already
+        exists, which is what makes re-ingesting idempotent.
+        """
+        return await self._faiss.get_source_info()
+
     @observe(name="delete_source")
     async def delete_source(self, source_id: str) -> int:
         """Remove all chunks belonging to *source_id* from both stores.

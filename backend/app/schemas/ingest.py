@@ -77,6 +77,14 @@ class IngestResponse(BaseModel):
     """
 
     source_id: str = Field(description="Unique ID assigned to the ingested source.")
+    replaced: bool = Field(
+        default=False,
+        description=(
+            "True when this ingest replaced the chunks of an existing source with the "
+            "same identity, rather than adding a new one. Ingestion is idempotent, so "
+            "re-adding a source updates it in place."
+        ),
+    )
     chunks_indexed: int = Field(
         description="Number of text chunks stored in FAISS and BM25.",
         ge=0,

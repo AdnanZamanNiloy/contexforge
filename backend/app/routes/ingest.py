@@ -67,15 +67,15 @@ async def ingest_source(
     """Ingest a remote source (web URL or GitHub repo) by reference."""
     logger.info("ingest_source: source_type=%s source=%s", request.source_type, request.source)
     try:
-        source_id, chunks_indexed = await service.ingest_source(request)
+        source_id, chunks_indexed, replaced = await service.ingest_source(request)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except RuntimeError as exc:
         logger.error("ingest_source failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    logger.info("ingest_source complete: source_id=%s chunks=%d", source_id, chunks_indexed)
-    return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed)
+    logger.info("ingest_source complete: source_id=%s chunks=%d replaced=%s", source_id, chunks_indexed, replaced)
+    return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed, replaced=replaced)
 
 
 @router.post(
@@ -115,7 +115,7 @@ async def ingest_file(
     )
 
     try:
-        source_id, chunks_indexed = await service.ingest_file(source_type, content, filename)
+        source_id, chunks_indexed, replaced = await service.ingest_file(source_type, content, filename)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -123,12 +123,13 @@ async def ingest_file(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     logger.info(
-        "ingest_file complete: source_id=%s filename=%s chunks=%d",
+        "ingest_file complete: source_id=%s filename=%s chunks=%d replaced=%s",
         source_id,
         filename,
         chunks_indexed,
+        replaced,
     )
-    return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed)
+    return IngestResponse(source_id=source_id, chunks_indexed=chunks_indexed, replaced=replaced)
 
 
 @router.patch(
@@ -250,9 +251,9 @@ async def get_sources(
     layered on top from the source-meta side store.
     """
     try:
-        faiss_store = service._orchestrator._faiss
+        # Via the orchestrator rather than its FAISS store, which is private.
         bm25 = service._orchestrator._bm25
-        sources = await faiss_store.get_source_info()
+        sources = await service._orchestrator.get_source_info()
         total_chunks = await bm25.count()
         overrides = await meta_store.all_titles()
         for source in sources:
