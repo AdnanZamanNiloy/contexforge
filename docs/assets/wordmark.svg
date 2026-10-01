@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1030 140" width="1030" height="140" role="img" aria-label="ContextForge — a grounded AI workspace for retrieval-augmented generation">
+  <title>ContextForge</title>
+  <!--
+    Horizontal lockup: the mark beside the wordmark, for the README header.
+    "Context" is drawn as vector paths rather than <text> so the wordmark renders
+    identically whatever fonts the renderer has, and "Forge" repeats the same
+    glyphs in the workspace blue.
+  -->
+  <defs>
+    <linearGradient id="cf-badge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6b92ff"/>
+      <stop offset="100%" stop-color="#2f5fe0"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(0 0)">
+    <rect x="0" y="0" width="140" height="140" rx="32" fill="url(#cf-badge)"/>
+    <rect x="30" y="34" width="80" height="16" rx="4" fill="#FFFFFF"/>
+    <rect x="57" y="50" width="26" height="34" rx="3" fill="#FFFFFF"/>
+    <rect x="38" y="84" width="64" height="20" rx="4" fill="#FFFFFF"/>
+    <rect x="112" y="16" width="16" height="16" rx="3" fill="#EF9F27" transform="rotate(45 120 24)"/>
+  </g>
+
+  <!-- "Context" -->
+  <g fill="#e8eaed">
+    <!-- C -->
+    <path d="M243 44h-22a34 34 0 0 0 0 68h22v-15h-21a19 19 0 0 1 0-38h21z"/>
+    <!-- o -->
+    <path d="M316 57a25 25 0 1 0 0 50 25 25 0 0 0 0-50zm0 15a10 10 0 1 1 0 20 10 10 0 0 1 0-20z"/>
+    <!-- n -->
+    <path d="M362 59h15v8a21 21 0 0 1 38 0v31h-15V72a8 8 0 0 0-16 0v26h-15z"/>
+    <!-- t -->
+    <path d="M437 40h15v19h13v14h-13v14a6 6 0 0 0 6 6h7v14h-9a20 20 0 0 1-20-20V73h-9V59h9z"/>
+    <!-- e -->
+    <path d="M534 82h-37a12 12 0 0 0 11 17h25v14h-27a25 25 0 0 1-24-36 25 25 0 0 1 24-14 25 25 0 0 1 25 19zm-36-11h25a9 9 0 0 0-9-8 9 9 0 0 0-9 8z"/>
+    <!-- x -->
+    <path d="M560 59h18l9 13 9-13h18l-19 24 20 25h-18l-10-13-10 13h-18l20-25z"/>
+    <!-- t -->
+    <path d="M643 40h15v19h13v14h-13v14a6 6 0 0 0 6 6h7v14h-9a20 20 0 0 1-20-20V73h-9V59h9z"/>
+  </g>
+
+  <!-- "Forge" -->
+  <g fill="#4377fd">
+    <!-- F -->
+    <path d="M692 44h44v15h-29v11h26v15h-26v25h-15z"/>
+    <!-- o -->
+    <path d="M793 57a25 25 0 1 0 0 50 25 25 0 0 0 0-50zm0 15a10 10 0 1 1 0 20 10 10 0 0 1 0-20z"/>
+    <!-- r -->
+    <path d="M828 59h15v8a20 20 0 0 1 18-10v16h-8a11 11 0 0 0-10 11v24h-15z"/>
+    <!-- g -->
+    <path d="M912 59h15v45a24 24 0 0 1-24 24h-19V113h18a9 9 0 0 0 9-9zm-22 25a10 10 0 1 0 20 0 10 10 0 0 0-20 0z"/>
+    <!-- e -->
+    <path d="M994 82h-37a12 12 0 0 0 11 17h25v14h-27a25 25 0 0 1-24-36 25 25 0 0 1 24-14 25 25 0 0 1 25 19zm-36-11h25a9 9 0 0 0-9-8 9 9 0 0 0-9 8z"/>
+  </g>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="ContextForge">
+  <title>ContextForge</title>
+  <!--
+    The ContextForge mark, exported from frontend/src/components/ContextForgeMark.jsx
+    so the README shows the same brand the app ships. Keep the two in step: if the
+    mark changes in the component, change it here.
+
+    A knowledge stack (three faceted bars) on a gradient plate, with a spark
+    accent. The gradient carries the workspace blue -- --primary-soft into
+    --primary-deep -- because the sidebar, buttons and mind map all read blue.
+    These are the literal hex values of those tokens; SVG gradient stops cannot
+    read a CSS variable from a stylesheet at this call site.
+  -->
+  <defs>
+    <linearGradient id="cf-badge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6b92ff"/>
+      <stop offset="100%" stop-color="#2f5fe0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="140" height="140" rx="32" fill="url(#cf-badge)"/>
+  <rect x="30" y="34" width="80" height="16" rx="4" fill="#FFFFFF"/>
+  <rect x="57" y="50" width="26" height="34" rx="3" fill="#FFFFFF"/>
+  <rect x="38" y="84" width="64" height="20" rx="4" fill="#FFFFFF"/>
+  <rect x="112" y="16" width="16" height="16" rx="3" fill="#EF9F27" transform="rotate(45 120 24)"/>
+</svg>

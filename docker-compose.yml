@@ -6,11 +6,12 @@ services:
     container_name: contextforge-backend
     ports:
       - "8000:8000"
-    # API keys come from the gitignored backend/.env (see .env.example).
+    # Provider keys are NOT read from the environment: they are entered in the
+    # Model Hub and stored in the backend data volume. Only paths and optional
+    # tracing come from the gitignored backend/.env (see .env.example).
     env_file:
       - ./backend/.env
     environment:
-      - VALIDATE_ON_START=true
       - 'ALLOWED_ORIGINS=["http://localhost:5173","http://localhost:8080"]'
     volumes:
       - backend_data:/app/data
@@ -32,3 +33,7 @@ services:
 
 volumes:
   backend_data:
+
+# NOTE: this file is not yet runnable. Both services declare a `build:` context
+# (./backend and ./frontend) but neither directory has a Dockerfile, so
+# `docker compose up --build` fails. See README "Project Status".

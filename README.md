@@ -1,28 +1,71 @@
 <div align="center">
 
-# ContextForge
+<img src="docs/assets/wordmark.svg" alt="ContextForge" width="420">
 
 **A grounded AI workspace for Retrieval-Augmented Generation.**
 
-Ingest documents, web pages, and GitHub repositories — then query your knowledge base with cited evidence, confidence metrics, and streaming answers.
+Point it at your own documents, web pages, YouTube videos and GitHub repositories.
+It ingests them, builds a hybrid index, and answers with inline citations, a
+confidence score, and a per-stage latency breakdown you can actually audit.
 
-![Python](https://img.shields.io/badge/python-3.14%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-![Node](https://img.shields.io/badge/node-22%2B-339933?style=flat-square&logo=node.js&logoColor=white)
-![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/frontend-React%2019-61DAFB?style=flat-square&logo=react&logoColor=black)
-![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)
+<br>
+
+[![Python](https://img.shields.io/badge/python-3.14%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Node](https://img.shields.io/badge/node-22%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/frontend-React%2019-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![FAISS](https://img.shields.io/badge/vector-FAISS-4169E1?style=flat-square&logo=faiss&logoColor=white)](https://github.com/facebookresearch/faiss)
+[![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](LICENSE)
+
+[![CI](https://img.shields.io/badge/CI-ruff%20%C2%B7%20pytest%20%C2%B7%20eslint%20%C2%B7%20vitest-8b949e?style=flat-square)](.github/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-603%20backend%20%C2%B7%20363%20frontend-2ea44f?style=for-the-badge)](#development)
+[![API](https://img.shields.io/badge/API-59%20operations-6f42c1?style=for-the-badge)](#api-reference)
+[![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=for-the-badge)](#project-status)
+
+<br>
 
 </div>
 
 <br>
 
-> **Project status —** Active development. The core RAG pipeline, GitHub Repository Chat, and Mind Map features are implemented and tested.
+> **Why this exists.** Most chat tools answer from a model's training data and
+> give you no way to check. ContextForge indexes sources *you* control, cites the
+> exact passage behind each claim, and tells you when its own confidence is low
+> and why.
+
+## Project Status
+
+Active development. Everything described in [Features](#features) is implemented
+and covered by tests; the caveats below are the honest ones.
+
+| Area | State |
+|---|---|
+| RAG pipeline (hybrid retrieval, RRF, cross-encoder rerank, HyDE) | Shipped, tested |
+| Ingestion (PDF, DOCX, TXT, web, YouTube, GitHub) | Shipped, tested |
+| Projects, chat sessions, notes, mind map | Shipped, tested |
+| Studio (architecture, security, tech stack, health) | Shipped, tested |
+| Model Hub (multi-provider, chains, encrypted keys at rest) | Shipped, tested |
+| CI on `main` | **Failing** — see [Known Issues](#known-issues) |
+| Container deployment | Not provided — no Dockerfiles ship yet |
+
+### Known Issues
+
+- **CI is red on `main`.** The workflow fails at the `ruff format --check` gate
+  on 13 files that were never reformatted. The fix exists on the
+  `source-trust-and-context` and `reliability-hardening` branches; it has not
+  been merged. Frontend lint, tests and build pass; backend tests are skipped
+  because lint fails first.
+- **The reranker is English-only.** `cross-encoder/ms-marco-MiniLM-L-6-v2` is an
+  English model, so non-English sources are systematically under-scored. Ask in
+  the source's own language for accurate results.
+- **Re-ingesting a URL creates a second source** rather than replacing the first.
+  Prune duplicates from the source list.
 
 <br>
 
 ## Table of Contents
 
+- [Project Status](#project-status)
 - [Overview](#overview)
 - [Features](#features)
   - [Source Ingestion](#source-ingestion)
@@ -59,7 +102,7 @@ Most LLM chat tools are disconnected from your actual data. ContextForge is buil
 |---|---|
 | **Local-first** | Everything runs on your own hardware. No data leaves your machine except for embedding and LLM API calls. |
 | **Hybrid retrieval** | BM25 keyword search and dense vector search, fused via Reciprocal Rank Fusion and sharpened with cross-encoder reranking. |
-| **Multi-provider resilience** | Gemini as the primary LLM, with automatic failover to Groq, OpenRouter, Cerebras, or NVIDIA NIM — if one provider is down, the pipeline keeps working. |
+| **Bring your own providers** | Add any OpenAI-compatible endpoint (OpenAI, Groq, OpenRouter, Cerebras, NVIDIA NIM, Together, Mistral, DeepSeek, a local server) or Google Gemini from the Model Hub. Chain them and the pipeline fails over down the chain. |
 | **Transparent answers** | Every response ships with source citations, per-stage latency breakdowns, and server-side confidence metrics, so you know *why* the model answered the way it did. |
 
 <br>
@@ -226,11 +269,12 @@ flowchart TB
         direction TB
         Chat["Chat UI (REST + SSE)"]
         Workspace["Project Workspace<br/>Chat · Mind Map"]
+        Repo["Repository Studio<br/>architecture · security<br/>stack · health"]
     end
 
     subgraph API["API LAYER — FastAPI"]
         direction TB
-        Routes["App Routers<br/>/ingest · /github · /query<br/>/mindmap"]
+        Routes["App Routers<br/>/ingest · /github · /query<br/>/mindmap · /notes · /projects"]
         Schemas["Pydantic Schemas<br/>request + response validation"]
         Services["Application Services<br/>IngestService · QueryService"]
     end
@@ -240,12 +284,14 @@ flowchart TB
         Orchestrator["Orchestrator<br/>pipeline coordinator"]
         subgraph INGEST["▸ Ingestion"]
             direction LR
+            Ingest["Ingestion<br/>orchestration"]
             Loaders["Loaders<br/>pdf · docx · web · github<br/>youtube · text"]
             Chunking["Chunking<br/>tiktoken text · AST code"]
             Processing["Processing<br/>cleaner · deduplicator"]
         end
-        subgraph QUERY["▸ Query"]
+        subgraph QUERY["▸ Retrieval and generation"]
             direction LR
+            Query["Query<br/>retrieve · rerank · answer"]
             HyDE["HyDE<br/>(optional)"]
             Hybrid["Hybrid Search"]
             RRF["Reciprocal<br/>Rank Fusion"]
@@ -262,11 +308,10 @@ flowchart TB
         Cache[("Embedding Cache<br/>embeddings.json")]
     end
 
-    subgraph EXT["EXTERNAL PROVIDERS"]
+    subgraph EXT["EXTERNAL PROVIDERS (configured in the Model Hub)"]
         direction LR
-        Voyage["Voyage AI<br/>(embeddings)"]
-        Gemini["Google Gemini<br/>(primary LLM)"]
-        Fallback["Groq · OpenRouter<br/>Cerebras · NVIDIA NIM"]
+        Embed["Voyage · OpenAI-compatible<br/>· local (embeddings)"]
+        LLM["Gemini · OpenAI-compatible<br/>· local (chat, chained)"]
         Trace["Langfuse<br/>(tracing)"]
     end
 
@@ -274,6 +319,7 @@ flowchart TB
     Workspace --> Routes
     Repo --> Routes
 
+    Routes <--> Schemas
     Routes <--> Services
     Services --> Orchestrator
 
@@ -282,16 +328,15 @@ flowchart TB
 
     Loaders --> Chunking --> Processing
     Ingest --> Cache
-    Ingest --> Voyage
+    Ingest --> Embed
 
     HyDE --> Hybrid
     Hybrid --> RRF --> Rerank --> Prompt --> Router
     Query --> FAISS
     Query --> FTS
-    Query --> Voyage
+    Query --> Embed
 
-    Router --> Gemini
-    Router --> Fallback
+    Router --> LLM
 
     Orchestrator -.-> Trace
     Services -.-> Trace
@@ -320,7 +365,7 @@ Layer by layer:
 | **Storage** | Persist dense, sparse, and cached representations | `backend/core/storage/` |
 | **Providers** | Embeddings, LLMs, tracing | `backend/core/generation/`, `backend/observability/` |
 
-The architecture is deliberately **provider-agnostic**: every external capability (embedder, LLM, retriever) sits behind an interface in `core/interfaces/`, so swapping Voyage for BGE, or Gemini for a local model, is a one-line change rather than a rewrite.
+The architecture is deliberately **provider-agnostic**: every external capability (embedder, LLM, retriever) sits behind an interface in `core/interfaces/`, so swapping the embedder or the LLM is a matter of registering a different model in the Model Hub, not a code change.
 
 <br>
 
@@ -334,10 +379,10 @@ The architecture is deliberately **provider-agnostic**: every external capabilit
 | Runtime | Python 3.14+ |
 | Vector store | FAISS (CPU, `IndexFlatIP`) |
 | Sparse index | SQLite FTS5 |
-| Embeddings | Voyage AI (`voyage-3-lite`) |
+| Embeddings | Voyage AI, any OpenAI-compatible endpoint, or a local model |
 | Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
-| LLM (primary) | Google Gemini (`gemini-flash-latest`) |
-| LLM (fallback) | Groq, OpenRouter, Cerebras, NVIDIA NIM |
+| LLMs | Configured in the Model Hub: Gemini, any OpenAI-compatible endpoint, or a local model |
+| Fallback chains | Ordered provider chains, resolved at request time |
 | Tracing | Langfuse *(optional)* |
 
 ### Frontend
@@ -405,18 +450,16 @@ Then open **http://localhost:5173** in your browser, and open **Model Hub** to a
 a model and put it in service. Until you do, generation raises
 `NotConfiguredError` — this is deliberate. See [Model Hub](#model-hub).
 
-### 4 · Run with Docker
+### 4 · Container deployment (not yet available)
 
-```bash
-# Create backend/.env first (see .env.example), then:
-docker compose up --build
+`docker-compose.yml` is checked in, but **it cannot build**: it declares
+`build: ./backend` and `build: ./frontend`, and neither directory contains a
+`Dockerfile`. Running `docker compose up --build` fails at the first build step.
 
-# Backend → http://localhost:8000   Frontend → http://localhost:8080
-```
-
-The compose file builds a FastAPI image and an nginx-served React build, mounts
-a named volume for app data, and wires `ALLOWED_ORIGINS` so the browser can reach
-the API from either dev (`:5173`) or compose (`:8080`).
+Treat the compose file as a starting point rather than a working deployment. The
+two Dockerfiles it needs are tracked as a known gap in
+[Project Status](#project-status). Run from source with `make dev-backend` and
+`npm run dev` in the meantime.
 
 <br>
 
@@ -494,22 +537,28 @@ contextforge/
 │   │   ├── dependencies.py          # Singleton services (orchestrator, ingest, query)
 │   │   ├── config/
 │   │   │   └── settings.py          # All app configuration (pydantic-settings)
-│   │   ├── routes/                  # API route handlers
-│   │   │   ├── ingest.py            # POST /ingest/source, /ingest/file, DELETE, GET /ingest/sources
-│   │   │   ├── github.py            # POST /github/ingest
-│   │   │   └── query.py             # POST /query, POST /query/stream
+│   │   ├── routes/                  # HTTP surface: ingest, github, query
 │   │   ├── schemas/                 # Pydantic request/response models
-│   │   ├── services/
-│   │   │   ├── ingest_service.py    # Ingestion orchestration
-│   │   │   └── query_service.py     # Query + SSE streaming
+│   │   ├── services/                # Ingestion + query orchestration
+│   │   ├── chat/                    # Chat sessions, stored per project
+│   │   ├── context/                 # Selection cost estimation, depth resolution
+│   │   ├── projects/                # Project library and membership
+│   │   ├── sources/                 # Source records, icons, renames
+│   │   ├── notes/                   # Note generation from a selection
 │   │   ├── mindmap/                 # Mind map generation (routes, service, storage)
+│   │   ├── model_hub/               # Model registry, chains, encrypted keys, factory
+│   │   ├── architecture/            # Repository architecture diagram
+│   │   ├── techstack/               # Dependency and tech stack report
+│   │   ├── health/                  # Health score and hotspots
+│   │   └── security/                # CVE scan, local secret and licence checks
 │   ├── core/
 │   │   ├── orchestrator.py          # Central coordinator for the RAG pipeline
 │   │   ├── ingestion/               # Loaders: base, pdf, docx, text, web, github, youtube
 │   │   ├── chunking/                # Text chunker (tiktoken) + code chunker (AST)
-│   │   ├── embedding/               # Voyage embedder + BGE fallback embedder
+│   │   ├── embedding/               # Voyage, OpenAI-compatible and local embedders
 │   │   ├── retrieval/               # BM25, dense, hybrid, RRF fusion, HyDE, reranker
-│   │   ├── generation/              # LLM abstraction + providers (Gemini, Groq, etc.)
+│   │   ├── generation/              # LLM abstraction: Gemini, OpenAI-compatible,
+│   │   │                           # local, plus fallback chains, grounding, citations
 │   │   ├── storage/                 # FAISS store, BM25 index, embedding cache
 │   │   ├── processing/              # Cleaner, deduplicator, metadata extractor
 │   │   └── interfaces/              # Abstract contracts (embedder, LLM, retriever)
@@ -529,7 +578,9 @@ contextforge/
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
-├── docs/                            # Architecture, pipeline and evaluation notes
+├── docs/                            # Getting started, architecture, pipeline, evaluation,
+│   │                                # troubleshooting, and brand assets
+│   └── assets/                       # logo.svg, wordmark.svg (used by this README)
 ├── pyproject.toml                   # Project metadata + ruff config
 ├── Makefile                         # Dev workflow (install, lint, test, build)
 ├── .github/workflows/ci.yml         # CI: lint, test and build on push/PR
