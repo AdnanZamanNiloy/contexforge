@@ -8234,6 +8234,7 @@ body.ad-fullscreen-active .app-layout {
 
 /* --- Stat tiles ---------------------------------------------------------- */
 
+/* Replaced further down with a single-row column grid; see the note there. */
 .gv-stats {
   display: flex;
   flex-wrap: wrap;
@@ -8980,11 +8981,16 @@ body.ad-fullscreen-active .app-layout {
   font-size: 0.68rem;
 }
 
-/* Stat tiles and the rescan control share one row rather than the control
-   wrapping onto its own line, which read as a second toolbar. */
+/* The tiles stay on one line among themselves, but the group is allowed to wrap.
+   Forcing `nowrap` here is what caused the overlap: the workspace is a
+   three-column grid, so the toolbar's width is set by its container rather than
+   the viewport, and a viewport breakpoint cannot predict when it runs out. With
+   nowrap the row overflowed, and a label wider than its tile spilled sideways
+   onto the source picker. Letting the group wrap moves the whole tile row to its
+   own line instead, which is the only layout that cannot overlap. */
 .ts-head-right,
 .hs-head-right {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .gv-stat {
@@ -8992,11 +8998,44 @@ body.ad-fullscreen-active .app-layout {
   padding: 7px 12px;
 }
 
-@media (max-width: 1180px) {
-  .ts-head-right,
-  .hs-head-right {
-    flex-wrap: wrap;
-  }
+/* The tiles must never wrap onto a second line.  They used to: four cards at
+   their natural width did not fit, so the fourth dropped below the other three
+   and the resulting two-row block grew taller than the 34px source picker
+   beside it.  With `align-items: center` the picker stayed centred while the
+   lower tile row landed on top of it, so the two visibly overlapped.
+
+   A column grid fixes the cause rather than trimming pixels until four happen
+   to fit: the tiles share whatever width is available and stay on one line for
+   any count, which is what the three-tile Health Report needs too.  `minmax(0,
+   1fr)` lets a tile shrink below its content width so the grid can never be
+   pushed into wrapping. */
+.gv-stats {
+  display: grid;
+  grid-auto-flow: column;
+  /* Prefer each label's natural width, but allow the track to shrink below it so
+     a cramped toolbar ellipsises a label instead of pushing the row wider. */
+  grid-auto-columns: minmax(0, max-content);
+  align-items: stretch;
+  gap: 8px;
+  /* No shrinking. Shrinking is what produced clipped labels in a cramped
+     toolbar; refusing to shrink lets the row wrap instead, so a label is either
+     fully readable or the whole tile row moves to its own line. */
+  flex: 0 0 auto;
+}
+
+.gv-stat {
+  min-width: 0;
+  padding: 7px 10px;
+}
+
+/* Clipped inside its own tile rather than spilling over the neighbouring
+   control. The value above is the number that matters, so the label yields. */
+.gv-stat-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 
 /* The ecosystem block is a sub-section inside Dependencies, so it needs no box
