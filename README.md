@@ -17,8 +17,8 @@ confidence score, and a per-stage latency breakdown you can actually audit.
 [![FAISS](https://img.shields.io/badge/vector-FAISS-4169E1?style=flat-square&logo=faiss&logoColor=white)](https://github.com/facebookresearch/faiss)
 [![License](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](LICENSE)
 
-[![CI](https://img.shields.io/badge/CI-ruff%20%C2%B7%20pytest%20%C2%B7%20eslint%20%C2%B7%20vitest-8b949e?style=flat-square)](.github/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-603%20backend%20%C2%B7%20363%20frontend-2ea44f?style=for-the-badge)](#development)
+[![CI](https://img.shields.io/badge/CI-ruff%20%C2%B7%20pytest%20%C2%B7%20eslint%20%C2%B7%20vitest-8b949e?style=flat-square)](https://github.com/AdnanZamanNiloy/contexforge/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-603%20backend%20%C2%B7%20369%20frontend-2ea44f?style=for-the-badge)](#development)
 [![API](https://img.shields.io/badge/API-59%20operations-6f42c1?style=for-the-badge)](#api-reference)
 [![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=for-the-badge)](#project-status)
 
@@ -45,21 +45,27 @@ and covered by tests; the caveats below are the honest ones.
 | Projects, chat sessions, notes, mind map | Shipped, tested |
 | Studio (architecture, security, tech stack, health) | Shipped, tested |
 | Model Hub (multi-provider, chains, encrypted keys at rest) | Shipped, tested |
-| CI on `main` | **Failing** — see [Known Issues](#known-issues) |
+| CI on `main` | **Passing** — ruff, format, docs guard, 603 backend tests, eslint, 369 frontend tests, build |
 | Container deployment | Not provided — no Dockerfiles ship yet |
 
 ### Known Issues
 
-- **CI is red on `main`.** The workflow fails at the `ruff format --check` gate
-  on 13 files that were never reformatted. The fix exists on the
-  `source-trust-and-context` and `reliability-hardening` branches; it has not
-  been merged. Frontend lint, tests and build pass; backend tests are skipped
-  because lint fails first.
+These are real and unfixed. Nothing below is planned-and-hidden.
+
 - **The reranker is English-only.** `cross-encoder/ms-marco-MiniLM-L-6-v2` is an
-  English model, so non-English sources are systematically under-scored. Ask in
-  the source's own language for accurate results.
-- **Re-ingesting a URL creates a second source** rather than replacing the first.
-  Prune duplicates from the source list.
+  English model, so non-English sources are systematically under-scored. The same
+  question scores 0.16 in English and 0.98 in the source's own language. Ask in
+  the language of the source for accurate results, or swap in a multilingual
+  cross-encoder in `RERANK_MODEL`.
+- **Re-ingesting a URL creates a second source** rather than replacing the first,
+  so the sidebar accumulates duplicates. Prune them from the source list.
+- **No container build.** `docker-compose.yml` is checked in but cannot build:
+  both services declare a build context and neither directory has a Dockerfile.
+  Run from source.
+- **`npm test` needs a constrained pool on low-memory machines.** 31 jsdom
+  environments at once will exhaust a 6–8 GB box and report spurious failures.
+  GitHub's runner has the headroom; locally, run the files in batches or use
+  `--pool=forks --poolOptions.forks.singleFork`.
 
 <br>
 
@@ -695,6 +701,11 @@ cd backend && python -m pytest tests/ -v
 
 # Frontend
 cd frontend && npm test
+
+# Frontend, one worker. Use this on a machine with less than ~8 GB: the default
+# pool starts one jsdom environment per file and 31 of them will exhaust a small
+# box, reporting failures that are really out-of-memory.
+cd frontend && npx vitest run --pool=forks --poolOptions.forks.singleFork
 ```
 
 ### Building the Frontend
