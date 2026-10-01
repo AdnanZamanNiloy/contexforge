@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1350 140" width="1350" height="140" role="img" aria-label="ContextForge — a grounded AI workspace for retrieval-augmented generation">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1873 211" width="1873" height="211" role="img" aria-label="ContextForge — a grounded AI workspace for retrieval-augmented generation">
   <title>ContextForge</title>
   <!--
     Horizontal lockup: the mark beside the wordmark, for the README header.
@@ -6,6 +6,15 @@
     identically whatever fonts the renderer has, and "Forge" repeats the same
     glyphs in the workspace blue.
   -->
+  <style>
+    .wf-light { fill: #5b6270; }
+    .wf-accent { fill: #2f5fe0; }
+    @media (prefers-color-scheme: dark) {
+      .wf-light { fill: #e8eaed; }
+      .wf-accent { fill: #5b8cff; }
+    }
+  </style>
+
   <defs>
     <linearGradient id="cf-badge" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#6b92ff"/>
@@ -13,7 +22,7 @@
     </linearGradient>
   </defs>
 
-  <g transform="translate(0 0)">
+  <g transform="translate(0 12.6)">
     <rect x="0" y="0" width="140" height="140" rx="32" fill="url(#cf-badge)"/>
     <rect x="30" y="34" width="80" height="16" rx="4" fill="#FFFFFF"/>
     <rect x="57" y="50" width="26" height="34" rx="3" fill="#FFFFFF"/>
@@ -21,9 +30,9 @@
     <rect x="112" y="16" width="16" height="16" rx="3" fill="#EF9F27" transform="rotate(45 120 24)"/>
   </g>
 
-  <g transform="translate(-77.5,-44.75) scale(1.42)">
+  <g transform="translate(-189,-78) scale(2.0588)">
   <!-- "Context" -->
-  <g fill="#e8eaed">
+  <g class="wf-light">
     <!-- C -->
     <path d="M243 44h-22a34 34 0 0 0 0 68h22v-15h-21a19 19 0 0 1 0-38h21z"/>
     <!-- o -->
@@ -41,7 +50,7 @@
   </g>
 
   <!-- "Forge" -->
-  <g fill="#4377fd">
+  <g class="wf-accent">
     <!-- F -->
     <path d="M692 44h44v15h-29v11h26v15h-26v25h-15z"/>
     <!-- o -->
