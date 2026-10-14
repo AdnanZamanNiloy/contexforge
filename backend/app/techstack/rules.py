@@ -271,7 +271,16 @@ def build_index(rules: tuple[TechRule, ...] = RULES) -> RuleIndex:
             prefix = ""
             if anchored:
                 literals = [p[1:].split("\\")[0].split("[")[0].split("(")[0] for p in anchored]
-                prefix = os.path.commonprefix(literals) if literals else ""
+                # RUF071 wants os.path.commonpath() here, but these are package
+                # literals, not filesystem paths, and the two differ in exactly
+                # the way that matters here: commonpath() compares whole path
+                # components, so ["react", "redux", "react-dom"] share no
+                # component and yield "" — destroying the prefilter — and
+                # ["@angular/core", "@angular/router"] yield "@angular" without
+                # the trailing "/" that still gates every scoped package.
+                # commonprefix() compares characters, which is what a literal
+                # prefilter needs: "re" and "@angular/" respectively.
+                prefix = os.path.commonprefix(literals) if literals else ""  # noqa: RUF071
             patterns.append(_PatternRule(rule=rule, patterns=compiled, prefix=prefix))
 
         for path in rule.files:
