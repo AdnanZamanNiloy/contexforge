@@ -7,7 +7,15 @@ name = "contextforge"
 version = "0.1.0"
 description = "A grounded AI workspace for Retrieval-Augmented Generation."
 readme = "README.md"
-requires-python = ">=3.14"
+
+# No `requires-python` here on purpose. The root installs nothing (see
+# `[tool.setuptools]` below), so a version floor only describes the backend —
+# and it is enforced where that matters: CI pins Python 3.14, and
+# `backend/requirements.txt` is the real dependency list. Declaring it here made
+# `pip install .` fail on any host with older Python: Cloudflare's build runner
+# runs that command unconditionally and aborts the whole build when the
+# interpreter does not satisfy the constraint — even though the deploy needs no
+# Python at all. The README documents the 3.14+ requirement for running the app.
 
 # There is nothing to install at the repo root — this file carries project
 # metadata plus the ruff and pytest config. The application is Python in
