@@ -1,0 +1,24 @@
+# Cloudflare Pages custom headers.
+#
+# Vite fingerprints every asset under /assets/, so those are safe to cache
+# forever. The HTML shells carry no hash and must always be revalidated, or a
+# visitor keeps an old shell pointing at deleted assets after a deploy.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/docs
+  Cache-Control: public, max-age=0, must-revalidate
+
+/docs/
+  Cache-Control: public, max-age=0, must-revalidate
+
+# A demo has no secrets, but lock it down anyway: no framing, no sniffing, and
+# a referrer policy that does not leak the deploy host to linked sites.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin

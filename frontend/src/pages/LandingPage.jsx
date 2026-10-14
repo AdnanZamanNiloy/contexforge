@@ -297,7 +297,19 @@ function BrandMark({ size = 24 }) {
 // `ContexForge` in every GitHub link on this page; GitHub redirects, but the
 // canonical form in the README and `git remote` is lowercase.
 const REPO = 'https://github.com/AdnanZamanNiloy/contexforge'
-const DOCS = `${REPO}/tree/main/docs`
+
+// The Docs button points at the documentation site in `docs-site/`, not the
+// markdown folder in `docs/`.
+//
+// Resolution order:
+//   1. `VITE_DOCS_URL`, when a deployment hosts the docs on another origin.
+//   2. `/docs`, in demo/deploy mode — the docs are built into the same Pages
+//      project under `/docs`, so the link stays same-origin and the browser
+//      back button works.
+//   3. The docs dev server, for a local checkout of the app on its own.
+const DOCS =
+  import.meta.env.VITE_DOCS_URL ||
+  (import.meta.env.VITE_DEMO_MODE === 'true' ? '/docs' : 'http://localhost:5174')
 
 // "About" points at the hero, which is where the product promise and the live
 // retrieval trace live — that opening block is what the project is, so it serves
@@ -348,7 +360,7 @@ function Nav() {
           <a className="lp-btn lp-btn-ghost" href={REPO} target="_blank" rel="noreferrer">
             GitHub
           </a>
-          <a className="lp-btn lp-btn-ghost" href={DOCS} target="_blank" rel="noreferrer">
+          <a className="lp-btn lp-btn-ghost" href={DOCS}>
             Docs
           </a>
           <Link className="lp-btn lp-btn-primary" to="/projects">
@@ -668,9 +680,7 @@ function Footer() {
             <a href={REPO} target="_blank" rel="noreferrer">
               GitHub
             </a>
-            <a href={DOCS} target="_blank" rel="noreferrer">
-              Docs
-            </a>
+            <a href={DOCS}>Docs</a>
             <a href={`${REPO}#quick-start`} target="_blank" rel="noreferrer">
               Quick start
             </a>

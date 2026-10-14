@@ -1,4 +1,14 @@
+// Static demo mode. When Cloudflare Pages serves the build there is no backend,
+// so these functions delegate to the demo backend in `deploy/demo/mock.js`,
+// which replays captured conversations with the real SSE wire format. The demo
+// lives outside `frontend/` because it is a deployment artefact, not app code;
+// it is unset by default, so the live app and every test keep talking to the
+// FastAPI server.
+import * as demo from '../../../deploy/demo/mock.js'
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+
+const DEMO = import.meta.env.VITE_DEMO_MODE === 'true'
 
 // RAG queries run HyDE expansion + retrieval + rerank + LLM generation, which
 // routinely takes 8-20s and can exceed 30s under load.  A short timeout aborts a
@@ -65,10 +75,12 @@ async function request(path, options = {}) {
 }
 
 export async function pingApi() {
+  if (DEMO) return demo.pingApi()
   return request('/health', { method: 'GET' })
 }
 
 export async function ingestSource(payload) {
+  if (DEMO) return demo.ingestSource(payload)
   return request('/ingest/source', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -76,6 +88,7 @@ export async function ingestSource(payload) {
 }
 
 export async function ingestGithub(payload) {
+  if (DEMO) return demo.ingestGithub(payload)
   return request('/github/ingest', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -83,6 +96,7 @@ export async function ingestGithub(payload) {
 }
 
 export async function ingestFile({ source_type, file }) {
+  if (DEMO) return demo.ingestFile({ source_type, file })
   const formData = new FormData()
   formData.append('upload', file)
 
@@ -106,6 +120,7 @@ export async function ingestFile({ source_type, file }) {
 }
 
 export async function deleteSource(sourceId) {
+  if (DEMO) return demo.deleteSource(sourceId)
   return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
     method: 'DELETE',
   })
@@ -114,6 +129,7 @@ export async function deleteSource(sourceId) {
 // Rename a source.  The backend stores this as a display-title override
 // layered over the title derived from the source's chunk metadata.
 export async function updateSourceTitle(sourceId, title) {
+  if (DEMO) return demo.updateSourceTitle(sourceId, title)
   return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ title }),
@@ -121,6 +137,7 @@ export async function updateSourceTitle(sourceId, title) {
 }
 
 export async function fetchSources() {
+  if (DEMO) return demo.fetchSources()
   return request('/ingest/sources', {
     method: 'GET',
   })
@@ -130,6 +147,7 @@ export async function fetchSources() {
 // loader actually extracted.  Answers "did the extraction work?" for a scanned
 // PDF, a DOCX that lost its tables, or a fetch that captured navigation.
 export async function fetchSourceDetail(sourceId) {
+  if (DEMO) return demo.fetchSourceDetail(sourceId)
   return request(`/ingest/source/${encodeURIComponent(sourceId)}`, {
     method: 'GET',
   })
@@ -139,12 +157,14 @@ export async function fetchSourceDetail(sourceId) {
 // the document, not the original file — what a user reads here is exactly what
 // can be retrieved and quoted.  Capped server-side; `truncated` reports a cut.
 export async function fetchSourceContent(sourceId) {
+  if (DEMO) return demo.fetchSourceContent(sourceId)
   return request(`/ingest/source/${encodeURIComponent(sourceId)}/content`, {
     method: 'GET',
   })
 }
 
 export async function queryAnswer(payload) {
+  if (DEMO) return demo.queryAnswer(payload)
   return request('/query', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -156,6 +176,7 @@ export async function queryAnswer(payload) {
 // gap that makes the workspace's source selection meaningful.  Cheap enough to
 // call on every selection change: no embedding, retrieval, rerank or generation.
 export async function estimateContext(sourceIds, depth) {
+  if (DEMO) return demo.estimateContext(sourceIds, depth)
   return request('/context/estimate', {
     method: 'POST',
     body: JSON.stringify({
@@ -168,6 +189,7 @@ export async function estimateContext(sourceIds, depth) {
 const STREAM_IDLE_TIMEOUT_MS = 120000
 
 export async function streamQuery(payload, handlers = {}, path = '/query/stream') {
+  if (DEMO) return demo.streamQuery(payload, handlers)
   const controller = new AbortController()
   const externalSignal = handlers.signal
   const onExternalAbort = () => controller.abort()
@@ -341,6 +363,7 @@ export async function streamQuery(payload, handlers = {}, path = '/query/stream'
 // cache entry for it; multiple sources post `source_ids` and are keyed by a
 // sorted composite key server-side.
 export async function createMindMap(sourceIds, options = {}) {
+  if (DEMO) return demo.createMindMap(sourceIds, options)
   const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
   const body = ids.length === 1 ? { source_id: ids[0] } : { source_ids: ids }
   if (options.refresh) body.refresh = true
@@ -352,6 +375,7 @@ export async function createMindMap(sourceIds, options = {}) {
 }
 
 export async function getMindMap(sourceIds) {
+  if (DEMO) return demo.getMindMap(sourceIds)
   const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
   if (ids.length === 0) return null
   // Mirror the server's key derivation so a GET addresses the same entry the
@@ -384,6 +408,7 @@ export async function getMindMap(sourceIds) {
 // one notion of a selection, so the key derivation below is the mind map's.
 
 export async function createNote(sourceIds, options = {}) {
+  if (DEMO) return demo.createNote(sourceIds, options)
   const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
   const body = ids.length === 1 ? { source_id: ids[0] } : { source_ids: ids }
   if (options.refresh) body.refresh = true
@@ -395,6 +420,7 @@ export async function createNote(sourceIds, options = {}) {
 }
 
 export async function getNote(sourceIds) {
+  if (DEMO) return demo.getNote(sourceIds)
   const ids = (Array.isArray(sourceIds) ? sourceIds : [sourceIds]).filter(Boolean)
   if (ids.length === 0) return null
   // Mirror the server's key derivation so a GET addresses the same entry the
@@ -425,10 +451,12 @@ export async function getNote(sourceIds) {
 // backend redacts them from every response.
 
 export async function listModels() {
+  if (DEMO) return demo.listModels()
   return request('/models', { method: 'GET' })
 }
 
 export async function createModel(payload) {
+  if (DEMO) return demo.createModel(payload)
   return request('/models', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -436,6 +464,7 @@ export async function createModel(payload) {
 }
 
 export async function updateModel(modelId, payload) {
+  if (DEMO) return demo.updateModel(modelId, payload)
   return request(`/models/${encodeURIComponent(modelId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -443,18 +472,22 @@ export async function updateModel(modelId, payload) {
 }
 
 export async function deleteModel(modelId) {
+  if (DEMO) return demo.deleteModel(modelId)
   return request(`/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' })
 }
 
 export async function testModel(modelId) {
+  if (DEMO) return demo.testModel(modelId)
   return request(`/models/${encodeURIComponent(modelId)}/test`, { method: 'POST' })
 }
 
 export async function listChains() {
+  if (DEMO) return demo.listChains()
   return request('/chains', { method: 'GET' })
 }
 
 export async function createChain(payload) {
+  if (DEMO) return demo.createChain(payload)
   return request('/chains', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -462,6 +495,7 @@ export async function createChain(payload) {
 }
 
 export async function updateChain(chainId, payload) {
+  if (DEMO) return demo.updateChain(chainId, payload)
   return request(`/chains/${encodeURIComponent(chainId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -469,18 +503,22 @@ export async function updateChain(chainId, payload) {
 }
 
 export async function deleteChain(chainId) {
+  if (DEMO) return demo.deleteChain(chainId)
   return request(`/chains/${encodeURIComponent(chainId)}`, { method: 'DELETE' })
 }
 
 export async function testChain(chainId) {
+  if (DEMO) return demo.testChain(chainId)
   return request(`/chains/${encodeURIComponent(chainId)}/test`, { method: 'POST' })
 }
 
 export async function getServing() {
+  if (DEMO) return demo.getServing()
   return request('/serving', { method: 'GET' })
 }
 
 export async function updateServing(payload) {
+  if (DEMO) return demo.updateServing(payload)
   return request('/serving', {
     method: 'PUT',
     body: JSON.stringify(payload),
@@ -493,6 +531,7 @@ export async function updateServing(payload) {
 // FAISS/BM25; these endpoints only group source_ids into named projects.
 
 export async function listProjects() {
+  if (DEMO) return demo.listProjects()
   return request('/projects', { method: 'GET' })
 }
 
@@ -502,6 +541,7 @@ export async function createProject({
   category = '',
   source_category = 'documents',
 }) {
+  if (DEMO) return demo.createProject({ name, description, category, source_category })
   return request('/projects', {
     method: 'POST',
     body: JSON.stringify({ name, description, category, source_category }),
@@ -509,10 +549,12 @@ export async function createProject({
 }
 
 export async function getProject(projectId) {
+  if (DEMO) return demo.getProject(projectId)
   return request(`/projects/${encodeURIComponent(projectId)}`, { method: 'GET' })
 }
 
 export async function updateProject(projectId, payload) {
+  if (DEMO) return demo.updateProject(projectId, payload)
   return request(`/projects/${encodeURIComponent(projectId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -520,6 +562,7 @@ export async function updateProject(projectId, payload) {
 }
 
 export async function deleteProject(projectId) {
+  if (DEMO) return demo.deleteProject(projectId)
   const response = await fetch(buildUrl(`/projects/${encodeURIComponent(projectId)}`), {
     method: 'DELETE',
   })
@@ -537,12 +580,14 @@ export async function deleteProject(projectId) {
 }
 
 export async function touchProject(projectId) {
+  if (DEMO) return demo.touchProject(projectId)
   return request(`/projects/${encodeURIComponent(projectId)}/touch`, {
     method: 'POST',
   })
 }
 
 export async function attachSourceToProject(projectId, sourceId) {
+  if (DEMO) return demo.attachSourceToProject(projectId, sourceId)
   return request(`/projects/${encodeURIComponent(projectId)}/sources`, {
     method: 'POST',
     body: JSON.stringify({ source_id: sourceId }),
@@ -550,6 +595,7 @@ export async function attachSourceToProject(projectId, sourceId) {
 }
 
 export async function detachSourceFromProject(projectId, sourceId) {
+  if (DEMO) return demo.detachSourceFromProject(projectId, sourceId)
   return request(
     `/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourceId)}`,
     { method: 'DELETE' },
@@ -563,10 +609,12 @@ export async function detachSourceFromProject(projectId, sourceId) {
 // workspace selection never rewrites earlier turns.
 
 export async function listChatSessions(projectId) {
+  if (DEMO) return demo.listChatSessions(projectId)
   return request(`/projects/${encodeURIComponent(projectId)}/sessions`, { method: 'GET' })
 }
 
 export async function createChatSession(projectId, { title = '' } = {}) {
+  if (DEMO) return demo.createChatSession(projectId, { title })
   return request(`/projects/${encodeURIComponent(projectId)}/sessions`, {
     method: 'POST',
     body: JSON.stringify({ title }),
@@ -574,10 +622,12 @@ export async function createChatSession(projectId, { title = '' } = {}) {
 }
 
 export async function getChatSession(sessionId) {
+  if (DEMO) return demo.getChatSession(sessionId)
   return request(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'GET' })
 }
 
 export async function renameChatSession(sessionId, title) {
+  if (DEMO) return demo.renameChatSession(sessionId, title)
   return request(`/sessions/${encodeURIComponent(sessionId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ title }),
@@ -585,14 +635,17 @@ export async function renameChatSession(sessionId, title) {
 }
 
 export async function deleteChatSession(sessionId) {
+  if (DEMO) return demo.deleteChatSession(sessionId)
   return request(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
 }
 
 export async function listChatMessages(sessionId) {
+  if (DEMO) return demo.listChatMessages(sessionId)
   return request(`/sessions/${encodeURIComponent(sessionId)}/messages`, { method: 'GET' })
 }
 
 export async function addChatMessage(sessionId, payload) {
+  if (DEMO) return demo.addChatMessage(sessionId, payload)
   return request(`/sessions/${encodeURIComponent(sessionId)}/messages`, {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -600,6 +653,7 @@ export async function addChatMessage(sessionId, payload) {
 }
 
 export async function updateChatMessage(messageId, payload) {
+  if (DEMO) return demo.updateChatMessage(messageId, payload)
   return request(`/messages/${encodeURIComponent(messageId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -622,6 +676,7 @@ const ARCHITECTURE_TIMEOUT_MS = 180000
 // carry a readable failure rather than a bare network drop.  Deliberately does
 // not share code with `streamQuery`, so the chat transport stays untouched.
 export async function streamArchitecture(payload, handlers = {}, path = '/architecture/generate') {
+  if (DEMO) return demo.streamArchitecture(payload, handlers)
   const controller = new AbortController()
   const externalSignal = handlers.signal
   const onExternalAbort = () => controller.abort()
@@ -741,6 +796,7 @@ function withSource(path, sourceId) {
 }
 
 export async function regenerateArchitecture(projectId, sourceId, handlers = {}) {
+  if (DEMO) return demo.regenerateArchitecture(projectId, sourceId, handlers)
   return streamArchitecture(
     { project_id: projectId, source_id: sourceId || '', refresh: true },
     handlers,
@@ -749,6 +805,7 @@ export async function regenerateArchitecture(projectId, sourceId, handlers = {})
 }
 
 export async function getArchitecture(projectId, sourceId = '') {
+  if (DEMO) return demo.getArchitecture(projectId, sourceId)
   return request(withSource(`/architecture/${encodeURIComponent(projectId)}`, sourceId))
 }
 
@@ -757,10 +814,12 @@ export async function getArchitecture(projectId, sourceId = '') {
 // A scan is local string processing over chunks already in memory, so it lands
 // in milliseconds and needs no streaming or special timeout handling.
 export async function getTechStack(projectId, sourceId = '') {
+  if (DEMO) return demo.getTechStack(projectId, sourceId)
   return request(withSource(`/tech-stack/${encodeURIComponent(projectId)}`, sourceId))
 }
 
 export async function scanTechStack(projectId, { sourceId = '', refresh = false } = {}) {
+  if (DEMO) return demo.scanTechStack(projectId, { sourceId, refresh })
   return request('/tech-stack/scan', {
     method: 'POST',
     body: JSON.stringify({ project_id: projectId, source_id: sourceId, refresh }),
@@ -773,10 +832,12 @@ export async function scanTechStack(projectId, { sourceId = '', refresh = false 
 // resolvable version, asks OSV.dev about it.  That makes it seconds rather than
 // milliseconds -- still a plain request, so still no streaming.
 export async function getSecurityScan(projectId, sourceId = '') {
+  if (DEMO) return demo.getSecurityScan(projectId, sourceId)
   return request(withSource(`/security/${encodeURIComponent(projectId)}`, sourceId))
 }
 
 export async function scanSecurity(projectId, { sourceId = '', refresh = false } = {}) {
+  if (DEMO) return demo.scanSecurity(projectId, { sourceId, refresh })
   return request('/security/scan', {
     method: 'POST',
     body: JSON.stringify({ project_id: projectId, source_id: sourceId, refresh }),
@@ -788,10 +849,12 @@ export async function scanSecurity(projectId, { sourceId = '', refresh = false }
 // A health scan is AST parsing of chunks already in memory, so it lands in
 // milliseconds and needs no streaming or special timeout handling.
 export async function getHealthScan(projectId, sourceId = '') {
+  if (DEMO) return demo.getHealthScan(projectId, sourceId)
   return request(withSource(`/health/${encodeURIComponent(projectId)}`, sourceId))
 }
 
 export async function scanHealth(projectId, { sourceId = '', refresh = false } = {}) {
+  if (DEMO) return demo.scanHealth(projectId, { sourceId, refresh })
   return request('/health/scan', {
     method: 'POST',
     body: JSON.stringify({ project_id: projectId, source_id: sourceId, refresh }),
@@ -803,6 +866,7 @@ export async function scanHealth(projectId, { sourceId = '', refresh = false } =
 // Persist which source the analysis tools are scoped to, so reopening a tool
 // restores the user's last choice.
 export async function setProjectToolSource(projectId, sourceId) {
+  if (DEMO) return demo.setProjectToolSource(projectId, sourceId)
   return request(`/projects/${encodeURIComponent(projectId)}/tool-source`, {
     method: 'PUT',
     body: JSON.stringify({ source_id: sourceId || '' }),

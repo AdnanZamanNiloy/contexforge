@@ -1,0 +1,27 @@
+{
+  // Cloudflare Workers static-asset config for the ContextForge demo.
+  //
+  // WITHOUT this file, `npx wrangler deploy` treats the repo as a plain Worker
+  // and uploads the SOURCE tree (frontend/src/*.jsx, test/*) — which a browser
+  // cannot run, producing a blank page. The `assets` block below makes the
+  // Worker serve the BUILT bundle from deploy/dist instead.
+  //
+  // The build must run before deploy (Cloudflare's build command does this):
+  //   npm run build            # -> deploy/build.sh
+  //
+  // That script builds the frontend with VITE_DEMO_MODE=true (landing + demo
+  // workspace) and the docs site with base=/docs/, then copies _redirects and
+  // _headers into deploy/dist. No backend is deployed; the demo answers from
+  // deploy/demo/mock.js, compiled into the bundle.
+  "name": "contextforge",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    // The built static bundle: landing + workspace at the root, docs under
+    // /docs, plus _redirects and _headers.
+    "directory": "deploy/dist",
+    // SPA behaviour: a request for a path that is not a real file returns
+    // index.html. The `_redirects` file narrows this further so /docs/* falls
+    // back to the docs shell rather than the app shell.
+    "not_found_handling": "single-page-application"
+  }
+}

@@ -10,6 +10,16 @@ frontend/node_modules/
 frontend/dist/
 /mindmap/
 
+# Root package.json exists only so static hosts (Cloudflare) install the
+# frontend and docs dependencies where their build runner looks for it.
+node_modules/
+
+# Deploy build output and local Cloudflare state.
+deploy/dist/
+docs-site/node_modules/
+docs-site/dist/
+.wrangler/
+
 # Visual-testing artifacts (screenshots + harness scripts)
 frontend/scripts/
 frontend/*.png

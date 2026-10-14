@@ -1,0 +1,270 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
+    "JetBrains Mono", monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   Semantic tokens.
+
+   These are the ONLY colours the site uses.  Names describe a role, not a
+   colour, so a component never has to know the palette.
+
+   Values are re-pointed at the main app's Voltagent palette in
+   `frontend/src/styles/main.css` (`:root`) so the two surfaces are the exact
+   same black.  The app is dark-only — it declares `color-scheme: dark` and
+   never reacts to `prefers-color-scheme` — so the docs are dark-only too.
+   Following the OS setting here would show a white page next to the app's
+   black one on any light-mode machine, which is the mismatch this fixes.
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+
+  /* surfaces — mirrors --canvas / --canvas-soft */
+  --docs-canvas: #101010;
+  --docs-surface: #101010;
+  --docs-surface-2: #1a1a1a;
+  --docs-elevated: #1a1a1a;
+
+  /* borders — mirrors --hairline */
+  --docs-line: #3d3a39;
+  --docs-line-strong: #4a4744;
+
+  /* text — mirrors --ink / --body-color / --mute */
+  --docs-ink: #f2f2f2;
+  --docs-body: #bdbdbd;
+  --docs-muted: #8b949e;
+  --docs-faint: #8b949e;
+
+  /* accent — mirrors --primary / --primary-soft */
+  --docs-brand: #4377fd;
+  --docs-brand-hover: #6b92ff;
+  --docs-brand-soft: #6b92ff;
+
+  --docs-overlay: rgb(0 0 0 / 0.6);
+  --docs-shadow: 0 20px 60px rgb(0 0 0 / 0.7);
+  --docs-selection: #4377fd;
+}
+
+/* `inline` keeps the var() reference in each generated utility rather than
+   resolving it once at build time, so utilities stay wired to the tokens
+   above instead of baking in a copy of the value. */
+@theme inline {
+  --color-canvas: var(--docs-canvas);
+  --color-surface: var(--docs-surface);
+  --color-surface2: var(--docs-surface-2);
+  --color-elevated: var(--docs-elevated);
+  --color-line: var(--docs-line);
+  --color-line-strong: var(--docs-line-strong);
+  --color-body: var(--docs-body);
+  --color-ink: var(--docs-ink);
+  --color-muted: var(--docs-muted);
+  --color-faint: var(--docs-faint);
+  --color-brand: var(--docs-brand);
+  --color-brand-hover: var(--docs-brand-hover);
+  --color-brand-soft: var(--docs-brand-soft);
+  --color-overlay: var(--docs-overlay);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+  /* Reserve the scrollbar track so a page that is one line short of scrolling
+     does not paint a few pixels wider than the previous one — the horizontal
+     jump when moving between a long and a short page. */
+  scrollbar-gutter: stable;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--docs-canvas);
+  color: var(--docs-body);
+  font-family: var(--font-sans);
+  font-feature-settings:
+    "calt" 1,
+    "rlig" 1;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+}
+
+/* Focus ring, matching the app's `--primary-soft` outline. */
+:focus-visible {
+  outline: none;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--docs-brand-hover);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: rgb(67 119 253 / 0.28);
+  color: var(--docs-ink);
+}
+
+/* thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--docs-line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--docs-line-strong);
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Long-form markdown
+   --------------------------------------------------------------------------- */
+.prose-docs {
+  color: var(--docs-body);
+  line-height: 1.75;
+  font-size: 0.9375rem;
+}
+.prose-docs > * + * {
+  margin-top: 1.25rem;
+}
+.prose-docs h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--docs-ink);
+  letter-spacing: -0.02em;
+  margin-bottom: 1.25rem;
+}
+.prose-docs h2 {
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--docs-ink);
+  letter-spacing: -0.01em;
+  scroll-margin-top: 6rem;
+}
+.prose-docs h3 {
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--docs-ink);
+  scroll-margin-top: 6rem;
+}
+.prose-docs a {
+  color: var(--docs-brand);
+  text-decoration: none;
+  font-weight: 500;
+}
+.prose-docs a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-docs strong {
+  color: var(--docs-ink);
+  font-weight: 600;
+}
+.prose-docs ul,
+.prose-docs ol {
+  padding-left: 1.4rem;
+}
+.prose-docs ul {
+  list-style: disc;
+}
+.prose-docs ol {
+  list-style: decimal;
+}
+.prose-docs li {
+  margin-top: 0.4rem;
+}
+.prose-docs li::marker {
+  color: var(--docs-brand);
+}
+.prose-docs code {
+  font-family: var(--font-mono);
+  font-size: 0.83em;
+  background: var(--docs-elevated);
+  border: 1px solid var(--docs-line);
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+  color: var(--docs-brand-soft);
+}
+.prose-docs pre {
+  background: var(--docs-surface-2) !important;
+  border: 1px solid var(--docs-line);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-size: 0.83rem;
+  line-height: 1.6;
+}
+.prose-docs pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--docs-body);
+  font-size: inherit;
+}
+.prose-docs blockquote {
+  border-left: 3px solid var(--docs-brand);
+  padding: 0.25rem 0 0.25rem 1rem;
+  color: var(--docs-muted);
+  font-style: normal;
+}
+.prose-docs blockquote p {
+  margin: 0;
+}
+.prose-docs table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  display: block;
+  overflow-x: auto;
+}
+.prose-docs th {
+  text-align: left;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--docs-line-strong);
+  color: var(--docs-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.prose-docs td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid var(--docs-line);
+  vertical-align: top;
+}
+.prose-docs hr {
+  border: none;
+  border-top: 1px solid var(--docs-line);
+  margin: 2.5rem 0;
+}
+.prose-docs img {
+  max-width: 100%;
+  border-radius: 10px;
+}
+.prose-docs .header-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+.prose-docs .header-anchor:hover {
+  text-decoration: none;
+  color: var(--docs-ink);
+}
