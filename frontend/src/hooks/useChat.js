@@ -49,6 +49,12 @@ function normalizeMessage(message) {
     // legacy messages; the UI treats it as "the workspace selection at send".
     sourceIds: message.sourceIds || message.source_ids || [],
     confidence: message.confidence || null,
+    // The retrieved chunk summaries and per-stage latency this answer was
+    // produced with, when the server stored them alongside it.  Both are absent
+    // on messages persisted before this was recorded, and on live ones — they
+    // arrive over the stream instead.
+    sources: message.sources || [],
+    latency: message.latency || {},
   }
 }
 
@@ -141,7 +147,22 @@ export function useChat({
       .then((session) => {
         if (cancelled) return
         loadedSessionsRef.current.add(sessionId)
-        setMessages((session.messages || []).map(normalizeMessage))
+        const restored = (session.messages || []).map(normalizeMessage)
+        setMessages(restored)
+        // Re-open the evidence rail for a restored thread.  The stored answer
+        // carries the confidence block and the chunk summaries it was answered
+        // with, so the last assistant message supplies the reading for the
+        // answer currently on screen.  Without this, reloading a session showed
+        // the answer but an empty "Awaiting retrieval" rail, as though nothing
+        // had been retrieved.  Latency is restored only when the message
+        // carries it; the backend persists the confidence and the chunk list
+        // but not the per-stage breakdown.
+        const lastAnswer = [...restored].reverse().find((m) => m.role === 'assistant')
+        setConfidence(lastAnswer?.confidence || null)
+        const restoredSources = lastAnswer?.sources || []
+        setSources(restoredSources)
+        setLatency(lastAnswer?.latency || {})
+        setShowUploadHint(restoredSources.length === 0)
         setError('')
       })
       .catch(() => {

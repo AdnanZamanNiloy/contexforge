@@ -48,9 +48,25 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 // These mirror the server's response envelopes exactly, so the hooks and
 // components downstream cannot tell the difference.
 
+// Mirrors `app/projects/schemas.py::ProjectResponse`. The field name matters:
+// `Home.jsx` builds `visibleSources` by intersecting the global source list
+// with `project.source_ids`, so a project that answers with anything else
+// renders an empty workspace — no sources, no counts, "No sources added yet".
 function projectRecord(project) {
-  const { source_ids = [], ...rest } = project
-  return { ...clone(rest), sources: clone(source_ids), source_count: source_ids.length }
+  const sourceIds = project.source_ids || []
+  const sourceTypes = {}
+  for (const id of sourceIds) {
+    const source = sources.find((s) => s.source_id === id)
+    if (source) sourceTypes[source.type] = (sourceTypes[source.type] || 0) + 1
+  }
+
+  return {
+    ...clone(project),
+    source_ids: clone(sourceIds),
+    source_count: sourceIds.length,
+    source_types: sourceTypes,
+    last_source_at: project.last_source_at || project.updated_at || null,
+  }
 }
 
 function sessionRecord(session) {
@@ -66,6 +82,13 @@ function messageRecord(message) {
     status: message.status || 'done',
     source_ids: message.sourceIds || [],
     confidence: message.confidence || null,
+    // The chunk summaries and stage timings this answer was produced with. The
+    // backend persists confidence and the source selection but not these; the
+    // demo has them in the seed, and the evidence rail and confidence meter
+    // read them when a stored thread is reopened, so a visitor sees the same
+    // reading they would get live.
+    sources: message.sources || [],
+    latency: message.latency || {},
     created_at: message.created_at || now(),
   }
 }
