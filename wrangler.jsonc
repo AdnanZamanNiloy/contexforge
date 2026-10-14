@@ -1,27 +1,28 @@
 {
-  // Cloudflare Workers static-asset config for the ContextForge demo.
+  // Cloudflare Workers config for the ContextForge demo.
   //
   // WITHOUT this file, `npx wrangler deploy` treats the repo as a plain Worker
   // and uploads the SOURCE tree (frontend/src/*.jsx, test/*) — which a browser
-  // cannot run, producing a blank page. The `assets` block below makes the
-  // Worker serve the BUILT bundle from deploy/dist instead.
+  // cannot run, producing a blank page. The `assets` block below serves the
+  // BUILT bundle from deploy/dist, and `main` routes the two SPAs inside it.
   //
-  // The build must run before deploy (Cloudflare's build command does this):
-  //   npm run build            # -> deploy/build.sh
+  // The build must run before deploy. It runs during install (see the root
+  // package.json postinstall and deploy/ci-build.sh) and can also be run on its
+  // own with `npm run build`.
   //
-  // That script builds the frontend with VITE_DEMO_MODE=true (landing + demo
-  // workspace) and the docs site with base=/docs/, then copies _redirects and
-  // _headers into deploy/dist. No backend is deployed; the demo answers from
-  // deploy/demo/mock.js, compiled into the bundle.
-  "name": "contextforge",
+  // The name must match the Worker the CI project was created for, or Workers
+  // Builds overrides it and opens a pull request to resolve the mismatch.
+  "name": "contexforge",
+  "main": "deploy/worker.js",
   "compatibility_date": "2026-10-01",
   "assets": {
     // The built static bundle: landing + workspace at the root, docs under
-    // /docs, plus _redirects and _headers.
+    // /docs. `deploy/worker.js` picks the shell when no file matches.
     "directory": "deploy/dist",
-    // SPA behaviour: a request for a path that is not a real file returns
-    // index.html. The `_redirects` file narrows this further so /docs/* falls
-    // back to the docs shell rather than the app shell.
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    // Run the Worker on every request so it can choose between the app shell
+    // and the docs shell. Without this, static assets are served first and a
+    // deep /docs route that matches no file would never reach the Worker.
+    "run_worker_first": true
   }
 }

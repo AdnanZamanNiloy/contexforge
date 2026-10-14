@@ -19,7 +19,8 @@ against the real server.
 ```
 deploy/
 ├── build.sh          builds the frontend + docs into deploy/dist/
-├── _redirects        routing (docs shell vs app shell)
+├── ci-build.sh       runs build.sh during install, on a CI host only
+├── worker.js         routes the app shell vs the docs shell at request time
 ├── _headers          cache + security headers
 ├── README.md         this file
 ├── demo/
@@ -74,7 +75,10 @@ Produces `deploy/dist/`:
 
 - the frontend built with `VITE_DEMO_MODE=true` at the root,
 - the docs built with `VITE_DOCS_BASE=/docs/` under `docs/`,
-- `_redirects` and `_headers` copied alongside.
+- `_headers` copied alongside.
+
+`deploy/worker.js` does the routing at request time; no `_redirects` file is
+emitted. See the routing note below.
 
 ## Deploy
 
@@ -91,19 +95,18 @@ these in **Settings → Build**:
 | Setting | Value |
 |---|---|
 | Build command | *(leave empty)* |
-| Deploy command | `npm run deploy` |
+| Deploy command | `npx wrangler deploy` |
 | Environment variable | `NODE_VERSION=22` |
 
-`npm run deploy` builds the bundle into `deploy/dist` and then runs
-`wrangler deploy`, which reads `wrangler.jsonc`. Use this single-script form
-rather than a separate build command: the deploy command runs unconditionally,
-so it is the one setting that cannot be left blank and silently produce an empty
-`assets.directory` (which fails with *"the directory specified by the
-assets.directory field ... does not exist"*).
+No build command is needed: the bundle is built during the install phase, which
+always runs. `bun install` triggers the root `postinstall`, which calls
+`deploy/ci-build.sh`; that runs the full bundle build on a CI host and no-ops on
+a developer machine, so `deploy/dist` exists by the time `wrangler deploy` reads
+it. Nothing depends on a dashboard field being filled in.
 
-The same build can be run on its own with **Build command** `npm run build` and
-**Deploy command** `npx wrangler deploy`; either arrangement works as long as
-the build runs before the deploy.
+The Worker name in `wrangler.jsonc` (`contexforge`) must match the name the CI
+project was created with, or Workers Builds overrides it and opens a pull
+request to resolve the mismatch.
 
 ### Build locally, upload
 
@@ -112,13 +115,28 @@ npm run build                  # -> deploy/dist
 npx wrangler deploy            # reads wrangler.jsonc -> deploy/dist
 ```
 
+### Routing the two SPAs
+
+`deploy/worker.js` is the Worker entry (`main` in `wrangler.jsonc`). It runs
+first on every request, serves a real file when one exists, and otherwise
+returns the shell for the path — the docs shell under `/docs`, the app shell
+everywhere else.
+
+This cannot be done with a `_redirects` file. The natural rules —
+`/docs/* /docs/index.html` and `/* /index.html` — rewrite to paths that match
+their own source pattern, and Cloudflare rejects the deploy with *"Infinite loop
+detected in this rule"*. `not_found_handling: single-page-application` alone
+cannot do it either: it always rewrites to the ROOT `index.html`, so a deep
+`/docs/...` route would load the app shell. The Worker makes the choice
+explicitly, and real assets are still served straight from the assets binding.
+
 ### Why a root package.json
 
 Cloudflare's build runner looks for a `package.json` at the repository root. The
 app lives in `frontend/` and the docs in `docs-site/`, so the root file is a thin
-shim: its `postinstall` installs both, and its `build` / `deploy` scripts drive
-the bundle. Without it the runner has nothing to install and the build produces a
-blank page.
+shim: its `postinstall` installs both and builds on CI, and its `build` / `deploy`
+scripts drive the bundle. Without it the runner has nothing to install and the
+build produces a blank page.
 
 ## Why one project
 

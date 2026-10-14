@@ -1,4 +1,4 @@
-# Cloudflare Pages custom headers.
+# Cloudflare response headers.
 #
 # Vite fingerprints every asset under /assets/, so those are safe to cache
 # forever. The HTML shells carry no hash and must always be revalidated, or a

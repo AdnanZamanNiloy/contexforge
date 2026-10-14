@@ -9,8 +9,10 @@
 #
 #   deploy/dist/            landing page + demo workspace (the frontend build)
 #   deploy/dist/docs/       the documentation site, mounted under /docs
-#   deploy/dist/_redirects  routing (docs shell vs app shell)
 #   deploy/dist/_headers    cache + security headers
+#
+# deploy/worker.js routes between the two SPAs; there is no _redirects file
+# (its shell-rewrite rules loop, and Cloudflare rejects them). See worker.js.
 #
 # One project serves all three, so the landing page, the docs and the demo share
 # one origin — the Docs link stays same-origin and the browser back button works.
@@ -38,8 +40,7 @@ cd "$ROOT/docs-site"
 [ -d node_modules ] || (npm ci || npm install)
 VITE_DOCS_BASE=/docs/ npm run build -- --outDir "$DIST/docs" --emptyOutDir
 
-echo "==> Writing the routing and header control files"
-cp "$ROOT/deploy/_redirects" "$DIST/_redirects"
+echo "==> Writing the header control file"
 cp "$ROOT/deploy/_headers" "$DIST/_headers"
 
 echo "==> Done. Output in deploy/dist:"
