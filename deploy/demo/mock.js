@@ -261,51 +261,93 @@ export async function updateSourceTitle(sourceId, title) {
 // --- Public: context estimation -------------------------------------------
 // The meter calls this on every selection change. It MUST stay cheap and never
 // throw, mirroring the real server's free, no-model-call estimator.
+//
+// The field names are `app/context/schemas.py::ContextEstimateResponse` exactly.
+// This matters: `ContextMeter` maps over `sources` and reads
+// `dropped_source_ids` / `missing_source_ids` / `usable_fraction` directly when
+// the panel is expanded, so a payload with different names leaves those undefined
+// and `.map` on `undefined` blanks the page on first click. An earlier version
+// answered with `available_tokens` / `selected_tokens` / `prompt_budget` and
+// crashed exactly that way.
 
 export async function estimateContext(sourceIds = [], depth = 'balanced') {
   await sleep(30)
-  const selected = sourceIds && sourceIds.length ? sourceIds : sources.map((s) => s.source_id)
+  const requested = sourceIds && sourceIds.length ? sourceIds : []
 
+  // Chunk caps per depth, matching the workspace's documented presets.
   const DEPTH = {
-    focused: { max_sources: 2, retrieved: 20, reranked: 5, per_source: 4 },
-    balanced: { max_sources: 6, retrieved: 40, reranked: 12, per_source: 6 },
-    broad: { max_sources: 25, retrieved: 80, reranked: 25, per_source: 10 },
+    focused: { per_source_cap: 4, prompt_chunk_limit: 5 },
+    balanced: { per_source_cap: 6, prompt_chunk_limit: 12 },
+    broad: { per_source_cap: 10, prompt_chunk_limit: 25 },
   }
-  const limits = DEPTH[depth] || DEPTH.balanced
+  const limits = DEPTH[depth] || DEPTH.focused
 
-  // Tokens available across the selection, then how much of it the depth will
-  // actually read. The gap between the two is the point of the meter.
-  const available = selected.reduce((sum, id) => {
+  // ~420 tokens per chunk is the loader's real average, so the numbers the meter
+  // shows are proportionate to the material the demo actually ships.
+  const TOKENS_PER_CHUNK = 420
+  const CHARS_PER_TOKEN = 4
+
+  // Sources found in the index among those selected, and those that are gone.
+  const found = []
+  const missingSourceIds = []
+  for (const id of requested) {
     const source = sources.find((s) => s.source_id === id)
-    return sum + (source ? source.chunks * 420 : 1200)
-  }, 0)
+    if (source) {
+      const tokenCount = (source.chunks || 0) * TOKENS_PER_CHUNK
+      found.push({
+        source_id: source.source_id,
+        title: source.title,
+        chunk_count: source.chunks || 0,
+        char_count: tokenCount * CHARS_PER_TOKEN,
+        token_count: tokenCount,
+      })
+    } else {
+      missingSourceIds.push(id)
+    }
+  }
 
-  const effectiveSources = selected.slice(0, limits.max_sources)
-  const budget = 8000
-  const selectedTokens = Math.min(available, budget)
-  const reduction =
-    effectiveSources.length < selected.length || available > budget
-      ? {
-          applied: true,
-          reason: `This selection is wider than the ${depth} depth reads; it was narrowed to ${effectiveSources.length} source${effectiveSources.length === 1 ? '' : 's'} within the prompt budget.`,
-        }
-      : { applied: false, reason: null }
+  const totalTokenCount = found.reduce((sum, s) => sum + s.token_count, 0)
+  const totalCharCount = found.reduce((sum, s) => sum + s.char_count, 0)
+
+  // A depth's two caps bound the prompt: at most `prompt_chunk_limit` chunks
+  // overall, and at most `per_source_cap` from any one source. A source that
+  // exceeds its own cap is dropped entirely rather than sampled.
+  const droppedSourceIds = []
+  let promptChunks = 0
+  for (const source of found) {
+    if (source.chunk_count <= limits.per_source_cap) {
+      promptChunks += source.chunk_count
+      continue
+    }
+    if (promptChunks + limits.per_source_cap > limits.prompt_chunk_limit) {
+      droppedSourceIds.push(source.source_id)
+      continue
+    }
+    promptChunks += limits.per_source_cap
+  }
+
+  const promptTokenEstimate = promptChunks * TOKENS_PER_CHUNK
+  const usableFraction = totalTokenCount > 0 ? promptTokenEstimate / totalTokenCount : 0
 
   return {
+    source_count: found.length,
+    sources: found,
+
+    total_char_count: totalCharCount,
+    total_token_count: totalTokenCount,
+
+    prompt_token_estimate: promptTokenEstimate,
+    prompt_chunk_limit: limits.prompt_chunk_limit,
+    per_source_cap: limits.per_source_cap,
+    usable_fraction: usableFraction,
+
     depth,
-    limits: {
-      max_sources: limits.max_sources,
-      retrieved: limits.retrieved,
-      reranked: limits.reranked,
-      per_source_cap: limits.per_source,
-    },
-    selected_sources: selected,
-    effective_sources: effectiveSources,
-    missing_sources: selected.filter((id) => !sources.some((s) => s.source_id === id)),
-    available_tokens: available,
-    selected_tokens: selectedTokens,
-    prompt_budget: budget,
-    reduction,
+    effective_depth: depth,
+
+    beyond_diminishing_returns: totalTokenCount > 60000,
+
+    dropped_source_ids: droppedSourceIds,
+    missing_source_ids: missingSourceIds,
   }
 }
 

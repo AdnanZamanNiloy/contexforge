@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { IS_DEMO } from '../lib/demo'
+
 // Which sources the workspace is currently working with.
 //
 // The project workspace is the only workspace: sources are picked here, in the
@@ -38,6 +40,20 @@ export function useSourceSelection(availableSources) {
       const next = prev.filter((id) => allowed.has(id))
       return next.length === prev.length ? prev : next
     })
+  }
+
+  // The static demo opens with its sources already selected.  With an empty
+  // selection the workspace reads as inert on arrival: the token meter shows
+  // "0 of 0 tokens used", the context panel lists no sources, and every
+  // capability that depends on a selection has nothing to act on — before the
+  // visitor has touched anything.  Seeding is keyed on the available ids, so
+  // moving between projects re-seeds each one, while a later manual clear is
+  // left alone (the key does not change again).  Demo only; the live app starts
+  // empty, because choosing what to work with is the user's decision.
+  const [demoSeededAgainst, setDemoSeededAgainst] = useState(null)
+  if (IS_DEMO && availableKey && demoSeededAgainst !== availableKey) {
+    setDemoSeededAgainst(availableKey)
+    setSelectedIds(sourceList.map((s) => s.id))
   }
 
   const isSelected = useCallback((id) => selectedIds.includes(id), [selectedIds])
