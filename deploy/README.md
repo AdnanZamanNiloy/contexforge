@@ -84,39 +84,41 @@ and serves the built bundle from `deploy/dist`.
 
 ### Connect the repository (recommended)
 
-Create a Worker (or Pages project) from this repository. Because it uses
-`wrangler.jsonc` static assets, the defaults are picked up automatically, but
-set these to be explicit:
+Create a Worker from this repository. Workers Builds runs an optional **Build
+command**, then a **Deploy command** (`npx wrangler deploy` by default). Set
+these in **Settings → Build**:
 
 | Setting | Value |
 |---|---|
-| Build command | `npm run build` |
-| Build output directory | `deploy/dist` |
+| Build command | *(leave empty)* |
+| Deploy command | `npm run deploy` |
 | Environment variable | `NODE_VERSION=22` |
 
-`npm run build` runs `deploy/build.sh`, which builds the frontend in demo mode
-and the docs at `/docs`, then copies the control files.
+`npm run deploy` builds the bundle into `deploy/dist` and then runs
+`wrangler deploy`, which reads `wrangler.jsonc`. Use this single-script form
+rather than a separate build command: the deploy command runs unconditionally,
+so it is the one setting that cannot be left blank and silently produce an empty
+`assets.directory` (which fails with *"the directory specified by the
+assets.directory field ... does not exist"*).
+
+The same build can be run on its own with **Build command** `npm run build` and
+**Deploy command** `npx wrangler deploy`; either arrangement works as long as
+the build runs before the deploy.
 
 ### Build locally, upload
 
 ```bash
-bash deploy/build.sh
+npm run build                  # -> deploy/dist
 npx wrangler deploy            # reads wrangler.jsonc -> deploy/dist
-```
-
-Or, using the Pages uploader:
-
-```bash
-npx wrangler pages deploy deploy/dist --project-name contextforge
 ```
 
 ### Why a root package.json
 
 Cloudflare's build runner looks for a `package.json` at the repository root. The
 app lives in `frontend/` and the docs in `docs-site/`, so the root file is a thin
-shim: its `postinstall` installs both, and its `build` script runs
-`deploy/build.sh`. Without it the runner has nothing to install and the build
-produces a blank page.
+shim: its `postinstall` installs both, and its `build` / `deploy` scripts drive
+the bundle. Without it the runner has nothing to install and the build produces a
+blank page.
 
 ## Why one project
 

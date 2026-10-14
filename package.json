@@ -5,6 +5,7 @@
   "description": "Repo-root package.json so static hosts (Cloudflare Workers/Pages) install the frontend and docs dependencies at the root, where their build runner looks for a package.json. The app itself lives in frontend/ and the docs site in docs-site/.",
   "scripts": {
     "postinstall": "npm --prefix frontend ci || npm --prefix frontend install; npm --prefix docs-site ci || npm --prefix docs-site install",
-    "build": "bash deploy/build.sh"
+    "build": "bash deploy/build.sh",
+    "deploy": "npm run build && wrangler deploy"
   }
 }
