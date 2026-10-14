@@ -759,6 +759,18 @@
   transform: translateY(0);
 }
 
+/* Disabled in the static demo: no backend to create into. */
+.pg-new-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  filter: none;
+  transform: none;
+}
+.pg-new-btn:disabled:hover {
+  filter: none;
+  transform: none;
+}
+
 /* ---------- project grid + cards ---------- */
 
 .pg-grid {
@@ -984,6 +996,16 @@
 
 .pg-btn-primary:hover {
   filter: brightness(1.08);
+}
+
+/* Disabled in the static demo: no backend to create into. */
+.pg-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  filter: none;
+}
+.pg-btn-primary:disabled:hover {
+  filter: none;
 }
 
 .pg-btn-ghost {

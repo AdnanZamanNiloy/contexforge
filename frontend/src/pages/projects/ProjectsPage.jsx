@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import ContextForgeMark from '../../components/ContextForgeMark'
 import { useProjects } from '../../hooks/useProjects'
+import { DEMO_DISABLED_HINT, IS_DEMO } from '../../lib/demo'
 import {
   FAMILY_FILTERS,
   FEATURED_PROJECTS,
@@ -539,7 +540,13 @@ export default function ProjectsPage() {
                 </button>
               </div>
 
-              <button className="pg-new-btn" onClick={() => setModalOpen(true)}>
+              <button
+                className="pg-new-btn"
+                onClick={() => setModalOpen(true)}
+                disabled={IS_DEMO}
+                title={IS_DEMO ? DEMO_DISABLED_HINT : undefined}
+                aria-disabled={IS_DEMO}
+              >
                 <svg
                   width="14"
                   height="14"
@@ -616,7 +623,13 @@ export default function ProjectsPage() {
                   >
                     Clear filters
                   </button>
-                  <button className="pg-btn-primary" onClick={() => setModalOpen(true)}>
+                  <button
+                    className="pg-btn-primary"
+                    onClick={() => setModalOpen(true)}
+                    disabled={IS_DEMO}
+                    title={IS_DEMO ? DEMO_DISABLED_HINT : undefined}
+                    aria-disabled={IS_DEMO}
+                  >
                     New Project
                   </button>
                 </div>

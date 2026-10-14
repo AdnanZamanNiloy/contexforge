@@ -249,6 +249,20 @@ h3 {
   filter: brightness(0.95);
 }
 
+/* Disabled in the static demo: no backend to ingest into. Dim it, drop the
+   pointer and the accent, and suppress the hover lift so it cannot read as
+   clickable. */
+.add-knowledge-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  filter: none;
+  box-shadow: none;
+}
+.add-knowledge-btn:disabled:hover,
+.add-knowledge-btn:disabled:active {
+  filter: none;
+}
+
 /* Section title shared */
 /* Sidebar section heading.  Plain sentence-case Inter at 16px/400 in a light
    grey — the same treatment as the workspace panel headings, instead of the

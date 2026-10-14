@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 
 import ContextForgeMark from '../ContextForgeMark'
+import { DEMO_DISABLED_HINT, IS_DEMO } from '../../lib/demo'
 import {
   GithubMark,
   SOURCE_STATUS,
@@ -502,7 +503,13 @@ export default function Sidebar({
     <aside className="sidebar-shell">
       <Brand />
 
-      <button className="add-knowledge-btn" onClick={onAddSource}>
+      <button
+        className="add-knowledge-btn"
+        onClick={onAddSource}
+        disabled={IS_DEMO}
+        title={IS_DEMO ? DEMO_DISABLED_HINT : undefined}
+        aria-disabled={IS_DEMO}
+      >
         <svg
           width="16"
           height="16"
