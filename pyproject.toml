@@ -9,6 +9,20 @@ description = "A grounded AI workspace for Retrieval-Augmented Generation."
 readme = "README.md"
 requires-python = ">=3.14"
 
+# There is nothing to install at the repo root — this file carries project
+# metadata plus the ruff and pytest config. The application is Python in
+# `backend/` (installed from `backend/requirements.txt`) and JavaScript in
+# `frontend/` and `docs-site/`.
+#
+# Without this block, setuptools auto-discovery scans the root, finds the
+# `backend`, `frontend`, `deploy` and `node_modules` directories, and refuses to
+# build with "Multiple top-level packages discovered in a flat-layout". That is
+# fatal on a host that runs `pip install .` as part of a build — Cloudflare's
+# runner does — even when the deploy only needs the JavaScript. Declaring no
+# packages makes the bare install a harmless no-op instead of an error.
+[tool.setuptools]
+packages = []
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8,<9",
